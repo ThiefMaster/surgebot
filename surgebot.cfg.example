@@ -1,0 +1,18 @@
+// SurgeBot config file
+
+"uplink" = {
+	"host" = "irc.gamesurge.net";
+	//"port" = "6667";
+	//"pass" = "";
+	//"ssl" = "0";
+	//"local_host" = "";
+	"max_tries" = "3";
+};
+
+"bot" = {
+	"nick" = "SurgeBot`BadlyConfigured";
+	"username" = "SurgeBot";
+	"realname" = "Badly configured SurgeBot";
+
+	//"trigger" = "*";
+};
