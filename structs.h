@@ -11,16 +11,6 @@ struct surgebot
 	unsigned long	lines_received;
 	unsigned long	lines_sent;
 
-	struct dict	*cfg;
-
-	char		*local_host;
-
-	char		*server_host;
-	unsigned int	server_port;
-	char		*server_pass;
-	unsigned int	max_server_tries;
-	unsigned int	server_ssl;
-
 	unsigned int	server_tries;
 	struct sock	*server_sock;
 
@@ -29,6 +19,21 @@ struct surgebot
 	char		*nickname;
 	char		*username;
 	char		*hostname;
+	char		*realname;
+};
+
+struct surgebot_conf
+{
+	char		*local_host;
+
+	char		*server_host;
+	unsigned int	server_port;
+	char		*server_pass;
+	unsigned int	max_server_tries;
+	unsigned int	server_ssl;
+
+	char		*nickname;
+	char		*username;
 	char		*realname;
 
 	char		trigger;

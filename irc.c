@@ -2,6 +2,8 @@
 #include "sock.h"
 #include "irc.h"
 
+extern struct surgebot_conf bot_conf;
+
 static void irc_sock_read(struct sock *sock, char *buf, size_t len);
 static void irc_sock_event(struct sock *sock, enum sock_event event, int err);
 static void irc_connected();
@@ -30,13 +32,11 @@ int irc_connect()
 		sock_close(bot.server_sock);
 	}
 
-	assert_return(bot.server_host, -1);
-
-	bot.server_sock = sock_create(SOCK_IPV4 | (bot.server_ssl ? SOCK_SSL : 0), irc_sock_event, irc_sock_read);
+	bot.server_sock = sock_create(SOCK_IPV4 | (bot_conf.server_ssl ? SOCK_SSL : 0), irc_sock_event, irc_sock_read);
 	if(bot.server_sock == NULL)
 		return -2;
 
-	res = sock_connect(bot.server_sock, bot.server_host, bot.server_port);
+	res = sock_connect(bot.server_sock, bot_conf.server_host, bot_conf.server_port);
 	if(res != 0)
 		return -3;
 
@@ -48,11 +48,15 @@ int irc_connect()
 
 static void irc_connected()
 {
-	if(bot.server_pass)
-		irc_send("PASS :%s", bot.server_pass);
+	if(bot_conf.server_pass)
+		irc_send("PASS :%s", bot_conf.server_pass);
 
-	irc_send("USER %s * * :%s", bot.username, bot.realname);
-	irc_send("NICK %s", bot.nickname);
+	irc_send("USER %s * * :%s", bot_conf.username, bot_conf.realname);
+	irc_send("NICK %s", bot_conf.nickname);
+
+	bot.nickname = strdup(bot_conf.nickname);
+	bot.username = strdup(bot_conf.username);
+	bot.realname = strdup(bot_conf.realname);
 }
 
 static void irc_disconnected()
@@ -90,6 +94,8 @@ int irc_send(const char *format, ...)
 	va_list args;
 	char buf[MAXLEN], *formatted;
 	int ret;
+
+	assert_return(bot.server_sock, -1);
 
 	va_start(args, format);
 	vsnprintf(buf, sizeof(buf), format, args);
