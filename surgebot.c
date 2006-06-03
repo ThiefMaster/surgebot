@@ -31,16 +31,17 @@ static void sig_rehash(int n)
 
 static void sig_exit(int n)
 {
-	log_append(LOG_INFO, "Received SIGQUIT or SIGINT signal. Exiting.");
-	//irc_send("QUIT :Received SIGQUIT or SIGINT signal - shutting down");
+	log_append(LOG_INFO, "Received SIGQUIT or SIGINT. Exiting.");
+	irc_send("QUIT :Received SIGQUIT or SIGINT - shutting down");
+	sock_poll(); // run a single poll to get quit message sent
 	quit_poll = 1;
 }
 
 static void sig_segv(int n)
 {
-	log_append(LOG_ERROR, "Received SIGSEGV signal. Exiting.");
-	//irc_send("QUIT :Received SIGSEGV signal - shutting down");
-	//sock_poll(); // run a single poll to get quit message sent
+	log_append(LOG_ERROR, "Received SIGSEGV. Exiting.");
+	irc_send("QUIT :Received SIGSEGV - shutting down");
+	sock_poll(); // run a single poll to get quit message sent
 	exit(0);
 }
 
