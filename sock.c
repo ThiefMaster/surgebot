@@ -737,12 +737,7 @@ int sock_poll()
 		}
 		else if(sock->flags & SOCK_CONNECT)
 		{
-			if(ev_read)
-			{
-				sock->event_func(sock, EV_ERROR, 0);
-				sock_close(sock);
-			}
-			else if(ev_write)
+			if(ev_write)
 			{
 #ifdef HAVE_SSL
 				if(sock->flags & SOCK_SSL)
@@ -762,6 +757,11 @@ int sock_poll()
 
 				sock->event_func(sock, EV_CONNECT, 0);
 				sock->flags &= ~SOCK_CONNECT;
+			}
+			else if(ev_read)
+			{
+				sock->event_func(sock, EV_ERROR, 0);
+				sock_close(sock);
 			}
 		}
 		else if(sock->flags & SOCK_LISTEN)
