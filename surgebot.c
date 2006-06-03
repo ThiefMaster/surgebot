@@ -4,6 +4,7 @@
 #include "database.h"
 #include "sock.h"
 #include "irc.h"
+#include "irc_handler.h"
 #include "surgebot.h"
 
 #include <libgen.h> // basename()
@@ -32,7 +33,8 @@ static void sig_rehash(int n)
 static void sig_exit(int n)
 {
 	log_append(LOG_INFO, "Received SIGQUIT or SIGINT. Exiting.");
-	irc_send("QUIT :Received SIGQUIT or SIGINT - shutting down");
+	if(bot.server_sock)
+		irc_send("QUIT :Received SIGQUIT or SIGINT - shutting down");
 	sock_poll(); // run a single poll to get quit message sent
 	quit_poll = 1;
 }
@@ -40,7 +42,8 @@ static void sig_exit(int n)
 static void sig_segv(int n)
 {
 	log_append(LOG_ERROR, "Received SIGSEGV. Exiting.");
-	irc_send("QUIT :Received SIGSEGV - shutting down");
+	if(bot.server_sock)
+		irc_send("QUIT :Received SIGSEGV - shutting down");
 	sock_poll(); // run a single poll to get quit message sent
 	exit(0);
 }
@@ -153,6 +156,7 @@ int main(int argc, char **argv)
 	if(bot_init() != 0)
 		return 1;
 
+	irc_handler_init();
 	irc_init();
 
 	if(irc_connect() != 0)
@@ -178,6 +182,7 @@ int main(int argc, char **argv)
 	log_append(LOG_INFO, "Left event loop");
 
 	irc_fini();
+	irc_handler_fini();
 	bot_fini();
 
 	loop_func_list_free(loop_funcs);

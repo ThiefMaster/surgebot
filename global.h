@@ -35,6 +35,7 @@
 #undef HAVE_IPV6
 #define HAVE_MMAP
 #define HAVE_SSL
+//#define IRC_HANDLER_DEBUG
 
 #ifdef HAVE_SSL
 #include <openssl/crypto.h>

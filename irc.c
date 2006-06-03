@@ -2,6 +2,7 @@
 #include "sock.h"
 #include "irc.h"
 #include "timer.h"
+#include "irc_handler.h"
 
 extern struct surgebot_conf bot_conf;
 extern int quit_poll;
@@ -14,7 +15,6 @@ static void irc_connect_timeout(void *bound, void *data);
 static void irc_error(int err);
 static void irc_schedule_reconnect(unsigned int wait);
 static void irc_reconnect(void *bound, void *data);
-static void irc_handle_msg(int argc, char **argv, struct irc_source *src);
 static char *irc_format_line(const char *msg);
 
 void irc_init()
@@ -126,25 +126,6 @@ static void irc_reconnect(void *bound, void *data)
 
 	// TODO: delete all users/channels
 	irc_connect();
-}
-
-// TODO: It might be a good idea to move that into a separate source file
-static void irc_handle_msg(int argc, char **argv, struct irc_source *src)
-{
-	if(src)
-		debug("src: %s/%s/%s", src->nick, src->ident, src->host);
-
-	int i;
-	for(i = 0; i < argc; i++)
-		debug("argv[%d]: %s", i, argv[i]);
-
-
-	if(!strcasecmp(argv[0], "PING"))
-	{
-		assert(argc > 1);
-		irc_send("PONG :%s", argv[1]);
-		bot.server_tries = 0; // TODO: that should be done when getting the 001 numeric
-	}
 }
 
 int irc_send(const char *format, ...)
