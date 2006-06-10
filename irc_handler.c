@@ -69,7 +69,7 @@ void irc_handle_msg(int argc, char **argv, struct irc_source *src)
 	}
 }
 
-IRC_HANDLER(PING)
+IRC_HANDLER(ping)
 {
 	assert(argc > 1);
 	irc_send("PONG :%s", argv[1]);
@@ -79,5 +79,5 @@ IRC_HANDLER(PING)
 
 static void reg_default_handlers()
 {
-	reg_irc_handler(PING);
+	reg_irc_handler("ping", ping);
 }

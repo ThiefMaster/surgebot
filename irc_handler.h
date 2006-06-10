@@ -3,7 +3,7 @@
 
 #include "list.h"
 
-#define IRC_HANDLER(CMD)	static void __irc_handler_ ## CMD(int argc, char **argv, struct irc_source *src)
+#define IRC_HANDLER(NAME)	static void __irc_handler_ ## NAME(int argc, char **argv, struct irc_source *src)
 
 typedef void (irc_handler_f)(int argc, char **argv, struct irc_source *src);
 
@@ -12,8 +12,8 @@ void irc_handler_fini();
 
 void _reg_irc_handler(const char *cmd, irc_handler_f *func);
 void _unreg_irc_handler(const char *cmd, irc_handler_f *func);
-#define reg_irc_handler(CMD)	_reg_irc_handler(#CMD, __irc_handler_ ## CMD)
-#define unreg_irc_handler(CMD)	_unreg_irc_handler(#CMD, __irc_handler_ ## CMD)
+#define reg_irc_handler(CMD, NAME)	_reg_irc_handler(CMD, __irc_handler_ ## NAME)
+#define unreg_irc_handler(CMD, NAME)	_unreg_irc_handler(CMD, __irc_handler_ ## NAME)
 
 void irc_handle_msg(int argc, char **argv, struct irc_source *src);
 
