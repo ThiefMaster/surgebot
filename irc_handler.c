@@ -73,11 +73,26 @@ IRC_HANDLER(ping)
 {
 	assert(argc > 1);
 	irc_send("PONG :%s", argv[1]);
-	bot.server_tries = 0; // TODO: that should be done when getting the 001 numeric
+}
 
+IRC_HANDLER(num_welcome)
+{
+	log_append(LOG_INFO, "Successfully logged in to the irc server");
+	bot.server_tries = 0;
+
+	assert(argc > 1);
+	assert(bot.nickname);
+
+	if(strcmp(bot.nickname, argv[1]))
+	{
+		debug("Actual nickname %s does not match initial nickname %s", argv[1], bot.nickname);
+		free(bot.nickname);
+		bot.nickname = strdup(argv[1]);
+	}
 }
 
 static void reg_default_handlers()
 {
 	reg_irc_handler("ping", ping);
+	reg_irc_handler("001", num_welcome);
 }

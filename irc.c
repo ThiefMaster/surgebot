@@ -41,7 +41,7 @@ int irc_connect()
 	if(bot.server_sock == NULL)
 		return -2;
 
-	debug("Connecting to %s:%d", bot_conf.server_host, bot_conf.server_port);
+	log_append(LOG_INFO, "Connecting to %s:%d", bot_conf.server_host, bot_conf.server_port);
 	res = sock_connect(bot.server_sock, bot_conf.server_host, bot_conf.server_port);
 	if(res != 0)
 		return -3;
@@ -54,6 +54,7 @@ int irc_connect()
 
 static void irc_connected()
 {
+	log_append(LOG_INFO, "Connection to server successful, logging in");
 	timer_del_boundname(&bot, "server_connect_timeout");
 
 	if(bot_conf.server_pass)
@@ -75,6 +76,7 @@ static void irc_connected()
 
 static void irc_disconnected()
 {
+	log_append(LOG_INFO, "Connection closed by the server");
 	timer_del_boundname(&bot, "server_connect_timeout");
 	bot.server_sock = NULL;
 	irc_schedule_reconnect(5);
@@ -88,7 +90,7 @@ static void irc_connect_timeout(void *bound, void *data)
 		return;
 	}
 
-	debug("Could not connect to server - timeout");
+	log_append(LOG_INFO, "Could not connect to server - timeout");
 	sock_close(bot.server_sock);
 	bot.server_sock = NULL;
 	irc_schedule_reconnect(30);
@@ -120,9 +122,9 @@ static void irc_schedule_reconnect(unsigned int wait)
 static void irc_reconnect(void *bound, void *data)
 {
 	if(bot_conf.max_server_tries > 0)
-		debug("Reconnecting (%d reconnect attempt(s) left)", bot_conf.max_server_tries - bot.server_tries);
+		log_append(LOG_INFO, "Reconnecting (%d reconnect attempt(s) left)", bot_conf.max_server_tries - bot.server_tries);
 	else
-		debug("Reconnecting");
+		log_append(LOG_INFO, "Reconnecting");
 
 	// TODO: delete all users/channels
 	irc_connect();
@@ -150,7 +152,6 @@ int irc_send(const char *format, ...)
 static void irc_sock_event(struct sock *sock, enum sock_event event, int err)
 {
 	assert(sock == bot.server_sock);
-	//debug("s_event(%p, %d, %d)", sock, event, err);
 
 	if(event == EV_ERROR)
 	{
