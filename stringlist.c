@@ -56,6 +56,20 @@ void stringlist_del(struct stringlist *list, int pos)
 	list->data[pos] = list->data[--list->count]; // copy last element into empty position
 }
 
+char *stringlist_shift(struct stringlist *list)
+{
+	char *string;
+
+	if(list->count == 0)
+		return NULL;
+
+	string = strdup(list->data[0]);
+	free(list->data[0]);
+	list->count--;
+	memmove(list->data, list->data + 1, list->count * sizeof(*list->data));
+	return string;
+}
+
 int stringlist_cmp(const void *a, const void *b)
 {
 	return strnatcasecmp(*(const char **)a, *(const char **)b);

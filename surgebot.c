@@ -5,6 +5,7 @@
 #include "sock.h"
 #include "irc.h"
 #include "irc_handler.h"
+#include "stringlist.h"
 #include "surgebot.h"
 
 #include <libgen.h> // basename()
@@ -34,7 +35,7 @@ static void sig_exit(int n)
 {
 	log_append(LOG_INFO, "Received SIGQUIT or SIGINT. Exiting.");
 	if(bot.server_sock)
-		irc_send("QUIT :Received SIGQUIT or SIGINT - shutting down");
+		irc_send_fast("QUIT :Received SIGQUIT or SIGINT - shutting down");
 	sock_poll(); // run a single poll to get quit message sent
 	quit_poll = 1;
 }
@@ -43,7 +44,7 @@ static void sig_segv(int n)
 {
 	log_append(LOG_ERROR, "Received SIGSEGV. Exiting.");
 	if(bot.server_sock)
-		irc_send("QUIT :Received SIGSEGV - shutting down");
+		irc_send_fast("QUIT :Received SIGSEGV - shutting down");
 	sock_poll(); // run a single poll to get quit message sent
 	exit(0);
 }
@@ -71,6 +72,7 @@ static int bot_init()
 
 	bot.start = now;
 	bot.linked = now;
+	bot.sendq = stringlist_create();
 
 	reg_conf_reload_func((conf_reload_f *)bot_conf_reload);
 	return bot_conf_reload();
@@ -85,6 +87,8 @@ static void bot_fini()
 
 	if(bot.server_name) free(bot.server_name);
 	if(bot.server_sock) sock_close(bot.server_sock);
+
+	stringlist_free(bot.sendq);
 
 	unreg_conf_reload_func((conf_reload_f *)bot_conf_reload);
 }
@@ -103,6 +107,7 @@ static int bot_conf_reload()
 	bot_conf.server_pass		= ((str = conf_get("uplink/pass", DB_STRING)) ? str : NULL);
 	bot_conf.max_server_tries	= ((str = conf_get("uplink/max_tries", DB_STRING)) ? atoi(str) : 3);
 	bot_conf.server_ssl		= conf_bool("uplink/ssl");
+	bot_conf.throttle		= conf_bool("uplink/throttle");
 
 	bot_conf.local_host = ((str = conf_get("uplink/local_host", DB_STRING)) ? str : NULL);
 

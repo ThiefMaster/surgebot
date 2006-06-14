@@ -14,6 +14,9 @@ struct surgebot
 	unsigned int	server_tries;
 	struct sock	*server_sock;
 
+	struct stringlist	*sendq;
+	time_t		last_msg;
+
 	char		*server_name;
 
 	char		*nickname;
@@ -31,6 +34,8 @@ struct surgebot_conf
 	char		*server_pass;
 	unsigned int	max_server_tries;
 	unsigned int	server_ssl;
+
+	unsigned int	throttle;
 
 	char		*nickname;
 	char		*username;

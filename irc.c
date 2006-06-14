@@ -3,10 +3,14 @@
 #include "irc.h"
 #include "timer.h"
 #include "irc_handler.h"
+#include "stringlist.h"
+#include "surgebot.h"
+#include "conf.h"
 
 extern struct surgebot_conf bot_conf;
 extern int quit_poll;
 
+static void irc_conf_reload();
 static void irc_sock_read(struct sock *sock, char *buf, size_t len);
 static void irc_sock_event(struct sock *sock, enum sock_event event, int err);
 static void irc_connected();
@@ -15,16 +19,29 @@ static void irc_connect_timeout(void *bound, void *data);
 static void irc_error(int err);
 static void irc_schedule_reconnect(unsigned int wait);
 static void irc_reconnect(void *bound, void *data);
+static void irc_poll_sendq();
 static char *irc_format_line(const char *msg);
 
 void irc_init()
 {
+	if(bot_conf.throttle)
+		reg_loop_func(irc_poll_sendq);
 
+	reg_conf_reload_func(irc_conf_reload);
 }
 
 void irc_fini()
 {
+	unreg_conf_reload_func(irc_conf_reload);
+	unreg_loop_func(irc_poll_sendq);
+}
 
+static void irc_conf_reload()
+{
+	if(bot_conf.throttle && !conf_bool_old("uplink/throttle"))
+		reg_loop_func(irc_poll_sendq);
+	else if(!bot_conf.throttle && conf_bool_old("uplink/throttle") && bot.sendq->count == 0)
+		unreg_loop_func(irc_poll_sendq);
 }
 
 int irc_connect()
@@ -72,6 +89,8 @@ static void irc_connected()
 	bot.username = strdup(bot_conf.username);
 	bot.realname = strdup(bot_conf.realname);
 	bot.hostname = NULL;
+
+	bot.last_msg = now;
 }
 
 static void irc_disconnected()
@@ -130,23 +149,64 @@ static void irc_reconnect(void *bound, void *data)
 	irc_connect();
 }
 
-int irc_send(const char *format, ...)
+void irc_send(const char *format, ...)
 {
 	va_list args;
 	char buf[MAXLEN], *formatted;
-	int ret;
 
-	assert_return(bot.server_sock, -1);
+	assert(bot.server_sock);
 
 	va_start(args, format);
 	vsnprintf(buf, sizeof(buf), format, args);
 	va_end(args);
 
 	formatted = irc_format_line(buf);
-	ret = sock_write_fmt(bot.server_sock, "%s\r\n", formatted);
+	stringlist_add(bot.sendq, strdup(formatted));
 	log_append(LOG_SEND, "%s", formatted);
 	bot.lines_sent++;
-	return ret;
+}
+
+void irc_send_fast(const char *format, ...)
+{
+	va_list args;
+	char buf[MAXLEN], *formatted;
+
+	assert(bot.server_sock);
+
+	va_start(args, format);
+	vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
+
+	formatted = irc_format_line(buf);
+	sock_write_fmt(bot.server_sock, "%s\r\n", formatted);
+	log_append(LOG_SEND, "%s", formatted);
+	bot.lines_sent++;
+}
+
+static void irc_poll_sendq()
+{
+	char *line;
+
+	if(bot.server_sock == NULL)
+	{
+		stringlist_free(bot.sendq);
+		bot.sendq = stringlist_create();
+		return;
+	}
+
+	if(now > bot.last_msg)
+		bot.last_msg = now;
+
+	while(bot.sendq->count > 0 && (bot.last_msg - now) < 10)
+	{
+		line = stringlist_shift(bot.sendq);
+		sock_write_fmt(bot.server_sock, "%s\r\n", line);
+		bot.last_msg += (2 + strlen(line) / 120);
+		free(line);
+	}
+
+	if(!bot_conf.throttle && bot.sendq->count == 0)
+		unreg_loop_func(irc_poll_sendq);
 }
 
 static void irc_sock_event(struct sock *sock, enum sock_event event, int err)
