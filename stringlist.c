@@ -70,6 +70,18 @@ char *stringlist_shift(struct stringlist *list)
 	return string;
 }
 
+int stringlist_find(struct stringlist *list, const char *string)
+{
+	int i;
+	for(i = 0; i < list->count; i++)
+	{
+		if(!strcasecmp(list->data[i], string))
+			return i;
+	}
+
+	return -1;
+}
+
 int stringlist_cmp(const void *a, const void *b)
 {
 	return strnatcasecmp(*(const char **)a, *(const char **)b);

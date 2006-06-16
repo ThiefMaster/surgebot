@@ -1,4 +1,4 @@
-MODULES = 
+MODULES = simple simpledep simpledepdep
 BIN = surgebot
 CFLAGS = -pipe -Wall -g -fPIC
 

@@ -16,3 +16,8 @@
 
 	//"trigger" = "*";
 };
+
+"core" = {
+	"module_path" = "./modules";
+	"modules" = ();
+};

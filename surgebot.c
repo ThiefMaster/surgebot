@@ -5,6 +5,7 @@
 #include "sock.h"
 #include "irc.h"
 #include "irc_handler.h"
+#include "module.h"
 #include "stringlist.h"
 #include "surgebot.h"
 
@@ -163,6 +164,7 @@ int main(int argc, char **argv)
 
 	irc_handler_init();
 	irc_init();
+	module_init();
 
 	if(irc_connect() != 0)
 		return 1;
@@ -186,6 +188,7 @@ int main(int argc, char **argv)
 
 	log_append(LOG_INFO, "Left event loop");
 
+	module_fini();
 	irc_fini();
 	irc_handler_fini();
 	bot_fini();
