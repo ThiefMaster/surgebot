@@ -1,24 +1,44 @@
-MODULES = 
+MODULES = simple simpledep simpledepdep
 BIN = surgebot
+
+LIBS = -lssl -ldl
 CFLAGS = -pipe -Wall -g -fPIC
+LDFLAGS = -Wl,--export-dynamic
 
-OBJ = $(patsubst %.c,%.o,$(wildcard *.c))
+SRC = $(wildcard *.c)
+OBJ = $(patsubst %.c,.tmp/%.o,$(SRC))
+DEP = $(patsubst %.c,.tmp/%.d,$(SRC))
 
-.PHONY: all all-before all-after clean clean-custom
+.PHONY: all clean distclean
 
-all: all-before $(BIN) $(MODULES) all-after
+all: $(DEP) $(BIN) $(MODULES)
 
-clean: clean-custom
-	rm -f $(OBJ) $(BIN)
-	./clean-modules $(MODULES)
+clean:
+	@echo "   CLEAN"
+	@rm -f $(BIN) .tmp/*.d .tmp/*.o modules/*.so
+	@for i in $(MODULES); do make -s -f Makefile.module MODULE=$$i clean ; done
 
+# rule for creating final binary
 $(BIN): $(OBJ)
-	@echo "[LD] $@"
-	@gcc $(CFLAGS) -lssl -ldl -Wl,--export-dynamic $(OBJ) -o $(BIN)
+	@echo "   LD        $@"
+	@$(CC) $(LDFLAGS) $(LIBS) $(OBJ) -o $(BIN)
 
+# rule for creating object files
+$(OBJ) : .tmp/%.o : %.c
+	@echo "   CC        $(<:.c=.o)"
+	@$(CC) $(CFLAGS) -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
+
+# rule for creating dependency files
+$(DEP) : .tmp/%.d : %.c
+	@mkdir -p .tmp
+	@echo "   DEP       $(<:.c=.d)"
+	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@
+
+# include dependency files
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEP)
+endif
+
+# build modules
 $(MODULES):
-	@cd modules/$@; make
-
-.c.o:
-	@echo "[CC] $@"
-	@gcc ${CFLAGS} -o $@ -c $^
+	@make -s -f Makefile.module MODULE=$@
