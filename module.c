@@ -9,6 +9,7 @@ static struct dict *module_list;
 
 static void module_conf_reload();
 static struct module *module_find(const char *name);
+static void module_release_dependencies(struct module *module);
 static void module_free(struct module *module);
 static int module_solve_dependencies(struct module *module);
 static const char *module_get_filename(const char *name);
@@ -146,6 +147,7 @@ int module_add(const char *name)
 	if(module_solve_dependencies(module) != 0)
 	{
 		log_append(LOG_WARNING, "Module %s has unresolvable dependencies", name);
+		module_release_dependencies(module);
 		module_free(module);
 		return -6;
 	}
@@ -155,6 +157,7 @@ int module_add(const char *name)
 	if(module->handle == NULL)
 	{
 		log_append(LOG_WARNING, "Could not initialize module %s: %s", name, dlerror());
+		module_release_dependencies(module);
 		module_free(module);
 		return -7;
 	}
@@ -165,6 +168,7 @@ int module_add(const char *name)
 	if(module->init_func == NULL || module->fini_func == NULL)
 	{
 		log_append(LOG_WARNING, "Could not initialize module %s; mod_init() or mod_fini() could not be loaded: %s", name, dlerror());
+		module_release_dependencies(module);
 		module_free(module);
 		return -8;
 	}
@@ -178,7 +182,7 @@ int module_add(const char *name)
 int module_del(const char *name)
 {
 	struct module *module;
-	int i, j;
+	int i;
 
 	if((module = module_find(name)) == NULL)
 	{
@@ -196,6 +200,16 @@ int module_del(const char *name)
 	for(i = 0; i < module_unload_funcs->count; i++)
 		module_unload_funcs->data[i](module);
 
+	module_release_dependencies(module);
+
+	module->fini_func(module);
+	module_free(module);
+	return 0;
+}
+
+static void module_release_dependencies(struct module *module)
+{
+	int i, j;
 	for(i = 0; i < module->depend->count; i++)
 	{
 		struct module *depmod = module_find(module->depend->data[i]);
@@ -211,10 +225,6 @@ int module_del(const char *name)
 			}
 		}
 	}
-
-	module->fini_func(module);
-	module_free(module);
-	return 0;
 }
 
 static void module_free(struct module *module)
