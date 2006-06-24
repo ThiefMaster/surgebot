@@ -38,3 +38,5 @@ ifneq ($(MAKECMDGOALS),clean)
 -include $(DEP_mod)
 endif
 
+# vim: ft=make
+

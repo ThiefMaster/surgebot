@@ -1,5 +1,5 @@
-MODULES = simple simpledep simpledepdep
 BIN = surgebot
+-include modules.build
 
 LIBS = -lssl -ldl
 CFLAGS = -pipe -Wall -g -fPIC
