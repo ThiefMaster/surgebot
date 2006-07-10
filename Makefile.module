@@ -25,13 +25,13 @@ $(LIB_mod): $(OBJ_mod)
 # rule for creating object files
 $(OBJ_mod) : .tmp/modules/$(MODULE)/%.o : modules/$(MODULE)/%.c
 	@echo "   CC        $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.o))"
-	@$(CC) $(CFLAGS_mod) -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
+	@$(CC) $(CFLAGS_mod) -std=gnu99 -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
 
 # rule for creating dependency files
 $(DEP_mod) : .tmp/modules/$(MODULE)/%.d : modules/$(MODULE)/%.c
 	@mkdir -p .tmp/modules/$(MODULE)
 	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.d))"
-	@$(CC) $(CFLAGS_mod) -MM -MT $(@:.d=.o) $< > $@
+	@$(CC) $(CFLAGS_mod) -std=gnu99 -MM -MT $(@:.d=.o) $< > $@
 
 # include dependency files
 ifneq ($(MAKECMDGOALS),clean)

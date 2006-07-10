@@ -12,6 +12,8 @@ void dict_free(struct dict *dict)
 {
 	while(dict->count)
 		dict_delete_node(dict, dict->head);
+	if(dict->free)
+		free(dict->free);
 	free(dict);
 }
 
@@ -89,7 +91,13 @@ void dict_delete_node(struct dict *dict, struct dict_node *node)
 		dict->free_data_func(node->data);
 
 	dict->count--;
-	free(node);
+
+	if(dict->free) // free old deleted node
+		free(dict->free);
+
+	node->key  = NULL;
+	node->data = NULL;
+	dict->free = node;
 }
 
 unsigned int dict_delete(struct dict *dict, const char *key)

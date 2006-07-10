@@ -26,13 +26,13 @@ $(BIN): $(OBJ)
 # rule for creating object files
 $(OBJ) : .tmp/%.o : %.c
 	@echo "   CC        $(<:.c=.o)"
-	@$(CC) $(CFLAGS) -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
+	@$(CC) $(CFLAGS) -std=gnu99 -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
 
 # rule for creating dependency files
 $(DEP) : .tmp/%.d : %.c
 	@mkdir -p .tmp
 	@echo "   DEP       $(<:.c=.d)"
-	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@
+	@$(CC) $(CFLAGS) -std=gnu99 -MM -MT $(@:.d=.o) $< > $@
 
 # include dependency files
 ifneq ($(MAKECMDGOALS),clean)

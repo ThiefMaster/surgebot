@@ -8,7 +8,8 @@ struct dict
 	unsigned int count;
 	struct dict_node *head;
 	struct dict_node *tail;
-	
+	struct dict_node *free; // deleted node that must be free'd
+
 	dict_free_f *free_keys_func;
 	dict_free_f *free_data_func;
 };
@@ -34,7 +35,6 @@ unsigned int dict_delete_key_value(struct dict *dict, const char *key, void *dat
 #define dict_size(DICT)		((DICT) ? (DICT)->count : 0)
 #define dict_first_data(DICT)	((DICT) && (DICT)->head ? (DICT)->head->data : NULL)
 
-#define dict_iter(ENTRY, DICT)	struct dict_node* ENTRY;	\
-				for(ENTRY = (DICT)->head; ENTRY; ENTRY = (ENTRY)->next)
+#define dict_iter(ENTRY, DICT)	for(struct dict_node* ENTRY = (DICT)->head; ENTRY; ENTRY = (ENTRY)->next)
 
 #endif
