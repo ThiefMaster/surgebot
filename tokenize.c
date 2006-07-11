@@ -29,7 +29,7 @@ int tokenize(char *str, char **vec, int vec_size, char token)
 			*ch++ = '\0';
 			vec[count++] = ch;
 
-			if((count + 1) >= vec_size)
+			if(((count + 1) >= vec_size) || (*ch == '\0'))
 				return count;
 		}
 
@@ -79,7 +79,7 @@ int itokenize(char *str, char **vec, int vec_size, char token, char ltoken)
 
 			vec[count++] = ch;
 
-			if((count + 1) >= vec_size)
+			if(((count + 1) >= vec_size) || (*ch == '\0'))
 				return count;
 		}
 
