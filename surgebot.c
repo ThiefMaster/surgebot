@@ -5,6 +5,8 @@
 #include "sock.h"
 #include "irc.h"
 #include "irc_handler.h"
+#include "chanuser.h"
+#include "chanuser_irc.h"
 #include "module.h"
 #include "stringlist.h"
 #include "surgebot.h"
@@ -74,6 +76,7 @@ static int bot_init()
 	bot.start = now;
 	bot.linked = now;
 	bot.sendq = stringlist_create();
+	bot.burst_lines = stringlist_create();
 
 	reg_conf_reload_func((conf_reload_f *)bot_conf_reload);
 	return bot_conf_reload();
@@ -90,6 +93,7 @@ static void bot_fini()
 	if(bot.server_sock) sock_close(bot.server_sock);
 
 	stringlist_free(bot.sendq);
+	stringlist_free(bot.burst_lines);
 
 	unreg_conf_reload_func((conf_reload_f *)bot_conf_reload);
 }
@@ -164,6 +168,8 @@ int main(int argc, char **argv)
 
 	irc_handler_init();
 	irc_init();
+	chanuser_init();
+	chanuser_irc_init();
 	module_init();
 
 	if(irc_connect() != 0)
@@ -189,6 +195,8 @@ int main(int argc, char **argv)
 	log_append(LOG_INFO, "Left event loop");
 
 	module_fini();
+	chanuser_irc_fini();
+	chanuser_fini();
 	irc_fini();
 	irc_handler_fini();
 	bot_fini();

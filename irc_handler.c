@@ -1,6 +1,8 @@
 #include "global.h"
 #include "irc_handler.h"
 #include "irc.h"
+#include "chanuser.h"
+#include "chanuser_irc.h"
 
 IMPLEMENT_LIST(irc_handler_list, irc_handler_f *)
 
@@ -44,7 +46,7 @@ void _unreg_irc_handler(const char *cmd, irc_handler_f *func)
 	irc_handler_list_del(list, func);
 }
 
-void irc_handle_msg(int argc, char **argv, struct irc_source *src)
+void irc_handle_msg(int argc, char **argv, struct irc_source *src, const char *raw_line)
 {
 	struct irc_handler_list *list;
 	irc_handler_f *func;
@@ -58,6 +60,9 @@ void irc_handle_msg(int argc, char **argv, struct irc_source *src)
 	for(i = 0; i < argc; i++)
 		debug("argv[%d]: %s", i, argv[i]);
 #endif
+
+	if(chanuser_irc_handler(argc, argv, src, raw_line) == -1) // message delayed due to burst; don't continue here
+		return;
 
 	if((list = dict_find(irc_handlers, argv[0])) != NULL && list->count > 0)
 	{
@@ -89,10 +94,65 @@ IRC_HANDLER(num_welcome)
 		free(bot.nickname);
 		bot.nickname = strdup(argv[1]);
 	}
+
+	irc_send("WHOIS %s", bot.nickname);
+}
+
+IRC_HANDLER(num_myinfo)
+{
+	assert(argc > 2);
+	if(bot.server_name)
+		free(bot.server_name);
+	bot.server_name = strdup(argv[2]);
+	log_append(LOG_INFO, "We are connected to %s", argv[2]);
+}
+
+IRC_HANDLER(num_whoisuser)
+{
+	assert(argc > 6);
+
+	if(!strcmp(argv[2], bot.nickname)) // own whois information
+	{
+		if(strcmp(bot.username, argv[3])) // username does not match -> change
+		{
+			debug("Own username does not match; changing from %s to %s", bot.username, argv[3]);
+			free(bot.username);
+			bot.username = strdup(argv[3]);
+		}
+
+		if(bot.hostname == NULL || strcmp(bot.hostname, argv[4])) // hostname does not match -> change
+		{
+			debug("Own hostname does not match; changing from %s to %s", bot.hostname, argv[4]);
+			if(bot.hostname)
+				free(bot.hostname);
+			bot.hostname = strdup(argv[4]);
+		}
+
+		if(strcmp(bot.realname, argv[6])) // realname does not match -> change
+		{
+			debug("Own realname does not match; changing from %s to %s", bot.realname, argv[6]);
+			free(bot.realname);
+			bot.realname = strdup(argv[6]);
+		}
+	}
+}
+
+IRC_HANDLER(num_hosthidden)
+{
+	assert(argc > 2);
+	assert(!strcasecmp(argv[1], bot.nickname));
+
+	debug("Changing own (fake)host from %s to %s", bot.hostname, argv[2]);
+	if(bot.hostname)
+		free(bot.hostname);
+	bot.hostname = strdup(argv[2]);
 }
 
 static void reg_default_handlers()
 {
-	reg_irc_handler("ping", ping);
+	reg_irc_handler("PING", ping);
 	reg_irc_handler("001", num_welcome);
+	reg_irc_handler("004", num_myinfo);
+	reg_irc_handler("311", num_whoisuser);
+	reg_irc_handler("396", num_hosthidden);
 }

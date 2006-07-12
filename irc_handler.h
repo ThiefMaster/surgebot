@@ -15,7 +15,7 @@ void _unreg_irc_handler(const char *cmd, irc_handler_f *func);
 #define reg_irc_handler(CMD, NAME)	_reg_irc_handler(CMD, __irc_handler_ ## NAME)
 #define unreg_irc_handler(CMD, NAME)	_unreg_irc_handler(CMD, __irc_handler_ ## NAME)
 
-void irc_handle_msg(int argc, char **argv, struct irc_source *src);
+void irc_handle_msg(int argc, char **argv, struct irc_source *src, const char *raw_line);
 
 DECLARE_LIST(irc_handler_list, irc_handler_f *)
 

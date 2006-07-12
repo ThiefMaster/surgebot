@@ -6,6 +6,7 @@
 #include "stringlist.h"
 #include "surgebot.h"
 #include "conf.h"
+#include "chanuser.h"
 
 extern struct surgebot_conf bot_conf;
 extern int quit_poll;
@@ -145,7 +146,21 @@ static void irc_reconnect(void *bound, void *data)
 	else
 		log_append(LOG_INFO, "Reconnecting");
 
-	// TODO: delete all users/channels
+	// reset everything
+	chanuser_flush();
+	bot.burst_count = 0;
+	if(bot.burst_lines->count)
+	{
+		stringlist_free(bot.burst_lines);
+		bot.burst_lines = stringlist_create();
+	}
+
+	if(bot.sendq->count)
+	{
+		stringlist_free(bot.sendq);
+		bot.sendq = stringlist_create();
+	}
+
 	irc_connect();
 }
 
@@ -161,7 +176,10 @@ void irc_send(const char *format, ...)
 	va_end(args);
 
 	formatted = irc_format_line(buf);
-	stringlist_add(bot.sendq, strdup(formatted));
+	if(bot_conf.throttle)
+		stringlist_add(bot.sendq, strdup(formatted));
+	else
+		sock_write_fmt(bot.server_sock, "%s\r\n", formatted);
 	log_append(LOG_SEND, "%s", formatted);
 	bot.lines_sent++;
 }
@@ -229,18 +247,16 @@ static void irc_sock_event(struct sock *sock, enum sock_event event, int err)
 	}
 }
 
-static void irc_sock_read(struct sock *sock, char *buf, size_t len)
+void irc_parse_line(const char *line)
 {
-	char *orig_argv[MAXARG], **argv, *raw_src;
+	char *line_dup, *orig_argv[MAXARG], **argv, *raw_src;
 	int argc;
 	struct irc_source src;
 
-	assert(sock == bot.server_sock);
-	log_append(LOG_RECEIVE, "%s", buf);
-
+	line_dup = strdup(line);
 	memset(&src, 0, sizeof(struct irc_source));
 
-	argc = itokenize(buf, orig_argv, MAXARG, ' ', ':');
+	argc = itokenize(line_dup, orig_argv, MAXARG, ' ', ':');
 
 	if(*orig_argv[0] == ':') // message has a source
 	{
@@ -273,7 +289,16 @@ static void irc_sock_read(struct sock *sock, char *buf, size_t len)
 		return;
 	}
 
-	irc_handle_msg(argc, argv, (raw_src ? &src : NULL));
+	irc_handle_msg(argc, argv, (raw_src ? &src : NULL), line);
+	free(line_dup);
+}
+
+static void irc_sock_read(struct sock *sock, char *buf, size_t len)
+{
+	assert(sock == bot.server_sock);
+
+	log_append(LOG_RECEIVE, "%s", buf);
+	irc_parse_line(buf);
 }
 
 static char *irc_format_line(const char *msg)

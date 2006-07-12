@@ -17,6 +17,9 @@ struct surgebot
 	struct stringlist	*sendq;
 	time_t		last_msg;
 
+	struct stringlist	*burst_lines;
+	unsigned int	burst_count;
+
 	char		*server_name;
 
 	char		*nickname;
@@ -49,6 +52,45 @@ struct irc_source
 	char	*nick;
 	char	*ident;
 	char	*host;
+};
+
+
+struct irc_channel
+{
+	char		*name;
+	int		modes;
+	char		*key;
+	unsigned int	limit;
+	char		*topic;
+
+	unsigned int	burst_state;
+	struct stringlist	*burst_lines;
+
+	struct dict	*users;
+	struct dict	*bans;
+};
+
+struct irc_user
+{
+	char		*nick;
+	char		*ident;
+	char		*host;
+	char		*info;
+
+	struct dict	*channels;
+};
+
+struct irc_chanuser
+{
+	struct irc_channel	*channel;
+	struct irc_user		*user;
+	int			flags;
+};
+
+struct irc_ban
+{
+	struct irc_channel	*channel;
+	char			*mask;
 };
 
 #endif
