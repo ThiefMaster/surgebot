@@ -60,10 +60,16 @@ void log_append(enum log_level level, char *text, ...)
 		printf("\033[1;31m");
 	else if(level == LOG_CMD)
 		printf("\033[33m");
+	else if(level == LOG_SEND)
+		printf("\033[32m");
+	else if(level == LOG_RECEIVE)
+		printf("\033[1;36m");
+	else if(level == LOG_INFO)
+		printf("\033[1;34m");
 
 	va_start(va, text);
 	vprintf(text, va);
-	if(level == LOG_ERROR || level == LOG_WARNING || level == LOG_CMD)
+	if(level == LOG_ERROR || level == LOG_WARNING || level == LOG_CMD || level == LOG_SEND || level == LOG_RECEIVE || level == LOG_INFO)
 		printf("\033[0m");
 	printf("\n");
 	va_end(va);
