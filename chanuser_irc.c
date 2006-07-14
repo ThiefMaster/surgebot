@@ -297,6 +297,30 @@ CHANUSER_IRC_HANDLER(topic)
 	return 0;
 }
 
+/*
+ * Handler for PRIVMSG/NOTICE to complete a user if his data is missing for some
+ * reason so we can be sure in privmsg handlers that ident/host are known
+ */
+CHANUSER_IRC_HANDLER(msg)
+{
+	struct irc_user *user;
+
+	if(src == NULL || src->ident == NULL || src->host == NULL)
+		return 0;
+
+	if((user = user_find(src->nick)) == NULL)
+	{
+		log_append(LOG_WARNING, "Got %s from unknown user %s", argv[0], src->nick);
+		user = user_add(src->nick, src->ident, src->host);
+	}
+	else
+	{
+		user_complete(user, src->ident, src->host);
+	}
+
+	return 0;
+}
+
 CHANUSER_IRC_HANDLER(num_endofwho)
 {
 	struct irc_channel *channel;
@@ -491,6 +515,8 @@ static void setup_handlers()
 	set_chanuser_irc_handler("QUIT", quit);
 	set_chanuser_irc_handler("MODE", mode);
 	set_chanuser_irc_handler("TOPIC", topic);
+	set_chanuser_irc_handler("PRIVMSG", msg);
+	set_chanuser_irc_handler("NOTICE", msg);
 	set_chanuser_irc_handler("315", num_endofwho);
 	set_chanuser_irc_handler("324", num_channelmodeis);
 	set_chanuser_irc_handler("332", num_topic);
