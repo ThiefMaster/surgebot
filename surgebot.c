@@ -36,9 +36,9 @@ static void sig_rehash(int n)
 
 static void sig_exit(int n)
 {
-	log_append(LOG_INFO, "Received SIGQUIT or SIGINT. Exiting.");
+	log_append(LOG_INFO, "Received SIGQUIT, SIGTERM or SIGINT. Exiting.");
 	if(bot.server_sock)
-		irc_send_fast("QUIT :Received SIGQUIT or SIGINT - shutting down");
+		irc_send_fast("QUIT :Received SIGQUIT, SIGTERM or SIGINT - shutting down");
 	sock_poll(); // run a single poll to get quit message sent
 	quit_poll = 1;
 }
@@ -61,6 +61,8 @@ static void signal_init()
 	sigaction(SIGQUIT, &sa, NULL);
 	sa.sa_handler = sig_exit;
 	sigaction(SIGINT, &sa, NULL);
+	sa.sa_handler = sig_exit;
+	sigaction(SIGTERM, &sa, NULL);
 	sa.sa_handler = sig_segv;
 	sigaction(SIGSEGV, &sa, NULL);
 	sa.sa_handler = SIG_IGN;
