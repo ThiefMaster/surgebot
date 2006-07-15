@@ -299,7 +299,7 @@ CHANUSER_IRC_HANDLER(topic)
 
 /*
  * Handler for PRIVMSG/NOTICE to complete a user if his data is missing for some
- * reason so we can be sure in privmsg handlers that ident/host are known
+ * reason so we can be sure in privmsg handlers that user->ident/host are known
  */
 CHANUSER_IRC_HANDLER(msg)
 {
@@ -308,15 +308,8 @@ CHANUSER_IRC_HANDLER(msg)
 	if(src == NULL || src->ident == NULL || src->host == NULL)
 		return 0;
 
-	if((user = user_find(src->nick)) == NULL)
-	{
-		log_append(LOG_WARNING, "Got %s from unknown user %s", argv[0], src->nick);
-		user = user_add(src->nick, src->ident, src->host);
-	}
-	else
-	{
+	if((user = user_find(src->nick)))
 		user_complete(user, src->ident, src->host);
-	}
 
 	return 0;
 }
