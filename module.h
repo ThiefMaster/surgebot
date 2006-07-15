@@ -43,9 +43,10 @@ int module_del(const char *name);
 
 void module_set_depends(struct module *mod, const char *name, ...);
 
-void reg_module_unload_func(module_f *func);
-void unreg_module_unload_func(module_f *func);
+void reg_module_load_func(module_f *load_func, module_f *unload_func);
+void unreg_module_load_func(module_f *load_func, module_f *unload_func);
 
+DECLARE_LIST(module_load_func_list, module_f *)
 DECLARE_LIST(module_unload_func_list, module_f *)
 
 #endif

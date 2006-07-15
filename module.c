@@ -2,8 +2,10 @@
 #include "module.h"
 #include "conf.h"
 
+IMPLEMENT_LIST(module_load_func_list, module_f *)
 IMPLEMENT_LIST(module_unload_func_list, module_f *)
 
+static struct module_load_func_list *module_load_funcs;
 static struct module_unload_func_list *module_unload_funcs;
 static struct dict *module_list;
 
@@ -20,6 +22,7 @@ void module_init()
 	struct stringlist *slist;
 	int i;
 
+	module_load_funcs = module_load_func_list_create();
 	module_unload_funcs = module_unload_func_list_create();
 	module_list = dict_create();
 	reg_conf_reload_func(module_conf_reload);
@@ -49,6 +52,7 @@ void module_fini()
 	}
 
 	dict_free(module_list);
+	module_load_func_list_free(module_load_funcs);
 	module_unload_func_list_free(module_unload_funcs);
 }
 
@@ -175,6 +179,9 @@ int module_add(const char *name)
 
 	module->state = MODULE_ACTIVE;
 	module->init_func(module);
+
+	for(int i = 0; i < module_load_funcs->count; i++)
+		module_load_funcs->data[i](module);
 
 	return 0;
 }
@@ -315,12 +322,18 @@ static const char *module_get_filename(const char *name)
 	return buf;
 }
 
-void reg_module_unload_func(module_f *func)
+void reg_module_load_func(module_f *load_func, module_f *unload_func)
 {
-	module_unload_func_list_add(module_unload_funcs, func);
+	if(load_func)
+		module_load_func_list_add(module_load_funcs, load_func);
+	if(unload_func)
+		module_unload_func_list_add(module_unload_funcs, unload_func);
 }
 
-void unreg_module_unload_func(module_f *func)
+void unreg_module_load_func(module_f *load_func, module_f *unload_func)
 {
-	module_unload_func_list_del(module_unload_funcs, func);
+	if(load_func)
+		module_load_func_list_del(module_load_funcs, load_func);
+	if(unload_func)
+		module_unload_func_list_del(module_unload_funcs, unload_func);
 }
