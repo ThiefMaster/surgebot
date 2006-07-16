@@ -10,7 +10,6 @@ static struct module_unload_func_list *module_unload_funcs;
 static struct dict *module_list;
 
 static void module_conf_reload();
-static struct module *module_find(const char *name);
 static void module_release_dependencies(struct module *module);
 static void module_free(struct module *module);
 static int module_solve_dependencies(struct module *module);
@@ -89,7 +88,7 @@ static void module_conf_reload()
 	}
 }
 
-static struct module *module_find(const char *name)
+struct module *module_find(const char *name)
 {
 	return dict_find(module_list, name);
 }

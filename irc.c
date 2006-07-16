@@ -201,6 +201,21 @@ void irc_send_fast(const char *format, ...)
 	bot.lines_sent++;
 }
 
+void irc_send_msg(const char *target, const char *cmd, const char *format, ...)
+{
+	va_list args;
+	char buf[MAXLEN];
+	int len;
+
+	len = snprintf(buf, sizeof(buf), "%s %s :", cmd, target);
+
+	va_start(args, format);
+	vsnprintf(buf + len, sizeof(buf) - len, format, args);
+	va_end(args);
+
+	irc_send("%s", buf);
+}
+
 static void irc_poll_sendq()
 {
 	char *line;

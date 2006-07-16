@@ -39,6 +39,7 @@ void module_init();
 void module_fini();
 
 int module_add(const char *name);
+struct module *module_find(const char *name);
 int module_del(const char *name);
 
 void module_set_depends(struct module *mod, const char *name, ...);
