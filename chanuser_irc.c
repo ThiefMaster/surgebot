@@ -395,7 +395,7 @@ CHANUSER_IRC_HANDLER(num_namereply)
 	assert_return(channel = channel_find(argv[3]), 0);
 
 	names_dup = strdup(argv[4]);
-	namec = tokenize(names_dup, namev, MAXARG, ' ');
+	namec = tokenize(names_dup, namev, MAXARG, ' ', 0);
 
 	for(int i = 0; i < namec; i++)
 	{

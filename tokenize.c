@@ -6,12 +6,13 @@
  * @param vec Output vector
  * @param vec_size Size of output vector array
  * @param token Token to use
+ * @param allow_empty Allow empty elements
  *
  * @return Count of output vector items
  *
  * This function splits up a string using the given token
  */
-int tokenize(char *str, char **vec, int vec_size, char token)
+int tokenize(char *str, char **vec, int vec_size, char token, unsigned char allow_empty)
 {
 	int count = 1;
 	unsigned char inside_string = 0;
@@ -27,7 +28,11 @@ int tokenize(char *str, char **vec, int vec_size, char token)
 		while((*ch == token) && (inside_string == 1))
 		{
 			*ch++ = '\0';
-			vec[count++] = ch;
+			if(!allow_empty && *ch == token)
+				continue;
+
+			if(allow_empty || *ch)
+				vec[count++] = ch;
 
 			if(((count + 1) >= vec_size) || (*ch == '\0'))
 				return count;
