@@ -26,7 +26,7 @@ void stringbuffer_append_char(struct stringbuffer *sbuf, char c)
 	}
 
 	sbuf->string[sbuf->len++] = c;
-	sbuf->string[sbuf->len + 1] = '\0';
+	sbuf->string[sbuf->len] = '\0';
 }
 
 void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str)
