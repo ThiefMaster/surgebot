@@ -133,7 +133,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		return;
 	}
 
-	fallback = binding_find(argv[0]);
+	fallback = binding_find_active(argv[0]);
 
 	// more arguments -> check if we have a two-part command (like "gline add")
 	if(argc > 1)
