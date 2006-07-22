@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "list.h"
 #include "stringbuffer.h"
 
 #define PARSER_FUNC(NAME)	static enum parser_func_retval __parser_func_ ## NAME(void *ctx, const char *name, const char *arg)
