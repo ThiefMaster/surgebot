@@ -54,6 +54,6 @@ void parser_free(struct parser *parser);
 void parser_add_func(struct parser *parser, const char *name, parser_func_f *func);
 struct parser_token_list *parser_tokenize(struct parser *parser, const char *string);
 void parser_free_tokens(struct parser_token_list *parser_tokenize);
-int parser_execute(struct parser *parser, struct parser_token_list *tokens, void *ctx);
+int parser_execute(struct parser *parser, const struct parser_token_list *tokens, void *ctx);
 
 #endif
