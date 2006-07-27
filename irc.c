@@ -374,5 +374,8 @@ static char *irc_format_line(const char *msg)
 		ptr++;
 	}
 
+	if(buf[pos - 1] == '\n') // Some functions like ctime add a trailing newline
+		buf[pos - 1] = '\0'; // -> remove it!
+
 	return buf;
 }
