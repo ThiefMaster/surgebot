@@ -8,6 +8,8 @@
 #include "chanuser.h"
 #include "chanuser_irc.h"
 #include "module.h"
+#include "account.h"
+#include "group.h"
 #include "stringlist.h"
 #include "surgebot.h"
 
@@ -170,6 +172,8 @@ int main(int argc, char **argv)
 
 	irc_handler_init();
 	irc_init();
+	account_init();
+	group_init();
 	chanuser_init();
 	chanuser_irc_init();
 	module_init();
@@ -199,6 +203,8 @@ int main(int argc, char **argv)
 	module_fini();
 	chanuser_irc_fini();
 	chanuser_fini();
+	group_fini();
+	account_fini();
 	irc_fini();
 	irc_handler_fini();
 	bot_fini();

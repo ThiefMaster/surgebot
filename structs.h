@@ -47,6 +47,16 @@ struct surgebot_conf
 	char		trigger;
 };
 
+struct user_account
+{
+	char	*name;
+	char	pass[41]; // sha1 hash + \0
+	time_t	registered;
+
+	struct dict	*users;
+	struct dict	*groups;
+};
+
 struct irc_source
 {
 	char	*nick;
@@ -78,6 +88,7 @@ struct irc_user
 	char		*info;
 
 	struct dict	*channels;
+	struct user_account	*account;
 };
 
 struct irc_chanuser

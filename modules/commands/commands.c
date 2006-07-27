@@ -2,6 +2,7 @@
 #include "module.h"
 #include "command_rule.h"
 #include "commands.h"
+#include "group.h"
 #include "database.h"
 #include "stringbuffer.h"
 #include "irc.h"
@@ -282,14 +283,11 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 			stringbuffer_append_string(log_entry, src->host); // we assume there is always a host
 		}
 
-		// TODO: Log account as soon as we implement accounts
-		/*
 		if(user && user->account)
 		{
 			stringbuffer_append_char(log_entry, ':');
 			stringbuffer_append_string(log_entry, user->account->name);
 		}
-		*/
 
 		stringbuffer_append_string(log_entry, "]: ");
 
@@ -435,8 +433,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 		return 0;
 	}
 
-	// TODO: Check account as soon as we implement accounts
-	if((!user /*|| !user->account*/) && (binding->cmd->flags & CMD_REQUIRE_AUTHED))
+	if((!user || !user->account) && (binding->cmd->flags & CMD_REQUIRE_AUTHED))
 	{
 		if(!quiet)
 			reply("You must be authed to use $b%s$b.", binding->name);
@@ -451,6 +448,15 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 	}
 
 	res = command_rule_exec(binding->comp_rule, src, user);
+
+	// Hack to prevent people from removing their access to important commands.
+	// However, it does not prevent them from setting a bad access rule to the auth command.
+	if(res == CR_DENY && (binding->cmd->flags & CMD_KEEP_BOUND) && user && user->account && group_has_member("admins", user->account))
+	{
+		reply("You have no access to $b%s$b but overrided its access rule since you are in the admin group.", binding->name);
+		res = CR_ALLOW;
+	}
+
 	if(res == CR_DENY)
 	{
 		if(!quiet)

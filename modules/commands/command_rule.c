@@ -1,13 +1,17 @@
 #include "global.h"
 #include "command_rule.h"
 #include "modules/parser/parser.h"
+#include "group.h"
 
 static struct parser *parser = NULL;
+
+PARSER_FUNC(group);
+
 
 void command_rule_init()
 {
 	parser = parser_create();
-	// TODO: Add functions like group(str), access(int)
+	ADD_PARSER_FUNC(parser, "group", group);
 }
 
 void command_rule_fini()
@@ -58,4 +62,25 @@ enum command_rule_result command_rule_exec(const command_rule *rule, const struc
 void command_rule_free(command_rule *rule)
 {
 	parser_free_tokens(rule);
+}
+
+PARSER_FUNC(group)
+{
+	int res;
+	struct command_rule_context *cr_ctx = ctx;
+
+	if(arg == NULL)
+		return RET_NONE;
+
+	if(cr_ctx->user == NULL || cr_ctx->user->account == NULL)
+		return RET_FALSE;
+
+	res = group_has_member(arg, cr_ctx->user->account);
+
+	if(res == 1)
+		return RET_TRUE;
+	else if(res == 0)
+		return RET_FALSE;
+	else
+		return RET_NONE;
 }

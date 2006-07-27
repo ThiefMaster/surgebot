@@ -1,5 +1,6 @@
 #include "global.h"
 #include "chanuser.h"
+#include "account.h"
 #include "stringlist.h"
 
 
@@ -173,6 +174,9 @@ void user_del(struct irc_user *user)
 		struct irc_chanuser *chanuser = node->data;
 		channel_user_del(chanuser->channel, user, 0);
 	}
+
+	if(user->account)
+		account_user_del(user->account, user);
 
 	dict_delete(users, user->nick);
 	dict_free(user->channels);
