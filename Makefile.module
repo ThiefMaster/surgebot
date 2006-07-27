@@ -1,5 +1,5 @@
 LIBS_mod =
-CFLAGS_mod = -pipe -Wall -g -fPIC -I.
+CFLAGS_mod = -pipe -Werror -Wall -g -fPIC -I.
 LDFLAGS_mod = -shared
 
 SRC_mod = $(wildcard modules/$(MODULE)/*.c)
