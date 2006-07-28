@@ -279,6 +279,10 @@ int database_read(struct database *db, unsigned int free_nodes_after_read)
 					//debug("Freeing db node");
 					database_free_node(pl_node->ptr);
 					break;
+				case PTR_STRINGLIST:
+					//debug("Freeing stringlist");
+					stringlist_free(pl_node->ptr);
+					break;
 				default:
 					log_append(LOG_ERROR, "Invalid ptr type %d in ptr list db->free_on_error", pl_node->type);
 			}
@@ -488,6 +492,7 @@ static char *database_read_string(struct database *db)
 static struct stringlist *database_read_stringlist(struct database *db)
 {
 	struct stringlist *slist;
+	unsigned int pl_key;
 	char c = database_valid_char(db);
 
 	if(c == EOF)
@@ -496,6 +501,7 @@ static struct stringlist *database_read_stringlist(struct database *db)
 		longjmp(db->jbuf, EXPECTED_OPEN_PAREN);
 
 	slist = stringlist_create();
+	pl_key = ptrlist_add(db->free_on_error, PTR_STRINGLIST, slist);
 	while(1)
 	{
 		c = database_valid_char(db);
@@ -514,6 +520,8 @@ static struct stringlist *database_read_stringlist(struct database *db)
 			longjmp(db->jbuf, EXPECTED_COMMA);
 		}
 	}
+
+	ptrlist_del(db->free_on_error, pl_key, NULL);
 	return slist;
 }
 

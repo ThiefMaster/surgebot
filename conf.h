@@ -12,6 +12,7 @@ int conf_init();
 void conf_fini();
 
 int conf_reload();
+void conf_activate();
 void *conf_get(const char *path, enum db_type type);
 void *conf_get_old(const char *path, enum db_type type);
 #define conf_bool(PATH)		true_string(conf_get((PATH), DB_STRING))

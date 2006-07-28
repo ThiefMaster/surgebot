@@ -1,16 +1,15 @@
 #include "global.h"
 #include "conf.h"
 #include "database.h"
+#include "surgebot.h"
 
 IMPLEMENT_LIST(conf_reload_func_list, conf_reload_f *)
 
-static struct dict *cfg, *old_cfg;
+static struct dict *cfg, *old_cfg, *new_cfg;
 static struct conf_reload_func_list *conf_reload_funcs;
 
 int conf_init()
 {
-	conf_reload_funcs = conf_reload_func_list_create();
-
 	old_cfg = NULL;
 	if((cfg = database_load(CFG_FILE)) == NULL)
 	{
@@ -18,6 +17,7 @@ int conf_init()
 		return 1;
 	}
 
+	conf_reload_funcs = conf_reload_func_list_create();
 	return 0;
 }
 
@@ -26,13 +26,16 @@ void conf_fini()
 	dict_free(cfg);
 	if(old_cfg)
 		dict_free(old_cfg);
+	if(new_cfg)
+		dict_free(new_cfg);
+
 	conf_reload_func_list_free(conf_reload_funcs);
 }
 
 int conf_reload()
 {
-	struct dict *new_cfg;
-	int i;
+	if(new_cfg) // Looks like the last new config was never activated
+		dict_free(new_cfg);
 
 	if((new_cfg = database_load(CFG_FILE)) == NULL)
 	{
@@ -40,16 +43,27 @@ int conf_reload()
 		return 1;
 	}
 
+	log_append(LOG_INFO, "Reloaded config file");
+	reg_loop_func(conf_activate);
+	return 0;
+}
+
+void conf_activate()
+{
+	unreg_loop_func(conf_activate);
+	assert(new_cfg);
+
+	debug("Activating new config file");
+
 	if(old_cfg)
 		dict_free(old_cfg);
 
 	old_cfg = cfg;
 	cfg = new_cfg;
+	new_cfg = NULL;
 
-	for(i = 0; i < conf_reload_funcs->count; i++)
+	for(int i = 0; i < conf_reload_funcs->count; i++)
 		conf_reload_funcs->data[i]();
-
-	return 0;
 }
 
 void *conf_get(const char *path, enum db_type type)

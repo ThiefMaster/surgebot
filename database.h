@@ -80,7 +80,8 @@ enum ptr_types // for free_on_error ptrlist
 {
 	PTR_STRING,
 	PTR_DICT,
-	PTR_DB_ENTRY
+	PTR_DB_ENTRY,
+	PTR_STRINGLIST
 };
 
 void database_init();
