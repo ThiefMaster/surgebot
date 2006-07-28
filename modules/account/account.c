@@ -9,8 +9,6 @@
 
 MODULE_DEPENDS("commands", NULL);
 
-extern struct dict *account_list;
-
 COMMAND(register);
 COMMAND(auth);
 COMMAND(pass);
@@ -36,10 +34,10 @@ MODULE_INIT
 	/* Administrative commands */
 	DEFINE_COMMAND(self, "group list",	group_list,		1, 0, "group(admins)");
 	DEFINE_COMMAND(self, "group info",	group_info,		2, 0, "group(admins)");
-	DEFINE_COMMAND(self, "group create",	group_add,		2, 0, "group(admins)");
-	DEFINE_COMMAND(self, "group remove",	group_del,		2, 0, "group(admins)");
-	DEFINE_COMMAND(self, "group addmember",	group_member_add,	3, 0, "group(admins)");
-	DEFINE_COMMAND(self, "group delmember",	group_member_del,	3, 0, "group(admins)");
+	DEFINE_COMMAND(self, "group create",	group_add,		2, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "group remove",	group_del,		2, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "group addmember",	group_member_add,	3, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "group delmember",	group_member_del,	3, CMD_REQUIRE_AUTHED, "group(admins)");
 }
 
 MODULE_FINI
