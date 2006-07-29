@@ -14,6 +14,7 @@
 
 struct module;
 typedef void (module_f)(struct module *self);
+typedef void (module_reload_f)(const char *name, unsigned char success, unsigned int errors, void *ctx);
 
 enum module_states {
 	MODULE_UNKNOWN,
@@ -38,7 +39,11 @@ struct module {
 void module_init();
 void module_fini();
 
+struct dict *module_dict();
 int module_add(const char *name);
+void module_reload_cmd(const char *name, const char *src_nick);
+int module_reload(const char *name);
+void module_get_rdeps(struct module *module, struct stringlist *rdeps);
 struct module *module_find(const char *name);
 int module_del(const char *name);
 

@@ -1,6 +1,8 @@
 #include "global.h"
 #include "module.h"
 #include "conf.h"
+#include "surgebot.h"
+#include "irc.h"
 
 IMPLEMENT_LIST(module_load_func_list, module_f *)
 IMPLEMENT_LIST(module_unload_func_list, module_f *)
@@ -10,10 +12,16 @@ static struct module_unload_func_list *module_unload_funcs;
 static struct dict *module_list;
 
 static void module_conf_reload();
+static void module_do_cmd_reload();
 static void module_release_dependencies(struct module *module);
 static void module_free(struct module *module);
 static int module_solve_dependencies(struct module *module);
 static const char *module_get_filename(const char *name);
+
+static struct {
+	char	*name;
+	void	*nick;
+} cmd_reload;
 
 
 void module_init()
@@ -25,6 +33,8 @@ void module_init()
 	module_unload_funcs = module_unload_func_list_create();
 	module_list = dict_create();
 	reg_conf_reload_func(module_conf_reload);
+
+	memset(&cmd_reload, 0, sizeof(cmd_reload));
 
 	if((slist = conf_get("core/modules", DB_STRINGLIST)))
 	{
@@ -86,6 +96,11 @@ static void module_conf_reload()
 				module_del(module->name);
 		}
 	}
+}
+
+struct dict *module_dict()
+{
+	return module_list;
 }
 
 struct module *module_find(const char *name)
@@ -183,6 +198,81 @@ int module_add(const char *name)
 		module_load_funcs->data[i](module);
 
 	return 0;
+}
+
+void module_reload_cmd(const char *name, const char *src_nick)
+{
+	assert(cmd_reload.name == NULL);
+	cmd_reload.name = strdup(name);
+	cmd_reload.nick = strdup(src_nick);
+
+	reg_loop_func(module_do_cmd_reload);
+}
+
+static void module_do_cmd_reload()
+{
+	unreg_loop_func(module_do_cmd_reload);
+	assert(cmd_reload.name);
+
+	if(module_reload(cmd_reload.name) == 0)
+		irc_send_msg(cmd_reload.nick, "NOTICE", "Reloaded module $b%s$b.", cmd_reload.name);
+	else
+		irc_send_msg(cmd_reload.nick, "NOTICE", "Reloading module $b%s$b (or depending modules) failed - see logfile for details.", cmd_reload.name);
+
+	free(cmd_reload.name);
+	free(cmd_reload.nick);
+	memset(&cmd_reload, 0, sizeof(cmd_reload));
+}
+
+int module_reload(const char *name)
+{
+	struct module *module, *depmod;
+	struct stringlist *modules;
+	unsigned int unloaded = 0, ret = 0;
+
+	if((module = module_find(name)) == NULL)
+	{
+		debug("Module %s is not loaded", name);
+		return -1;
+	}
+
+	modules = stringlist_create();
+	stringlist_add(modules, strdup(module->name));
+	module_get_rdeps(module, modules);
+
+	while(unloaded < modules->count)
+	{
+		for(int i = 0; i < modules->count; i++)
+		{
+			depmod = module_find(modules->data[i]);
+			if(depmod && depmod->rdepend->count == 0)
+			{
+				module_del(modules->data[i]);
+				unloaded++;
+			}
+		}
+	}
+
+	for(int i = 0; i < modules->count; i++)
+	{
+		if(module_find(modules->data[i]) == NULL)
+			ret += module_add(modules->data[i]) ? 1 : 0;
+	}
+
+	stringlist_free(modules);
+	return ret;
+}
+
+void module_get_rdeps(struct module *module, struct stringlist *rdeps)
+{
+	for(int i = 0; i < module->rdepend->count; i++)
+	{
+		struct module *depmod = module_find(module->rdepend->data[i]);
+		assert_continue(depmod);
+		if(stringlist_find(rdeps, depmod->name) == -1)
+			stringlist_add(rdeps, strdup(depmod->name));
+		module_get_rdeps(depmod, rdeps);
+	}
 }
 
 int module_del(const char *name)
