@@ -45,6 +45,8 @@ struct cmd_binding
 	command_rule	*comp_rule;
 };
 
+struct dict *command_dict();
+struct dict *binding_dict();
 struct command *command_add(struct module *module, const char *name, command_f *func, int min_argc, int flags, const char *rule);
 struct command *command_find(struct module *module, const char *name);
 struct cmd_binding *binding_add(const char *name, const char *module_name, const char *cmd_name, const char *alias, const char *rule, unsigned char force);

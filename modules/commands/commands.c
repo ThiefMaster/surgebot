@@ -100,6 +100,16 @@ static int command_db_write(struct database *db)
 	return 0;
 }
 
+struct dict *command_dict()
+{
+	return command_list;
+}
+
+struct dict *binding_dict()
+{
+	return binding_list;
+}
+
 IRC_HANDLER(privmsg)
 {
 	struct irc_user *user;
@@ -121,6 +131,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	int argc, count, ret;
 	struct stringbuffer *name, *log_entry;
 	struct cmd_binding *binding = NULL, *fallback = NULL;
+	struct command *cmd;
 
 	msg_dup = strdup(msg);
 	argc = tokenize(msg_dup, orig_argv, MAXARG, ' ', 0);
@@ -181,8 +192,9 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 
 	/* From this point on, binding always links to an existing command */
+	assert(cmd = binding->cmd);
 
-	if(!is_privmsg && (binding->cmd->flags & CMD_ONLY_PRIVMSG))
+	if(!is_privmsg && (cmd->flags & CMD_ONLY_PRIVMSG))
 	{
 		reply("$b%s$b can only be used via $b/msg $N %s$b", binding->name, binding->name);
 		free(msg_dup);
@@ -196,14 +208,14 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		return;
 	}
 
-	if(channel_arg && !(binding->cmd->flags & CMD_ACCEPT_CHANNEL))
+	if(channel_arg && !(cmd->flags & CMD_ACCEPT_CHANNEL))
 	{
 		reply("You cannot put a channel name before $b%s$b.", binding->name);
 		free(msg_dup);
 		return;
 	}
 
-	if((binding->cmd->flags & CMD_ACCEPT_CHANNEL) && (channel_arg || (argc > 1 && IsChannelName(argv[1]))))
+	if((cmd->flags & CMD_ACCEPT_CHANNEL) && (channel_arg || (argc > 1 && IsChannelName(argv[1]))))
 	{
 		if(!channel_arg)
 		{
@@ -237,7 +249,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		argv = exp_argv;
 
 		// Again, try finding a channel name
-		if((binding->cmd->flags & CMD_ACCEPT_CHANNEL) && argc > 1 && IsChannelName(argv[1]))
+		if((cmd->flags & CMD_ACCEPT_CHANNEL) && argc > 1 && IsChannelName(argv[1]))
 		{
 			if((channel = channel_find(argv[1])) == NULL)
 			{
@@ -252,7 +264,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		}
 	}
 
-	if(argc < binding->cmd->min_argc)
+	if(argc < cmd->min_argc)
 	{
 		reply("$b%s$b requires more arguments.", binding->name);
 		free(msg_dup);
@@ -260,7 +272,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 
 	// Call command function and log it if the return value is >0.
-	ret = binding->cmd->func(src, user, channel, argc, argv);
+	ret = cmd->func(src, user, channel, argc, argv);
 
 	if(ret == -1) // Not enough arguments
 	{
@@ -278,7 +290,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		stringbuffer_append_string(log_entry, ") [");
 		if(src->nick)
 			stringbuffer_append_string(log_entry, src->nick);
-		if(binding->cmd->flags & CMD_LOG_HOSTMASK)
+		if(cmd->flags & CMD_LOG_HOSTMASK)
 		{
 			if(src->ident)
 			{
@@ -310,7 +322,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 	else
 	{
-		log_append(LOG_WARNING, "Command %s.%s returned unknown value %d", binding->module_name, binding->cmd_name, ret);
+		log_append(LOG_WARNING, "Command %s.%s returned unknown value %d", cmd->module->name, cmd->name, ret);
 	}
 
 	free(msg_dup);
