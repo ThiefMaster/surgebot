@@ -118,7 +118,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 {
 	int is_privmsg = (channel == NULL);
 	char *orig_argv[MAXARG], *exp_argv[MAXARG], **argv, *msg_dup, *new_msg, *channel_arg = NULL;
-	int argc, count;
+	int argc, count, ret;
 	struct stringbuffer *name, *log_entry;
 	struct cmd_binding *binding = NULL, *fallback = NULL;
 
@@ -259,8 +259,18 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		return;
 	}
 
-	// Call command function and log it if the return value is non-zero
-	if(binding->cmd->func(src, user, channel, argc, argv))
+	// Call command function and log it if the return value is >0.
+	ret = binding->cmd->func(src, user, channel, argc, argv);
+
+	if(ret == -1) // Not enough arguments
+	{
+		reply("$b%s$b requires more arguments.", binding->name);
+	}
+	else if(ret == 0) // Do not log it
+	{
+		// Nothing to do...
+	}
+	else if(ret > 0) // Success, log it
 	{
 		log_entry = stringbuffer_create();
 		stringbuffer_append_char(log_entry, '(');
@@ -297,6 +307,10 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 
 		log_append(LOG_CMD, "%s", log_entry->string);
 		stringbuffer_free(log_entry);
+	}
+	else
+	{
+		log_append(LOG_WARNING, "Command %s.%s returned unknown value %d", binding->module_name, binding->cmd_name, ret);
 	}
 
 	free(msg_dup);
