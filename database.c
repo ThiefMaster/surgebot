@@ -517,6 +517,7 @@ static struct stringlist *database_read_stringlist(struct database *db)
 		else if(c != ',')
 		{
 			stringlist_free(slist);
+			ptrlist_del(db->free_on_error, pl_key, NULL);
 			longjmp(db->jbuf, EXPECTED_COMMA);
 		}
 	}
