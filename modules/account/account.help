@@ -1,0 +1,66 @@
+"register" = (
+	"Usage: /msg $N register <account> <password>",
+	"Registers an account to you.",
+	"$uSee also:$u auth"
+);
+
+"auth" = (
+	"Usage: /msg $N auth <account> <password>",
+	"Authenticates yourself to the specified account.",
+	"$uSee also:$u register"
+);
+
+"pass" = (
+	"Usage: /msg $N pass <oldpass> <newpass>",
+	"Changes your account password."
+);
+
+"unregister" = (
+	"Usage: /msg $N unregister <password>",
+	"Unregisters your account.",
+	"$bWarning:$b This cannot be undone; all access/permissions/settings assigned to your account will be lost.",
+	"$uSee also:$u register"
+);
+
+"accountinfo" = (
+	"Usage: /msg $N accountinfo [nick|*account]",
+	"Displays information about the specified account.",
+	"If someone is authed, you can use <nick>, otherwise you have to use <*account>.",
+	"$uSee also:$u access"
+);
+
+"group list" = (
+	"Usage: /msg $N group list",
+	"Lists all existing groups.",
+	"$uSee also:$u group info, group create, group remote"
+);
+
+"group info" = (
+	"Usage: /msg $N group info <groupname>",
+	"Displays information about a certain group.",
+	"$uSee also:$u group list"
+);
+
+"group create" = (
+	"Usage: /msg $N group create <groupname>",
+	"Creates a new group.",
+	"$uSee also:$u group remove, group list"
+);
+
+"group remove" = (
+	"Usage: /msg $N group remove <groupname>",
+	"Deletes an existing group.",
+	"$uSee also:$u group create, group list"
+);
+
+"group addmember" = (
+	"Usage: /msg $N group addmember <groupname> <nick|*account>",
+	"Adds a group member.",
+	"$uSee also:$u group delmember"
+);
+
+"group delmember" = (
+	"Usage: /msg $N group delmember <groupname> <nick|*account>",
+	"Removes a group member.",
+	"$uSee also:$u group addmember"
+);

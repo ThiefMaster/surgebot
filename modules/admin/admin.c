@@ -2,11 +2,12 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/commands/command_rule.h"
+#include "modules/help/help.h"
 #include "irc.h"
 #include "conf.h"
 #include "sock.h"
 
-MODULE_DEPENDS("commands", NULL);
+MODULE_DEPENDS("commands", "help", NULL);
 
 struct module *this;
 
@@ -27,6 +28,8 @@ COMMAND(binding_rule);
 MODULE_INIT
 {
 	this = self;
+
+	help_load(self, "admin.help");
 
 	DEFINE_COMMAND(self, "rehash",		rehash,		1, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "die",		die,		1, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");

@@ -1,13 +1,14 @@
 #include "global.h"
 #include "module.h"
 #include "modules/commands/commands.h"
+#include "modules/help/help.h"
 #include "account.h"
 #include "group.h"
 #include "sha1.h"
 #include "irc.h"
 #include "stringlist.h"
 
-MODULE_DEPENDS("commands", NULL);
+MODULE_DEPENDS("commands", "help", NULL);
 
 COMMAND(register);
 COMMAND(auth);
@@ -24,6 +25,8 @@ COMMAND(group_member_del);
 
 MODULE_INIT
 {
+	help_load(self, "account.help");
+
 	/* Regular commands */
 	DEFINE_COMMAND(self, "register",	register,	3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND, "true");
 	DEFINE_COMMAND(self, "auth",		auth,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND, "true");
