@@ -6,7 +6,7 @@
 
 #define PARSER_FUNC(NAME)	static enum parser_func_retval __parser_func_ ## NAME(void *ctx, const char *name, const char *arg)
 typedef enum parser_func_retval (parser_func_f)(void *ctx, const char *name, const char *arg);
-#define ADD_PARSER_FUNC(PARSER, NAME, FUNC)	parser_add_func(PARSER, NAME, __parser_func_ ## FUNC);
+#define ADD_PARSER_FUNC(PARSER, NAME, FUNC)	parser_add_func(PARSER, NAME, __parser_func_ ## FUNC)
 
 enum token_type
 {

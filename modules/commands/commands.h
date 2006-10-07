@@ -42,7 +42,7 @@ struct cmd_binding
 	char		*alias;
 
 	char		*rule;
-	command_rule	*comp_rule;
+	unsigned int	comp_rule;
 };
 
 struct dict *command_dict();

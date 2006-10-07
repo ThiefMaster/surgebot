@@ -250,7 +250,7 @@ struct parser_token_list *parser_tokenize(struct parser *parser, const char *str
 		parser_error(parser, "%d unclosed parenthesises in: %s", open_parens, string);
 		goto error;
 	}
-	else if(last_token == T_NOT || last_token == T_AND || last_token == T_AND)
+	else if(last_token == T_NOT || last_token == T_AND || last_token == T_OR)
 	{
 		parser_error(parser, "Unexpected last token %s", token_names[last_token]);
 		goto error;

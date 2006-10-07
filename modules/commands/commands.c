@@ -50,12 +50,11 @@ MODULE_FINI
 
 	unreg_irc_handler("PRIVMSG", privmsg);
 	unreg_module_load_func(module_loaded, module_unloaded);
-	command_rule_fini();
-
 
 	while(dict_size(binding_list))
 		binding_del(dict_first_data(binding_list));
 
+	command_rule_fini();
 	dict_free(command_list);
 	dict_free(binding_list);
 }
@@ -466,10 +465,10 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 		return 0;
 	}
 
-	if(binding->comp_rule == NULL)
+	if(!binding->comp_rule || !command_rule_executable(binding->comp_rule))
 	{
 		if(!quiet)
-			reply("Access rule missing for $b%s$b.", binding->name);
+			reply("Access rule for $b%s$b is incomplete.", binding->name);
 		return 0;
 	}
 
@@ -548,7 +547,7 @@ static void module_loaded(struct module *module)
 			binding->module = module;
 			binding->cmd = command_find(module, binding->cmd_name);
 			assert_continue(binding->cmd);
-			if(binding->comp_rule == NULL)
+			if(!binding->comp_rule)
 				binding->comp_rule = command_rule_compile(binding->rule ? binding->rule : binding->cmd->rule);
 			binding->cmd->bind_count++;
 		}
@@ -603,7 +602,7 @@ static void module_unloaded(struct module *module)
 			if(binding->rule == NULL && binding->comp_rule)
 			{
 				command_rule_free(binding->comp_rule);
-				binding->comp_rule = NULL;
+				binding->comp_rule = 0;
 			}
 		}
 	}
@@ -637,12 +636,6 @@ struct command *command_add(struct module *module, const char *name, command_f *
 	if(rule == NULL || !strlen(rule))
 	{
 		log_append(LOG_WARNING, "Command %s has empty/null rule; use 'true' for a public command", key);
-		free(key);
-		return NULL;
-	}
-	else if(!command_rule_validate(rule))
-	{
-		log_append(LOG_WARNING, "Could not parse access rule: %s", rule);
 		free(key);
 		return NULL;
 	}
@@ -690,23 +683,11 @@ static void command_del(struct command *command)
 struct cmd_binding *binding_add(const char *name, const char *module_name, const char *cmd_name, const char *alias, const char *rule, unsigned char force)
 {
 	struct cmd_binding *binding;
-	command_rule *comp_rule = NULL;
 
 	if((binding = binding_find(name)))
 	{
 		log_append(LOG_WARNING, "Binding %s (-> %s.%s) already exists; deleting", binding->name, binding->module_name, binding->cmd_name);
 		binding_del(binding);
-	}
-
-	if((rule && (comp_rule = command_rule_compile(rule)) == NULL))
-	{
-		log_append(LOG_WARNING, "Could not parse access rule: %s", rule);
-
-		// We do not use a NULL rule since the command's default rule might be less restrictive than the (invalid) binding rule
-		if(force)
-			rule = "false";
-		else
-			return NULL;
 	}
 
 	debug("Adding binding %s for %s.%s", name, module_name, cmd_name);
@@ -722,20 +703,13 @@ struct cmd_binding *binding_add(const char *name, const char *module_name, const
 	if(rule)
 	{
 		binding->rule = strdup(rule);
-		binding->comp_rule = comp_rule;
+		binding->comp_rule = command_rule_compile(rule);
 	}
 	else
 	{
 		// We only have a rule to parse if the command the binding points to already exists
-		if(binding->cmd && (comp_rule = command_rule_compile(binding->cmd->rule)) == NULL)
-		{
-			log_append(LOG_WARNING, "Could not parse access rule from command: %s", rule);
-			free(binding);
-			return NULL;
-		}
-
 		binding->rule = NULL;
-		binding->comp_rule = comp_rule;
+		binding->comp_rule = binding->cmd ? command_rule_compile(binding->cmd->rule) : 0;
 	}
 
 	if(binding->cmd)
@@ -762,15 +736,13 @@ struct cmd_binding *binding_find_active(const char *name)
 
 int binding_set_rule(struct cmd_binding *binding, const char *rule)
 {
-	command_rule *comp_rule = NULL;
-
 	// Free old rule
 	if(binding->rule)
 		free(binding->rule);
 	if(binding->comp_rule)
 		command_rule_free(binding->comp_rule);
 
-	if((rule && (comp_rule = command_rule_compile(rule)) == NULL))
+	if(rule && !command_rule_validate(rule))
 	{
 		log_append(LOG_WARNING, "Could not parse access rule: %s", rule);
 		return -1;
@@ -779,19 +751,19 @@ int binding_set_rule(struct cmd_binding *binding, const char *rule)
 	if(rule) // We want to set a new rule
 	{
 		binding->rule = strdup(rule);
-		binding->comp_rule = comp_rule;
+		binding->comp_rule = command_rule_compile(rule);
 	}
 	else
 	{
 		// We only have a rule to parse if the command the binding points to already exists
-		if(binding->cmd && (comp_rule = command_rule_compile(binding->cmd->rule)) == NULL)
+		if(binding->cmd && !command_rule_validate(binding->cmd->rule))
 		{
-			log_append(LOG_WARNING, "Could not parse access rule from command: %s", rule);
+			log_append(LOG_WARNING, "Could not parse access rule from command: %s", binding->cmd->rule);
 			return -2;
 		}
 
 		binding->rule = NULL;
-		binding->comp_rule = comp_rule;
+		binding->comp_rule = command_rule_compile(binding->cmd->rule);
 	}
 
 	return 0;
