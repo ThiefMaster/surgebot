@@ -1,0 +1,47 @@
+"*" = {
+	"send" = "MODE $N +ix";
+
+	"timer" = {
+		"name" = "auth";
+		"time" = "0";
+	};
+};
+
+
+"tmr:auth" = {
+	"send" = "AUTHSERV AUTH <account> <password>";
+
+	"timer" = {
+		"name" = "auth";
+		"time" = "10";
+	};
+
+	"static" = "yes";
+};
+
+
+"cmd:NOTICE" = {
+	"args" = {
+		"src" = "AuthServ!*@*";
+		"1" = "$N";
+		"2" = "I recogni?e you.";
+	};
+
+	"timerdel" = "auth";
+
+	"timer" = {
+		"name" = "authed";
+		"time" = "1";
+	};
+};
+
+"tmr:authed" = {
+	"send" = (
+		"JOIN #help",
+		"JOIN #some,#more,#channels",
+		"PRIVMSG #help :I am a badly configured bot, please G-line me immediately."
+	);
+
+	// "call" = "some_perform_function_from_another_module";
+};
+

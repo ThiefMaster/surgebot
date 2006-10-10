@@ -21,7 +21,6 @@ static void irc_error(int err);
 static void irc_schedule_reconnect(unsigned int wait);
 static void irc_reconnect(void *bound, void *data);
 static void irc_poll_sendq();
-static char *irc_format_line(const char *msg);
 
 void irc_init()
 {
@@ -318,7 +317,7 @@ static void irc_sock_read(struct sock *sock, char *buf, size_t len)
 	irc_parse_line(buf);
 }
 
-static char *irc_format_line(const char *msg)
+char *irc_format_line(const char *msg)
 {
 	static char buf[MAXLEN];
 	const char *ptr = msg;
