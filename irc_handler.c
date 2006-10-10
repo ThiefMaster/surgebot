@@ -5,8 +5,10 @@
 #include "chanuser_irc.h"
 
 IMPLEMENT_LIST(irc_handler_list, irc_handler_f *)
+IMPLEMENT_LIST(connected_func_list, connected_f *)
 
 static struct dict *irc_handlers;
+static struct connected_func_list *connected_funcs;
 
 static void reg_default_handlers();
 
@@ -14,12 +16,14 @@ void irc_handler_init()
 {
 	irc_handlers = dict_create();
 	dict_set_free_funcs(irc_handlers, free, (dict_free_f*) irc_handler_list_free);
+	connected_funcs = connected_func_list_create();
 
 	reg_default_handlers();
 }
 
 void irc_handler_fini()
 {
+	connected_func_list_free(connected_funcs);
 	dict_free(irc_handlers);
 }
 
@@ -44,6 +48,16 @@ void _unreg_irc_handler(const char *cmd, irc_handler_f *func)
 		return;
 
 	irc_handler_list_del(list, func);
+}
+
+void reg_connected_func(connected_f *func)
+{
+	connected_func_list_add(connected_funcs, func);
+}
+
+void unreg_connected_func(connected_f *func)
+{
+	connected_func_list_del(connected_funcs, func);
 }
 
 void irc_handle_msg(int argc, char **argv, struct irc_source *src, const char *raw_line)
@@ -133,6 +147,16 @@ IRC_HANDLER(num_whoisuser)
 			debug("Own realname does not match; changing from %s to %s", bot.realname, argv[6]);
 			free(bot.realname);
 			bot.realname = strdup(argv[6]);
+		}
+
+		// First time after connect? Then let modules know that we are connected.
+		if(!bot.ready)
+		{
+			bot.ready = 1;
+			for(int i = 0; i < connected_funcs->count; i++)
+			{
+				connected_funcs->data[i]();
+			}
 		}
 	}
 }

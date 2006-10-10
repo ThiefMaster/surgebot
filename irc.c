@@ -55,6 +55,7 @@ int irc_connect()
 		sock_close(bot.server_sock);
 	}
 
+	bot.ready = 0;
 	bot.server_sock = sock_create(SOCK_IPV4 | (bot_conf.server_ssl ? SOCK_SSL : 0), irc_sock_event, irc_sock_read);
 	if(bot.server_sock == NULL)
 		return -2;
@@ -148,6 +149,7 @@ static void irc_reconnect(void *bound, void *data)
 
 	// reset everything
 	chanuser_flush();
+	bot.ready = 0;
 	bot.burst_count = 0;
 	if(bot.burst_lines->count)
 	{

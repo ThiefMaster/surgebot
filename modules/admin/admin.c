@@ -16,6 +16,7 @@ static void module_deps_recursive(struct irc_source *src, struct module *module,
 static int do_backslash_arg(int start, int argc, char ***argv_ptr);
 COMMAND(rehash);
 COMMAND(die);
+COMMAND(raw);
 COMMAND(module_list);
 COMMAND(module_deps);
 COMMAND(module_add);
@@ -33,6 +34,7 @@ MODULE_INIT
 
 	DEFINE_COMMAND(self, "rehash",		rehash,		1, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "die",		die,		1, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "raw",		raw,		2, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "module list",	module_list,	1, 0, "group(admins)");
 	DEFINE_COMMAND(self, "module deps",	module_deps,	1, 0, "group(admins)");
 	DEFINE_COMMAND(self, "module add",	module_add,	2, CMD_REQUIRE_AUTHED, "group(admins)");
@@ -65,6 +67,14 @@ COMMAND(die)
 	quit_poll = 1;
 	irc_send_fast("QUIT :Received DIE");
 	sock_poll();
+	return 1;
+}
+
+COMMAND(raw)
+{
+	char *msg = untokenize(argc - 1, argv + 1, " ");
+	irc_send_fast("%s", msg);
+	free(msg);
 	return 1;
 }
 

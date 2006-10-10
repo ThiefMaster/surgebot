@@ -20,6 +20,8 @@ struct surgebot
 	struct stringlist	*burst_lines;
 	unsigned int	burst_count;
 
+	unsigned int	ready : 1;
+
 	char		*server_name;
 
 	char		*nickname;
