@@ -320,6 +320,7 @@ static void irc_sock_read(struct sock *sock, char *buf, size_t len)
 	assert(sock == bot.server_sock);
 
 	log_append(LOG_RECEIVE, "%s", buf);
+	bot.lines_received++;
 	irc_parse_line(buf);
 }
 

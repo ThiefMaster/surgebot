@@ -763,7 +763,7 @@ int binding_set_rule(struct cmd_binding *binding, const char *rule)
 		}
 
 		binding->rule = NULL;
-		binding->comp_rule = command_rule_compile(binding->cmd->rule);
+		binding->comp_rule = binding->cmd ? command_rule_compile(binding->cmd->rule) : 0;
 	}
 
 	return 0;
