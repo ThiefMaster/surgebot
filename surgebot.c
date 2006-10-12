@@ -159,6 +159,7 @@ int main(int argc, char **argv)
 	if(conf_init() != 0)
 		return 1;
 
+	tools_init();
 	log_init("surgebot.log");
 	log_append(LOG_INFO, "Initializing");
 
@@ -216,6 +217,7 @@ int main(int argc, char **argv)
 
 	log_append(LOG_INFO, "Exiting");
 	log_fini();
+	tools_fini();
 	conf_fini();
 
 	return 0;

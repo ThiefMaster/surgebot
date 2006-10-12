@@ -30,6 +30,11 @@ void chanuser_flush()
 
 
 /* Channel functions */
+struct dict *channel_dict()
+{
+	return channels;
+}
+
 struct irc_channel* channel_add(const char *name, int do_burst)
 {
 	struct irc_channel* channel;
@@ -115,6 +120,11 @@ void channel_set_limit(struct irc_channel *channel, unsigned int limit)
 
 
 /* User functions */
+struct dict *user_dict()
+{
+	return users;
+}
+
 struct irc_user* user_add(const char *nick, const char *ident, const char *host)
 {
 	struct irc_user *user = user_add_nick(nick);

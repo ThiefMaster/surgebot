@@ -2,6 +2,26 @@
 #include "tools.h"
 //#include "channel.h"
 
+static char **str_tab;
+static unsigned int str_tab_size;
+
+void tools_init()
+{
+	str_tab_size = 1001;
+	str_tab = calloc(str_tab_size, sizeof(char *));
+}
+
+void tools_fini()
+{
+	for(int i = 0; i < str_tab_size; i++)
+	{
+		if(str_tab[i])
+			free(str_tab[i]);
+	}
+
+	free(str_tab);
+}
+
 void split_mask(char *mask, char **nick, char **ident, char **host)
 {
 	char *temp = mask;
@@ -237,4 +257,28 @@ int match(const char *mask, const char *name)
 		n++;
 		break;
 	}
+}
+
+/* Returns a string containing num. */
+const char *strtab(unsigned int num)
+{
+	if(num > 65536)
+		return "(overflow)";
+
+	if(num > str_tab_size)
+	{
+		unsigned int old_size = str_tab_size;
+		while (num >= str_tab_size)
+			str_tab_size <<= 1;
+		str_tab = realloc(str_tab, str_tab_size * sizeof(char *));
+		memset(str_tab + old_size, 0, (str_tab_size - old_size) * sizeof(char *));
+	}
+
+	if(!str_tab[num])
+	{
+		str_tab[num] = malloc(12);
+		sprintf(str_tab[num], "%u", num);
+	}
+
+	return str_tab[num];
 }

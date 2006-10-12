@@ -30,6 +30,7 @@ void chanuser_init();
 void chanuser_fini();
 void chanuser_flush();
 
+struct dict *channel_dict();
 struct irc_channel* channel_add(const char *name, int do_burst);
 struct irc_channel* channel_find(const char *name);
 void channel_del(struct irc_channel *channel);
@@ -37,6 +38,7 @@ void channel_set_topic(struct irc_channel *channel, const char *topic);
 void channel_set_key(struct irc_channel *channel, const char *key);
 void channel_set_limit(struct irc_channel *channel, unsigned int limit);
 
+struct dict *user_dict();
 struct irc_user* user_add(const char *nick, const char *ident, const char *host);
 struct irc_user* user_add_nick(const char *nick);
 void user_complete(struct irc_user *user, const char *ident, const char *host);

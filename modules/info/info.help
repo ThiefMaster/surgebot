@@ -1,0 +1,32 @@
+"command" = (
+	"Usage: /msg $N command <binding>",
+	"Shows information about a binding."
+);
+
+"stats" = (
+	"Usage: /msg $N stats [subcommand]",
+	"Display various information.",
+	"When [subcommand] is missing, all available subcommands will be displayed."
+);
+
+"stats bot" = (
+	"Usage: /msg $N stats bot",
+	"Display information about this bot."
+);
+
+"stats commands" = (
+	"Usage: /msg $N stats commands",
+	"Displays a list of all commands."
+);
+
+"stats bindings" = (
+	"Usage: /msg $N stats bindings [mask]",
+	"Displays a list of all bindings.",
+	"If a mask is specified, only bindings matching this mask will be displayed."
+);
+
+"stats bindings2" = (
+	"Usage: /msg $N stats bindings2 [mask]",
+	"Displays a detailed list of all bindings.",
+	"If a mask is specified, only bindings matching this mask will be displayed."
+);
