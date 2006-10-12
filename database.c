@@ -658,7 +658,7 @@ void database_dump_object(struct dict *object, unsigned int indent)
 
 			case DB_STRING:
 				print_indent(indent);
-				printf("'%s' (string(%d)): '%s'\n", node->key, strlen(child->data.string), child->data.string);
+				printf("'%s' (string(%lu)): '%s'\n", node->key, (unsigned long)strlen(child->data.string), child->data.string);
 				break;
 
 			case DB_STRINGLIST:

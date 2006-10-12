@@ -940,7 +940,7 @@ void sock_set_readbuf(struct sock *sock, size_t len, const char *buf_delimiter)
 {
 	if(sock->read_buf)
 	{
-		log_append(LOG_WARNING, "Socket %d has already a read buffer (%d bytes)", sock->fd, sock->read_buf_len);
+		log_append(LOG_WARNING, "Socket %d has already a read buffer (%lu bytes)", sock->fd, (unsigned long)sock->read_buf_len);
 		return;
 	}
 
@@ -956,6 +956,6 @@ void sock_set_readbuf(struct sock *sock, size_t len, const char *buf_delimiter)
 	sock->read_buf_used = 0;
 	sock->read_buf_delimiter = strdup(buf_delimiter);
 
-	debug("Read buffer of %u bytes set for socket with fd=%d", len, sock->fd);
+	debug("Read buffer of %lu bytes set for socket with fd=%d", (unsigned long)len, sock->fd);
 }
 
