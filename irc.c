@@ -59,10 +59,16 @@ int irc_connect()
 	if(bot.server_sock == NULL)
 		return -2;
 
+	if(bot_conf.local_host)
+		sock_bind(bot.server_sock, bot_conf.local_host, 0);
+
 	log_append(LOG_INFO, "Connecting to %s:%d", bot_conf.server_host, bot_conf.server_port);
 	res = sock_connect(bot.server_sock, bot_conf.server_host, bot_conf.server_port);
 	if(res != 0)
+	{
+		bot.server_sock = NULL;
 		return -3;
+	}
 
 	sock_set_readbuf(bot.server_sock, MAXLEN, "\r\n");
 
