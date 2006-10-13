@@ -131,8 +131,11 @@ struct db_node *database_fetch_path(struct dict *db_nodes, const char *node_path
 	if(*path == '/') // leading slash -> get rid of it
 		path++;
 
-	if(path[strlen(path) - 1] == '/') // trailing slash -> get rid of it
+	if(strlen(path) && path[strlen(path) - 1] == '/') // trailing slash -> get rid of it
 		path[strlen(path) - 1] = '\0';
+
+	if(!strlen(path))
+		return NULL;
 
 	while(strchr(path, '/'))
 	{

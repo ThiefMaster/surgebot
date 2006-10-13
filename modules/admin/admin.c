@@ -15,6 +15,7 @@ void module_reload_cb(const char *name, unsigned char success, unsigned int erro
 static void module_deps_recursive(struct irc_source *src, struct module *module, unsigned int depth);
 static int do_backslash_arg(int start, int argc, char ***argv_ptr);
 COMMAND(rehash);
+COMMAND(conf_get);
 COMMAND(die);
 COMMAND(raw);
 COMMAND(module_list);
@@ -33,6 +34,7 @@ MODULE_INIT
 	help_load(self, "admin.help");
 
 	DEFINE_COMMAND(self, "rehash",		rehash,		1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "conf get",	conf_get,	1, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "die",		die,		1, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "raw",		raw,		2, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "module list",	module_list,	1, 0, "group(admins)");
@@ -57,6 +59,42 @@ COMMAND(rehash)
 		reply("Config file reloaded");
 	else
 		reply("Could not reload config file");
+
+	return 1;
+}
+
+COMMAND(conf_get)
+{
+	struct db_node *node;
+
+	if(argc < 2)
+	{
+		reply("The following keys can be retrieved:");
+		dict_iter(subnode, conf_root())
+			reply(" %s", subnode->key);
+		return 1;
+	}
+
+	if(!(node = conf_node(argv[1])))
+	{
+		reply("$b%s$b has not been set.", argv[1]);
+		return 0;
+	}
+
+	if(node->type == DB_STRING)
+		reply("$b%s$b is set to $b%s$b.", argv[1], node->data.string);
+	else if(node->type == DB_STRINGLIST)
+	{
+		reply("$b%s$b contains the following values:", argv[1]);
+		for(unsigned int i = 0; i < node->data.slist->count; i++)
+			reply(" %s", node->data.slist->data[i]);
+	}
+	else if(node->type == DB_OBJECT)
+	{
+		reply("$b%s$b contains the following keys:", argv[1]);
+		dict_iter(subnode, node->data.object)
+			reply(" %s", subnode->key);
+	}
 
 	return 1;
 }

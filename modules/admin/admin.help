@@ -5,6 +5,12 @@
 	"$uSee also:$u rehash"
 );
 
+"conf get" = (
+	"Usage: /msg $N conf get [path]",
+	"Displays the value of the given configuration key.",
+	"If the key is an object, all available subkeys are displayed."
+);
+
 "rehash" = (
 	"Usage: /msg $N rehash",
 	"Causes the bot to re-read its configuration file and use updated values wherever it's possible.",

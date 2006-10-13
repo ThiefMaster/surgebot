@@ -13,8 +13,10 @@ void conf_fini();
 
 int conf_reload();
 void conf_activate();
+struct dict *conf_root();
 void *conf_get(const char *path, enum db_type type);
 void *conf_get_old(const char *path, enum db_type type);
+struct db_node *conf_node(const char *path);
 #define conf_bool(PATH)		true_string(conf_get((PATH), DB_STRING))
 #define conf_bool_old(PATH)	true_string(conf_get_old((PATH), DB_STRING))
 

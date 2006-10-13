@@ -66,6 +66,11 @@ void conf_activate()
 		conf_reload_funcs->data[i]();
 }
 
+struct dict *conf_root()
+{
+	return cfg;
+}
+
 void *conf_get(const char *path, enum db_type type)
 {
 	assert_return(cfg, NULL);
@@ -76,6 +81,12 @@ void *conf_get_old(const char *path, enum db_type type)
 {
 	assert_return(old_cfg, NULL);
 	return database_fetch(old_cfg, path, type);
+}
+
+struct db_node *conf_node(const char *path)
+{
+	assert_return(cfg, NULL);
+	return database_fetch_path(cfg, path);
 }
 
 void reg_conf_reload_func(conf_reload_f *func)
