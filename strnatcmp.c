@@ -125,7 +125,7 @@ static int strnatcmp0(nat_char const *a, nat_char const *b, int fold_case, int c
      // addition for IRC chanuser prefixes (@ < + < *) by ThiefMaster -begin-
      if(check_irc_prefixes)
      {
-	  if((*a == '@' && *b == '+') || (*a == '+' && *b != '+' && *b != '@'))
+	  if((*a == '@' && *b != '@') || (*a == '+' && *b != '+' && *b != '@'))
 	      return -1;
 	  else if((*a == '+' && *b == '@') || (*a != '+' && *a != '@' && *b == '+'))
 	      return 1;
