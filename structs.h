@@ -39,6 +39,7 @@ struct surgebot_conf
 	char		*server_pass;
 	unsigned int	max_server_tries;
 	unsigned int	server_ssl;
+	unsigned int	server_ipv6;
 
 	unsigned int	throttle;
 

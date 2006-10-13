@@ -55,7 +55,7 @@ int irc_connect()
 	}
 
 	bot.ready = 0;
-	bot.server_sock = sock_create(SOCK_IPV4 | (bot_conf.server_ssl ? SOCK_SSL : 0), irc_sock_event, irc_sock_read);
+	bot.server_sock = sock_create((bot_conf.server_ipv6 ? SOCK_IPV6 : SOCK_IPV4) | (bot_conf.server_ssl ? SOCK_SSL : 0), irc_sock_event, irc_sock_read);
 	if(bot.server_sock == NULL)
 		return -2;
 

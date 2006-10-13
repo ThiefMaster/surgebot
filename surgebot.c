@@ -116,6 +116,7 @@ static int bot_conf_reload()
 	bot_conf.server_pass		= ((str = conf_get("uplink/pass", DB_STRING)) ? str : NULL);
 	bot_conf.max_server_tries	= ((str = conf_get("uplink/max_tries", DB_STRING)) ? atoi(str) : 3);
 	bot_conf.server_ssl		= conf_bool("uplink/ssl");
+	bot_conf.server_ipv6		= conf_bool("uplink/ipv6");
 	bot_conf.throttle		= conf_bool("uplink/throttle");
 
 	bot_conf.local_host = ((str = conf_get("uplink/local_host", DB_STRING)) ? str : NULL);
@@ -128,6 +129,14 @@ static int bot_conf_reload()
 	if(bot_conf.nickname == NULL || bot_conf.username == NULL || bot_conf.realname == NULL || bot_conf.server_host == NULL ||
 	   bot_conf.server_port <= 0)
 		return 1;
+
+#ifndef HAVE_IPV6
+	if(bot_conf.server_ipv6)
+	{
+		log_append(LOG_ERROR, "IPv6 not supported; define HAVE_IPV6 in global.h if you want IPv6 support");
+		return 1;
+	}
+#endif
 
 	if(bot_conf.nickname && bot.nickname && strcmp(bot.nickname, bot_conf.nickname))
 	{

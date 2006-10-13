@@ -268,7 +268,7 @@ int sock_connect(struct sock *sock, const char *addr, unsigned int port)
 		sin->sin6_port = htons(port);
 		memcpy(&sin->sin6_addr, hp->h_addr, sizeof(struct in6_addr));
 
-		if(connect(sock->fd, (struct sockaddr*)sin, sizeof(struct sockaddr_in6)) < 0)
+		if(connect(sock->fd, (struct sockaddr*)sin, sizeof(struct sockaddr_in6)) < 0 && errno != EINPROGRESS)
 		{
 			log_append(LOG_WARNING, "Could not connect to %s/%u (IPv6): %s (%d)", addr, port, strerror(errno), errno);
 			free(sin);

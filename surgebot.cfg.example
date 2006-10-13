@@ -5,6 +5,7 @@
 	//"port" = "6667";
 	//"pass" = "";
 	//"ssl" = "0";
+	//"ipv6" = "0";
 	//"local_host" = "";
 	"max_tries" = "3";
 };
