@@ -1,6 +1,6 @@
 #include "global.h"
 #include "tools.h"
-//#include "channel.h"
+#include "chanuser.h"
 
 static char **str_tab;
 static unsigned int str_tab_size;
@@ -105,12 +105,11 @@ char *time2string(time_t time)
 	return buffer;
 }
 
-/*
-char *chanmodes2string(long modes, unsigned int limit, const char *key)
+const char *chanmodes2string(int modes, unsigned int limit, const char *key)
 {
-	char *str = malloc(MAXLEN);
-
+	static char str[MAXLEN];
 	unsigned int pos = 0;
+
 #define do_mode_char(MODE, CHAR) if(modes & (MODE_ ## MODE)) str[pos++] = (CHAR);
 	do_mode_char(SECRET, 's');
 	do_mode_char(PRIVATE, 'p');
@@ -142,7 +141,6 @@ char *chanmodes2string(long modes, unsigned int limit, const char *key)
 	str[pos] = '\0';
 	return str;
 }
-*/
 
 // from srvx source
 int IsChannelName(const char *name)

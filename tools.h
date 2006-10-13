@@ -7,7 +7,7 @@ void tools_fini();
 void split_mask(char *mask, char **nick, char **ident, char **host);
 unsigned int aredigits(const char *text);
 char *time2string(time_t time);
-char *chanmodes2string(long modes, unsigned int limit, const char *key);
+const char *chanmodes2string(int modes, unsigned int limit, const char *key);
 int IsChannelName(const char *name);
 unsigned int validate_string(const char *str, const char *allowed, char *c);
 int match(const char *mask, const char *name);

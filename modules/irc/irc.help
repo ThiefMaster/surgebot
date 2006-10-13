@@ -1,0 +1,23 @@
+"whois" = (
+	"Usage: /msg $N whois <nick>",
+	"Display some information about the specified user.",
+	"$uSee also:$u chaninfo"
+);
+
+"chaninfo" = (
+	"Usage: /msg $N chaninfo <#channel>",
+	"Display some information about the specified channel.",
+	"$uSee also:$u whois"
+);
+
+"say" = (
+	"Usage: /msg $N say <#channel|nick> <text>",
+	"Makes $b$N$b send a message to the specified target.",
+	"$uSee also:$u emote"
+);
+
+"emote" = (
+	"Usage: /msg $N emote <#channel|nick> <text>",
+	"Makes $b$N$b send a CTCP ACTION (/me) to the specified target..",
+	"$uSee also:$u say"
+);
