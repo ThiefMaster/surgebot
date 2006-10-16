@@ -2,6 +2,7 @@
 #include "command_rule.h"
 #include "modules/parser/parser.h"
 #include "group.h"
+#include "chanuser.h"
 
 DECLARE_LIST(command_rule_list, struct command_rule *)
 IMPLEMENT_LIST(command_rule_list, struct command_rule *)
@@ -19,6 +20,7 @@ static unsigned int next_rule_idx = 1;
 
 
 PARSER_FUNC(group);
+PARSER_FUNC(inchannel);
 struct command_rule *command_rule_get(unsigned int rule_idx);
 
 
@@ -27,11 +29,13 @@ void command_rule_init()
 	rules = command_rule_list_create();
 	parser = parser_create();
 	REG_COMMAND_RULE("group", group);
+	REG_COMMAND_RULE("inchannel", inchannel);
 }
 
 void command_rule_fini()
 {
 	command_rule_unreg("group");
+	command_rule_unreg("inchannel");
 	parser_free(parser);
 	command_rule_list_free(rules);
 }
@@ -177,4 +181,17 @@ PARSER_FUNC(group)
 		return RET_FALSE;
 	else
 		return RET_NONE;
+}
+
+PARSER_FUNC(inchannel)
+{
+	struct command_rule_context *cr_ctx = ctx;
+	struct irc_channel *chan;
+
+	if(!arg)
+		return RET_NONE;
+
+	if((chan = channel_find(arg)) && cr_ctx->user && channel_user_find(chan, (struct irc_user *)cr_ctx->user))
+		return RET_TRUE;
+	return RET_FALSE;
 }

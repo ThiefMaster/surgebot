@@ -208,7 +208,7 @@ CHANUSER_IRC_HANDLER(part)
 CHANUSER_IRC_HANDLER(kick)
 {
 	struct irc_channel *channel;
-	struct irc_user *user;
+	struct irc_user *user, *victim;
 	assert_return(argc > 2, 0);
 	assert_return(channel = channel_find(argv[1]), 0);
 
@@ -217,6 +217,7 @@ CHANUSER_IRC_HANDLER(kick)
 
 	assert_return(user = user_find(src->nick), 0);
 	user_complete(user, src->ident, src->host);
+	assert_return(victim = user_find(argv[2]), 0);
 
 	if(!strcasecmp(argv[2], bot.nickname))
 	{
