@@ -227,7 +227,7 @@ CHANUSER_IRC_HANDLER(kick)
 	else
 	{
 		debug("%s was kicked from %s by %s", argv[2], argv[1], src->nick);
-		channel_user_del(channel, user, 1);
+		channel_user_del(channel, victim, 1);
 	}
 	return 0;
 }
