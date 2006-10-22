@@ -215,8 +215,8 @@ CHANUSER_IRC_HANDLER(kick)
 	if(check_burst(channel, raw_line))
 		return -1;
 
-	assert_return(user = user_find(src->nick), 0);
-	user_complete(user, src->ident, src->host);
+	if((user = user_find(src->nick)))
+		user_complete(user, src->ident, src->host);
 	assert_return(victim = user_find(argv[2]), 0);
 
 	if(!strcasecmp(argv[2], bot.nickname))
