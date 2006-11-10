@@ -21,3 +21,9 @@
 	"Makes $b$N$b send a CTCP ACTION (/me) to the specified target..",
 	"$uSee also:$u say"
 );
+
+"topic" = (
+	"Usage: /msg $N topic <#channel> [topic]",
+	"Sets the topic for the specified channel. If no topic is specified, the current topic will be displayed.",
+	"Setting the topic to '*' will clear it."
+);

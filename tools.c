@@ -57,7 +57,7 @@ unsigned int aredigits(const char *text)
 }
 
 // from feigbot source
-char *time2string(time_t time)
+char *duration2string(time_t time)
 {
 	unsigned int i, words, pos, count;
 	static char buffer[MAXLEN];
@@ -103,6 +103,14 @@ char *time2string(time_t time)
 
 	buffer[pos] = '\0';
 	return buffer;
+}
+
+char *time2string(time_t time)
+{
+	static char str[26];
+	ctime_r(&time, str);
+	str[strlen(str)-1] = '\0';
+	return str;
 }
 
 const char *chanmodes2string(int modes, unsigned int limit, const char *key)

@@ -294,7 +294,7 @@ CHANUSER_IRC_HANDLER(topic)
 		return -1;
 
 	debug("Topic of %s changed to %s", argv[1], argv[2]);
-	channel_set_topic(channel, argv[2]);
+	channel_set_topic(channel, argv[2], now);
 	return 0;
 }
 
@@ -382,7 +382,17 @@ CHANUSER_IRC_HANDLER(num_topic)
 	assert_return(channel = channel_find(argv[2]), 0);
 
 	debug("Topic of %s is %s", argv[2], argv[3]);
-	channel_set_topic(channel, argv[3]);
+	channel_set_topic(channel, argv[3], 0);
+	return 0;
+}
+
+CHANUSER_IRC_HANDLER(num_topicwhotime)
+{
+	struct irc_channel *channel;
+	assert_return(argc > 4, 0);
+	assert_return(channel = channel_find(argv[2]), 0);
+
+	channel->topic_ts = atoi(argv[4]);
 	return 0;
 }
 
@@ -514,6 +524,7 @@ static void setup_handlers()
 	set_chanuser_irc_handler("315", num_endofwho);
 	set_chanuser_irc_handler("324", num_channelmodeis);
 	set_chanuser_irc_handler("332", num_topic);
+	set_chanuser_irc_handler("333", num_topicwhotime);
 	set_chanuser_irc_handler("353", num_namereply);
 	set_chanuser_irc_handler("354", num_whospecial);
 	set_chanuser_irc_handler("366", num_endofnames);

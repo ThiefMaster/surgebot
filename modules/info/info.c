@@ -83,8 +83,8 @@ COMMAND(command)
 
 COMMAND(stats_bot)
 {
-	reply("$bUptime:      $b %s",  time2string(now - bot.start));
-	reply("$bLinked:      $b %s",  time2string(now - bot.linked));
+	reply("$bUptime:      $b %s",  duration2string(now - bot.start));
+	reply("$bLinked:      $b %s",  duration2string(now - bot.linked));
 	reply("$bServer:      $b %s",  bot.server_name);
 	reply("$bLines (rcvd):$b %lu", bot.lines_received);
 	reply("$bLines (sent):$b %lu", bot.lines_sent);

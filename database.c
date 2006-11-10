@@ -101,9 +101,9 @@ void database_timed_write(struct database *db, UNUSED_ARG(void *data))
 {
 	char tmp[MAXLEN];
 	log_append(LOG_INFO, "Database %s last written: %s%s, write interval is %s", db->name,
-	      (db->last_write ? time2string(now - db->last_write) : "never"),
+	      (db->last_write ? duration2string(now - db->last_write) : "never"),
 	      (db->last_write ? " ago" : ""),
-	      time2string(db->write_interval));
+	      duration2string(db->write_interval));
 
 	database_write(db);
 	snprintf(tmp, sizeof(tmp), "db_write_%s", db->name);

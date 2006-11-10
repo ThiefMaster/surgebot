@@ -11,6 +11,7 @@ COMMAND(whois);
 COMMAND(chaninfo);
 COMMAND(say);
 COMMAND(emote);
+COMMAND(topic);
 
 MODULE_INIT
 {
@@ -20,6 +21,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "chaninfo",	chaninfo,	1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "say",		say,		2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "emote",		emote,		2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "topic",		topic,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 }
 
 MODULE_FINI
@@ -174,6 +176,50 @@ COMMAND(emote)
 	str = untokenize(argc - offset, argv + offset, " ");
 	irc_send("PRIVMSG %s :\001ACTION %s\001", target, str);
 	free(str);
+	return 1;
+}
+
+COMMAND(topic)
+{
+	struct irc_chanuser *chanuser;
+	char *str;
+
+	if(!channel)
+	{
+		reply("No/Invalid channel specified.");
+		return 0;
+	}
+
+	if(argc < 2)
+	{
+		if(!channel->topic)
+			reply("Channel $b%s$b has no topic set.", channel->name);
+		else
+			reply("$bTopic$b (set %s): %s", time2string(channel->topic_ts), channel->topic);
+
+		return 1;
+	}
+
+	chanuser = channel_user_find(channel, user_find(bot.nickname));
+	if((channel->modes & MODE_TOPICLIMIT) && !(chanuser->flags & MODE_OP))
+	{
+		reply("Cannot set topic for $b%s$b.", channel->name);
+		return 0;
+	}
+
+	if(!strcmp(argv[1], "*")) // Clear topic
+	{
+		irc_send("TOPIC %s :", channel->name);
+		reply("Topic is now ''.");
+	}
+	else
+	{
+		str = untokenize(argc - 1, argv + 1, " ");
+		irc_send("TOPIC %s :%s", channel->name, str);
+		reply("Topic is now '%s'.", str);
+		free(str);
+	}
+
 	return 1;
 }
 

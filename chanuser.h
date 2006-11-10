@@ -34,7 +34,7 @@ struct dict *channel_dict();
 struct irc_channel* channel_add(const char *name, int do_burst);
 struct irc_channel* channel_find(const char *name);
 void channel_del(struct irc_channel *channel);
-void channel_set_topic(struct irc_channel *channel, const char *topic);
+void channel_set_topic(struct irc_channel *channel, const char *topic, time_t ts);
 void channel_set_key(struct irc_channel *channel, const char *key);
 void channel_set_limit(struct irc_channel *channel, unsigned int limit);
 

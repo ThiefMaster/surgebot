@@ -75,6 +75,7 @@ struct irc_channel
 	char		*key;
 	unsigned int	limit;
 	char		*topic;
+	time_t		topic_ts;
 
 	unsigned int	burst_state;
 	struct stringlist	*burst_lines;

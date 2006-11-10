@@ -91,10 +91,13 @@ void channel_del(struct irc_channel *channel)
 	free(channel);
 }
 
-void channel_set_topic(struct irc_channel *channel, const char *topic)
+void channel_set_topic(struct irc_channel *channel, const char *topic, time_t ts)
 {
 	if(channel->topic)
 		free(channel->topic);
+
+	if(ts)
+		channel->topic_ts = ts;
 
 	if(topic == NULL || !strlen(topic))
 		channel->topic = NULL;
