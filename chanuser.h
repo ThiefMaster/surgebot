@@ -33,7 +33,7 @@ void chanuser_flush();
 struct dict *channel_dict();
 struct irc_channel* channel_add(const char *name, int do_burst);
 struct irc_channel* channel_find(const char *name);
-void channel_del(struct irc_channel *channel);
+void channel_del(struct irc_channel *channel, const char *reason);
 void channel_set_topic(struct irc_channel *channel, const char *topic, time_t ts);
 void channel_set_key(struct irc_channel *channel, const char *key);
 void channel_set_limit(struct irc_channel *channel, unsigned int limit);
@@ -44,7 +44,7 @@ struct irc_user* user_add_nick(const char *nick);
 void user_complete(struct irc_user *user, const char *ident, const char *host);
 void user_set_info(struct irc_user *user, const char *info);
 struct irc_user* user_find(const char *nick);
-void user_del(struct irc_user *user);
+void user_del(struct irc_user *user, unsigned int quit, const char *reason);
 void user_rename(struct irc_user *user, const char *nick);
 
 struct irc_chanuser* channel_user_add(struct irc_channel *channel, struct irc_user *user, int flags);
@@ -54,5 +54,13 @@ int channel_user_del(struct irc_channel *channel, struct irc_user *user, int che
 struct irc_ban* channel_ban_add(struct irc_channel *channel, const char *mask);
 struct irc_ban* channel_ban_find(struct irc_channel *channel, const char *mask);
 void channel_ban_del(struct irc_channel *channel, const char *mask);
+
+#define CHANUSER_DECLARE_HOOKABLE(NAME, ARGS) \
+	typedef void (*NAME##_f) ARGS; \
+	void chanuser_reg_##NAME##_hook(NAME##_f func); \
+	void chanuser_unreg_##NAME##_hook(NAME##_f func)
+
+CHANUSER_DECLARE_HOOKABLE(channel_del, (struct irc_channel *channel, const char *reason));
+CHANUSER_DECLARE_HOOKABLE(user_del, (struct irc_user *user, unsigned int quit, const char *reason));
 
 #endif

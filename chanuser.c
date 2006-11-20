@@ -3,9 +3,46 @@
 #include "account.h"
 #include "stringlist.h"
 
+#define CHANUSER_IMPLEMENT_HOOKABLE(NAME) \
+	static NAME##_f *NAME##_hooks; \
+	static unsigned int NAME##_hooks_used = 0, NAME##_hooks_size = 0; \
+	void chanuser_reg_##NAME##_hook(NAME##_f func) { \
+		if (NAME##_hooks_used == NAME##_hooks_size) { \
+			if (!NAME##_hooks_size) { \
+				NAME##_hooks_size = 4; \
+				NAME##_hooks = malloc(NAME##_hooks_size * sizeof(NAME##_hooks[0])); \
+			} else { \
+				NAME##_hooks_size <<= 1; \
+				NAME##_hooks = realloc(NAME##_hooks, NAME##_hooks_size * sizeof(NAME##_hooks[0])); \
+			} \
+		} \
+		NAME##_hooks[NAME##_hooks_used++] = func; \
+	} \
+	void chanuser_unreg_##NAME##_hook(NAME##_f func) { \
+		for (unsigned int i = 0; i < NAME##_hooks_used; i++) { \
+			if (NAME##_hooks[i] == func) { \
+				memmove(NAME##_hooks+i, NAME##_hooks+i+1, (NAME##_hooks_size-i-1)*sizeof(NAME##_hooks[0])); \
+				NAME##_hooks_used--; \
+				break; \
+			} \
+		} \
+	} \
+	static void chanuser_clear_##NAME##_hooks() { \
+		if (NAME##_hooks) free(NAME##_hooks); \
+		NAME##_hooks = NULL; \
+		NAME##_hooks_used = 0; \
+		NAME##_hooks_size = 0; \
+	}
+
+#define CHANUSER_CALL_HOOKS(NAME, ARGS) \
+	for (unsigned int ii = 0; ii < NAME##_hooks_used; ii++) \
+		NAME##_hooks[ii] ARGS
 
 static struct dict *channels;
 static struct dict *users;
+
+CHANUSER_IMPLEMENT_HOOKABLE(channel_del);
+CHANUSER_IMPLEMENT_HOOKABLE(user_del);
 
 void chanuser_init()
 {
@@ -15,6 +52,9 @@ void chanuser_init()
 
 void chanuser_fini()
 {
+	chanuser_clear_channel_del_hooks();
+	chanuser_clear_user_del_hooks();
+
 	chanuser_flush();
 	dict_free(users);
 	dict_free(channels);
@@ -23,9 +63,9 @@ void chanuser_fini()
 void chanuser_flush()
 {
 	while(dict_size(users))
-		user_del(dict_first_data(users));
+		user_del(dict_first_data(users), 0, NULL);
 	while(dict_size(channels))
-		channel_del(dict_first_data(channels));
+		channel_del(dict_first_data(channels), NULL);
 }
 
 
@@ -42,7 +82,7 @@ struct irc_channel* channel_add(const char *name, int do_burst)
 	if((channel = channel_find(name)))
 	{
 		log_append(LOG_WARNING, "Channel %s was already added; re-adding it", channel->name);
-		channel_del(channel);
+		channel_del(channel, NULL);
 	}
 
 	channel = malloc(sizeof(struct irc_channel));
@@ -67,8 +107,11 @@ struct irc_channel* channel_find(const char *name)
 	return dict_find(channels, name);
 }
 
-void channel_del(struct irc_channel *channel)
+void channel_del(struct irc_channel *channel, const char *reason)
 {
+	if(reason)
+		CHANUSER_CALL_HOOKS(channel_del, (channel, reason));
+
 	dict_iter(node, channel->users)
 	{
 		struct irc_chanuser *chanuser = node->data;
@@ -144,7 +187,7 @@ struct irc_user* user_add_nick(const char *nick)
 	if((user = user_find(nick)))
 	{
 		log_append(LOG_WARNING, "User %s was already added; re-adding it", user->nick);
-		user_del(user);
+		user_del(user, 0, NULL);
 	}
 
 	user = malloc(sizeof(struct irc_user));
@@ -180,8 +223,10 @@ struct irc_user* user_find(const char *nick)
 	return dict_find(users, nick);
 }
 
-void user_del(struct irc_user *user)
+void user_del(struct irc_user *user, unsigned int quit, const char *reason)
 {
+	CHANUSER_CALL_HOOKS(user_del, (user, quit, reason));
+
 	dict_iter(node, user->channels)
 	{
 		struct irc_chanuser *chanuser = node->data;
@@ -261,7 +306,7 @@ int channel_user_del(struct irc_channel *channel, struct irc_user *user, int che
 	if(check_dead && dict_size(user->channels) == 0)
 	{
 		debug("Deleting dead user %s", user->nick);
-		user_del(user);
+		user_del(user, 0, "dead");
 		return 1;
 	}
 

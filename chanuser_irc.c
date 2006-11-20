@@ -195,7 +195,7 @@ CHANUSER_IRC_HANDLER(part)
 	if(!strcasecmp(src->nick, bot.nickname))
 	{
 		debug("We left %s, deleting channel", argv[1]);
-		channel_del(channel);
+		channel_del(channel, "parted");
 	}
 	else
 	{
@@ -222,7 +222,7 @@ CHANUSER_IRC_HANDLER(kick)
 	if(!strcasecmp(argv[2], bot.nickname))
 	{
 		debug("We were kicked from %s by %s, deleting channel", argv[1], src->nick);
-		channel_del(channel);
+		channel_del(channel, "kicked");
 	}
 	else
 	{
@@ -260,7 +260,7 @@ CHANUSER_IRC_HANDLER(quit)
 	assert_return(user = user_find(src->nick), 0);
 
 	debug("%s has quit: %s", src->nick, (argc > 1 ? argv[1] : "(no message)"));
-	user_del(user);
+	user_del(user, 1, (argc > 1 ? argv[1] : ""));
 	return 0;
 }
 
