@@ -22,3 +22,14 @@
 	"module_path" = "./modules";
 	"modules" = ();
 };
+
+"perform" = {
+	"file" = "perform.cfg";
+};
+
+"chanjoin" = {
+	"max_tries" = "3";
+	"rejoin_delay" = "5";
+	"unban_command" = "CHANSERV UNBANME %s";
+	"invite_command" = "CHANSERV INVITEME %s";
+};
