@@ -42,6 +42,7 @@ static struct dict *channels;
 static struct dict *users;
 
 CHANUSER_IMPLEMENT_HOOKABLE(channel_del);
+CHANUSER_IMPLEMENT_HOOKABLE(channel_complete);
 CHANUSER_IMPLEMENT_HOOKABLE(user_del);
 
 void chanuser_init()
@@ -53,6 +54,7 @@ void chanuser_init()
 void chanuser_fini()
 {
 	chanuser_clear_channel_del_hooks();
+	chanuser_clear_channel_complete_hooks();
 	chanuser_clear_user_del_hooks();
 
 	chanuser_flush();
@@ -99,7 +101,15 @@ struct irc_channel* channel_add(const char *name, int do_burst)
 	channel->burst_lines = stringlist_create();
 
 	dict_insert(channels, channel->name, channel);
+	if(!do_burst)
+		channel_complete(channel);
 	return channel;
+}
+
+// Called when all information about a channel is available (i.e. burst finished)
+void channel_complete(struct irc_channel *channel)
+{
+	CHANUSER_CALL_HOOKS(channel_complete, (channel));
 }
 
 struct irc_channel* channel_find(const char *name)

@@ -332,10 +332,18 @@ CHANUSER_IRC_HANDLER(num_endofwho)
 			{
 				debug("Parsing delayed line from channel[%s]->burst_lines: %s", channel->name, channel->burst_lines->data[i]);
 				irc_parse_line(channel->burst_lines->data[i]);
+				if(!(channel = channel_find(argv[2])))
+				{
+					debug("Channel %s got deleted while parsing delayed line", argv[2]);
+					break;
+				}
 			}
 
-			stringlist_free(channel->burst_lines);
-			channel->burst_lines = stringlist_create();
+			if(channel)
+			{
+				stringlist_free(channel->burst_lines);
+				channel->burst_lines = stringlist_create();
+			}
 		}
 
 		if(bot.burst_count == 0 && bot.burst_lines->count)
@@ -349,6 +357,9 @@ CHANUSER_IRC_HANDLER(num_endofwho)
 			stringlist_free(bot.burst_lines);
 			bot.burst_lines = stringlist_create();
 		}
+
+		if(channel)
+			channel_complete(channel);
 	}
 	return 0;
 }
