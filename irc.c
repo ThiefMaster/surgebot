@@ -171,6 +171,25 @@ static void irc_reconnect(void *bound, void *data)
 	irc_connect();
 }
 
+void irc_send_raw(const char *format, ...)
+{
+	va_list args;
+	char buf[MAXLEN];
+
+	assert(bot.server_sock);
+
+	va_start(args, format);
+	vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
+
+	if(bot_conf.throttle)
+		stringlist_add(bot.sendq, strdup(buf));
+	else
+		sock_write_fmt(bot.server_sock, "%s\r\n", buf);
+	log_append(LOG_SEND, "%s", buf);
+	bot.lines_sent++;
+}
+
 void irc_send(const char *format, ...)
 {
 	va_list args;
