@@ -273,9 +273,11 @@ IRC_HANDLER(join)
 static void channel_complete_hook(struct irc_channel *irc_chan)
 {
 	struct cj_channel *chan;
+	unsigned int old_state;
 
 	if(!(chan = chanjoin_find(irc_chan->name)))
 		return;
+	old_state = chan->state;
 	chan->channel = irc_chan;
 	chan->state = CJ_JOINED;
 	chan->tries = 0;
@@ -283,7 +285,7 @@ static void channel_complete_hook(struct irc_channel *irc_chan)
 	for(unsigned int i = 0; i < chan->refs->count; i++)
 	{
 		struct cj_channel_ref *ref = chan->refs->data[i];
-		ref->success_func(chan, ref->key, ref->ctx, !ref->module_reloaded);
+		ref->success_func(chan, ref->key, ref->ctx, !ref->module_reloaded && old_state == CJ_JOIN_PENDING);
 		ref->module_reloaded = 0;
 	}
 }
