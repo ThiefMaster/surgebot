@@ -121,6 +121,7 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 		{
 			debug("Found chanjoin record %s/%s with module %s", chan->name, ref->key, module->name);
 
+			ref->module = module;
 			ref->success_func = success_func;
 			ref->error_func = error_func;
 			ref->ctx = ctx;
