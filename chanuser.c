@@ -270,6 +270,13 @@ void user_rename(struct irc_user *user, const char *nick)
 		dict_insert(chanuser->channel->users, user->nick, chanuser);
 	}
 
+	if(user->account)
+	{
+		assert(dict_find(user->account->users, old_nick));
+		dict_delete(user->account->users, old_nick);
+		dict_insert(user->account->users, user->nick, user);
+	}
+
 	free(old_nick);
 }
 
