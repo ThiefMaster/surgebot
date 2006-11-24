@@ -1,0 +1,38 @@
+"chanspy list" = (
+	"Usage: /msg $N chanspy list",
+	"Displays a list of channel spies.",
+	"$uSee also:$u chanspy add, chanspy del, chanspy rejoin"
+);
+
+"chanspy add" = (
+	"Usage: /msg $N chanspy add <name> <#from> <#target> <flags>",
+	"Creates a new channel spy that relays messages from #from to #target.",
+	"The flags specify which messages are relayed. Use $b*$b for everything.",
+	"$uSee also:$u chanspy list, chanspy del, chanspy rejoin, chanspy flags"
+);
+
+"chanspy del" = (
+	"Usage: /msg $N chanspy del <name>",
+	"Deletes the specified channel spy.",
+	"$uSee also:$u chanspy list, chanspy add, chanspy rejoin"
+);
+
+"chanspy rejoin" = (
+	"Usage: /msg $N chanspy rejoin <#channel>",
+	"Forces $N to try rejoining an inactive channel (caused e.g. by bans).",
+	"$uSee also:$u chanspy list, chanspy add, chanspy del"
+);
+
+"chanspy flags" = (
+	"$bP$b  Regular channel messages",
+	"$bA$b  CTCP ACTION (/me)",
+	"$bN$b  Notices",
+	"$bM$b  Mode changes",
+	"$bJ$b  Joins",
+	"$bL$b  Parts",
+	"$bK$b  Kicks",
+	"$bQ$b  Quits",
+	"$bN$b  Nick changes",
+	"$bT$b  Topic changes",
+	"$uSee also:$u chanspy list, chanspy add"
+);
