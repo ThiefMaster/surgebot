@@ -9,8 +9,10 @@
 						module_set_depends(self, NAME, ##__VA_ARGS__);	\
 					}
 
-#define MODULE_INIT	void mod_init(struct module *self)
-#define MODULE_FINI	void mod_fini(struct module *self)
+#define MODULE_INIT	void mod_init(struct module *self, unsigned int reload)
+#define MODULE_FINI	void mod_fini(struct module *self, unsigned int reload)
+
+extern unsigned int reloading_module;
 
 struct module;
 typedef void (module_f)(struct module *self);

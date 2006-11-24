@@ -10,6 +10,7 @@ IMPLEMENT_LIST(module_unload_func_list, module_f *)
 static struct module_load_func_list *module_load_funcs;
 static struct module_unload_func_list *module_unload_funcs;
 static struct dict *module_list;
+unsigned int reloading_module = 0;
 
 static void module_conf_reload();
 static void module_do_cmd_reload();
@@ -236,6 +237,7 @@ int module_reload(const char *name)
 		return -1;
 	}
 
+	reloading_module = 1;
 	modules = stringlist_create();
 	stringlist_add(modules, strdup(module->name));
 	module_get_rdeps(module, modules);
@@ -260,6 +262,7 @@ int module_reload(const char *name)
 	}
 
 	stringlist_free(modules);
+	reloading_module = 0;
 	return ret;
 }
 

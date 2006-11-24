@@ -27,6 +27,7 @@ static void chanjoin_join_timeout(struct cj_channel *chan, void *data);
 static void chanjoin_addchan_tmr(struct cj_channel *chan, struct cj_channel_ref *ref);
 static void chanjoin_ref_free(struct cj_channel_ref *ref);
 static void chanjoin_free(struct cj_channel *chan);
+static void module_unloaded(struct module *module);
 IRC_HANDLER(join);
 static void channel_complete_hook(struct irc_channel *irc_chan);
 static void channel_del_hook(struct irc_channel *channel, const char *reason);
@@ -42,6 +43,7 @@ MODULE_INIT
 	cj_channels = dict_create();
 	dict_set_free_funcs(cj_channels, NULL, (dict_free_f*)chanjoin_free);
 
+	reg_module_load_func(NULL, module_unloaded);
 	chanuser_reg_channel_del_hook(channel_del_hook);
 	chanuser_reg_channel_complete_hook(channel_complete_hook);
 	reg_irc_handler("JOIN", join);
@@ -65,6 +67,7 @@ MODULE_FINI
 	unreg_irc_handler("475", num_badchannelkey);
 	chanuser_unreg_channel_complete_hook(channel_complete_hook);
 	chanuser_unreg_channel_del_hook(channel_del_hook);
+	unreg_module_load_func(NULL, module_unloaded);
 
 	dict_free(cj_channels);
 }
@@ -96,6 +99,7 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 {
 	struct cj_channel *chan;
 	struct cj_channel_ref *ref;
+	unsigned int found = 0;
 
 	if(!(chan = chanjoin_find(name)))
 	{
@@ -109,14 +113,35 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 
 	assert(chanjoin_ref_find(chan, module, key) == NULL);
 
-	ref = malloc(sizeof(struct cj_channel_ref));
-	memset(ref, 0, sizeof(struct cj_channel_ref));
-	ref->module = module;
-	ref->key = key ? strdup(key) : NULL;
-	ref->success_func = success_func;
-	ref->error_func = error_func;
-	ref->ctx = ctx;
-	cj_channel_ref_list_add(chan->refs, ref);
+	for(unsigned int i = 0; i < chan->refs->count; i++)
+	{
+		ref = chan->refs->data[i];
+		if(!ref->module && !strcasecmp(ref->module_name, module->name) &&
+		   ((key == NULL && ref->key == key) || (key && ref->key && !strcasecmp(ref->key, key))))
+		{
+			debug("Found chanjoin record %s/%s with module %s", chan->name, ref->key, module->name);
+
+			ref->success_func = success_func;
+			ref->error_func = error_func;
+			ref->ctx = ctx;
+			ref->module_reloaded = 1;
+			found = 1;
+			break;
+		}
+	}
+
+	if(!found)
+	{
+		ref = malloc(sizeof(struct cj_channel_ref));
+		memset(ref, 0, sizeof(struct cj_channel_ref));
+		ref->module = module;
+		ref->module_name = strdup(module->name);
+		ref->key = key ? strdup(key) : NULL;
+		ref->success_func = success_func;
+		ref->error_func = error_func;
+		ref->ctx = ctx;
+		cj_channel_ref_list_add(chan->refs, ref);
+	}
 
 	if(!chan->channel && chan->state != CJ_JOIN_PENDING && chan->state != CJ_REJOIN_PENDING)
 	{
@@ -151,7 +176,8 @@ static void chanjoin_join_timeout(struct cj_channel *chan, UNUSED_ARG(void *data
 static void chanjoin_addchan_tmr(struct cj_channel *chan, struct cj_channel_ref *ref)
 {
 	assert(chan->channel);
-	ref->success_func(chan, ref->key, ref->ctx);
+	ref->success_func(chan, ref->key, ref->ctx, !ref->module_reloaded);
+	ref->module_reloaded = 0;
 }
 
 void chanjoin_delchan(const char *name, struct module *module, const char *key)
@@ -195,6 +221,7 @@ struct cj_channel_ref *chanjoin_ref_find(struct cj_channel *chan, struct module 
 static void chanjoin_ref_free(struct cj_channel_ref *ref)
 {
 	timer_del(NULL, "chanjoin_joined", 0, NULL, ref, TIMER_IGNORE_BOUND|TIMER_IGNORE_TIME|TIMER_IGNORE_FUNC);
+	free(ref->module_name);
 	if(ref->key)
 		free(ref->key);
 	free(ref);
@@ -208,6 +235,30 @@ static void chanjoin_free(struct cj_channel *chan)
 	cj_channel_ref_list_free(chan->refs);
 	free(chan->name);
 	free(chan);
+}
+
+static void module_unloaded(struct module *module)
+{
+	// We only need to disable channel references if the module is being reloaded.
+	// In other cases the module is supposed to delete the channel ref.
+	if(!reloading_module)
+		return;
+
+	dict_iter(node, cj_channels)
+	{
+		struct cj_channel *chan = node->data;
+		for(unsigned int i = 0; i < chan->refs->count; i++)
+		{
+			struct cj_channel_ref *ref = chan->refs->data[i];
+			if(ref->module == module)
+			{
+				debug("Removing module %s for %s/%s", module->name, chan->name, ref->key);
+				ref->module = NULL;
+				ref->success_func = NULL;
+				ref->error_func = NULL;
+			}
+		}
+	}
 }
 
 IRC_HANDLER(join)
@@ -231,7 +282,8 @@ static void channel_complete_hook(struct irc_channel *irc_chan)
 	for(unsigned int i = 0; i < chan->refs->count; i++)
 	{
 		struct cj_channel_ref *ref = chan->refs->data[i];
-		ref->success_func(chan, ref->key, ref->ctx);
+		ref->success_func(chan, ref->key, ref->ctx, !ref->module_reloaded);
+		ref->module_reloaded = 0;
 	}
 }
 

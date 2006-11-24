@@ -2,7 +2,7 @@
 #define CHANJOIN_H
 
 struct cj_channel;
-typedef void (chanjoin_success_f)(struct cj_channel *chan, const char *key, void *ctx);
+typedef void (chanjoin_success_f)(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 typedef void (chanjoin_error_f)(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
 
 enum cj_state
@@ -31,11 +31,13 @@ struct cj_channel
 struct cj_channel_ref
 {
 	struct module *module;
+	char *module_name;
 	char *key;
 
 	chanjoin_success_f *success_func;
 	chanjoin_error_f *error_func;
 
+	unsigned int module_reloaded;
 	void *ctx;
 };
 
