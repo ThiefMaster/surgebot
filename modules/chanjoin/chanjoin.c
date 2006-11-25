@@ -18,6 +18,7 @@ static struct
 	unsigned int rejoin_delay;
 	const char *unban_command;
 	const char *invite_command;
+	const char *part_reason;
 } chanjoin_conf;
 
 static struct dict *cj_channels;
@@ -79,6 +80,7 @@ static void chanjoin_conf_reload()
 	chanjoin_conf.rejoin_delay = ((str = conf_get("chanjoin/rejoin_delay", DB_STRING)) ? atoi(str) : 10);
 	chanjoin_conf.unban_command = conf_get("chanjoin/unban_command", DB_STRING);
 	chanjoin_conf.invite_command = conf_get("chanjoin/invite_command", DB_STRING);
+	chanjoin_conf.part_reason = ((str = conf_get("chanjoin/part_reason", DB_STRING)) ? str : "");
 
 	if(chanjoin_conf.unban_command && (!strstr(chanjoin_conf.unban_command, "%s") ||
 	   ((str = strstr(chanjoin_conf.unban_command, "%")) && *(str + 1) && strstr(str+1, "%"))))
@@ -195,7 +197,7 @@ void chanjoin_delchan(const char *name, struct module *module, const char *key)
 	if(chan->refs->count == 0)
 	{
 		if(chan->state != CJ_INACTIVE)
-			irc_send("PART %s :My work here is done.", chan->name);
+			irc_send("PART %s :%s", chan->name, chanjoin_conf.part_reason);
 		dict_delete(cj_channels, chan->name);
 	}
 }

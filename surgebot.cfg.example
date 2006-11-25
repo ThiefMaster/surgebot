@@ -32,4 +32,5 @@
 	"rejoin_delay" = "5";
 	"unban_command" = "CHANSERV UNBANME %s";
 	"invite_command" = "CHANSERV INVITEME %s";
+	"part_reason" = "My work here is done.";
 };
