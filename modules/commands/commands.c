@@ -8,8 +8,14 @@
 #include "irc.h"
 #include "irc_handler.h"
 #include "chanuser.h"
+#include "conf.h"
 
 MODULE_DEPENDS("parser", NULL);
+
+static struct
+{
+	unsigned int stealth;
+} command_conf;
 
 extern struct surgebot_conf bot_conf;
 static struct dict *command_list;
@@ -17,6 +23,7 @@ static struct dict *binding_list;
 static struct database *command_db;
 
 IRC_HANDLER(privmsg);
+static void command_conf_reload();
 static void command_db_read(struct database *db);
 static int command_db_write(struct database *db);
 static void handle_command(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *msg);
@@ -38,6 +45,9 @@ MODULE_INIT
 	reg_module_load_func(module_loaded, module_unloaded);
 	reg_irc_handler("PRIVMSG", privmsg);
 
+	reg_conf_reload_func(command_conf_reload);
+	command_conf_reload();
+
 	command_db = database_create("commands", command_db_read, command_db_write);
 	database_read(command_db, 1);
 	database_set_write_interval(command_db, 300);
@@ -48,6 +58,7 @@ MODULE_FINI
 	database_write(command_db);
 	database_delete(command_db);
 
+	unreg_conf_reload_func(command_conf_reload);
 	unreg_irc_handler("PRIVMSG", privmsg);
 	unreg_module_load_func(module_loaded, module_unloaded);
 
@@ -57,6 +68,12 @@ MODULE_FINI
 	command_rule_fini();
 	dict_free(command_list);
 	dict_free(binding_list);
+}
+
+
+static void command_conf_reload()
+{
+	command_conf.stealth = conf_bool("commands/stealth");
 }
 
 static void command_db_read(struct database *db)
@@ -145,7 +162,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 
 	if(!argc)
 	{
-		reply("Command missing.");
+		if(!command_conf.stealth || user->account)
+			reply("Command missing.");
 		free(msg_dup);
 		return;
 	}
@@ -179,7 +197,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	{
 		count = show_subcmds(src, user, argv[0], 1);
 
-		if(!count && is_privmsg)
+		if(!count && is_privmsg && (!command_conf.stealth || user->account))
 			reply("$b%s$b is an unknown command.", argv[0]);
 
 		free(msg_dup);
@@ -195,7 +213,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 
 	if(!is_privmsg && (cmd->flags & CMD_ONLY_PRIVMSG))
 	{
-		reply("$b%s$b can only be used via $b/msg $N %s$b", binding->name, binding->name);
+		if(!command_conf.stealth || user->account)
+			reply("$b%s$b can only be used via $b/msg $N %s$b", binding->name, binding->name);
 		free(msg_dup);
 		return;
 	}
@@ -209,7 +228,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 
 	if(channel_arg && !(cmd->flags & CMD_ACCEPT_CHANNEL))
 	{
-		reply("You cannot put a channel name before $b%s$b.", binding->name);
+		if(!command_conf.stealth || user->account)
+			reply("You cannot put a channel name before $b%s$b.", binding->name);
 		free(msg_dup);
 		return;
 	}
@@ -229,7 +249,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		// result in 'channel' being set to channel_find("#validchannel") which is not expected
 		if((channel = channel_find(channel_arg)) == NULL)
 		{
-			reply("You must provide a channel name that exists and is known to the bot.");
+			if(!command_conf.stealth || user->account)
+				reply("You must provide a channel name that exists and is known to the bot.");
 			free(msg_dup);
 			return;
 		}
@@ -240,7 +261,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		argc = binding_expand_alias(binding, src, argc, argv, exp_argv);
 		if(!argc)
 		{
-			reply("Alias for $b%s$b could not be expanded; check log file for details.", binding->name);
+			if(!command_conf.stealth || user->account)
+				reply("Alias for $b%s$b could not be expanded; check log file for details.", binding->name);
 			free(msg_dup);
 			return;
 		}
@@ -252,7 +274,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		{
 			if((channel = channel_find(argv[1])) == NULL)
 			{
-				reply("You must provide a channel name that exists and is known to the bot.");
+				if(!command_conf.stealth || user->account)
+					reply("You must provide a channel name that exists and is known to the bot.");
 				free(msg_dup);
 				return;
 			}
@@ -265,7 +288,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 
 	if(argc < cmd->min_argc)
 	{
-		reply("$b%s$b requires more arguments.", binding->name);
+		if(!command_conf.stealth || user->account)
+			reply("$b%s$b requires more arguments.", binding->name);
 		free(msg_dup);
 		return;
 	}
@@ -275,7 +299,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 
 	if(ret == -1) // Not enough arguments
 	{
-		reply("$b%s$b requires more arguments.", binding->name);
+		if(!command_conf.stealth || user->account)
+			reply("$b%s$b requires more arguments.", binding->name);
 	}
 	else if(ret == 0) // Do not log it
 	{
@@ -453,21 +478,21 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 
 	if(!user && !(binding->cmd->flags & CMD_ALLOW_UNKNOWN))
 	{
-		if(!quiet)
+		if(!quiet && (!command_conf.stealth || user->account))
 			reply("I can't see you - please join one of my channels to use $b%s$b.", binding->name);
 		return 0;
 	}
 
 	if((!user || !user->account) && (binding->cmd->flags & CMD_REQUIRE_AUTHED))
 	{
-		if(!quiet)
+		if(!quiet && (!command_conf.stealth || user->account))
 			reply("You must be authed to use $b%s$b.", binding->name);
 		return 0;
 	}
 
 	if(!binding->comp_rule || !command_rule_executable(binding->comp_rule))
 	{
-		if(!quiet)
+		if(!quiet && (!command_conf.stealth || user->account))
 			reply("Access rule for $b%s$b is incomplete.", binding->name);
 		return 0;
 	}
@@ -484,13 +509,13 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 
 	if(res == CR_DENY)
 	{
-		if(!quiet)
+		if(!quiet && (!command_conf.stealth || user->account))
 			reply("You are not permitted to use $b%s$b.", binding->name);
 		return 0;
 	}
 	else if(res == CR_ERROR)
 	{
-		if(!quiet)
+		if(!quiet && (!command_conf.stealth || user->account))
 			reply("Execution of access rule failed for $b%s$b.", binding->name);
 		return 0;
 	}
@@ -516,7 +541,7 @@ static int show_subcmds(struct irc_source *src, struct irc_user *user, const cha
 		}
 	}
 
-	if(completions->count)
+	if(completions->count && (!command_conf.stealth || user->account))
 	{
 		reply("Possible sub-commands of $b%s$b are:", prefix);
 		for(int i = 0; i < completions->count; i++)

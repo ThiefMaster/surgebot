@@ -23,6 +23,14 @@
 	"modules" = ();
 };
 
+"commands" = {
+	// Stealth mode prevents the command module from sending any replies to users that are not authenticated.
+	// Additionally, the auth command will not reply unless you authenticated successful.
+	// However, you must change the rule of the register command to prevent people from registering accounts and
+	// you should change the rule of all other command that do not require the user to be authed.
+	"stealth" = "0";
+};
+
 "perform" = {
 	"file" = "perform.cfg";
 };

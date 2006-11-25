@@ -7,6 +7,7 @@
 #include "sha1.h"
 #include "irc.h"
 #include "stringlist.h"
+#include "conf.h"
 
 MODULE_DEPENDS("commands", "help", NULL);
 
@@ -88,6 +89,7 @@ COMMAND(register)
 COMMAND(auth)
 {
 	struct user_account *account;
+	unsigned int stealth = conf_bool("commands/stealth");
 
 	if(user->account)
 	{
@@ -98,14 +100,16 @@ COMMAND(auth)
 
 	if((account = account_find(argv[1])) == NULL)
 	{
-		reply("Could not find account $b%s$b - did you register yet?", argv[1]);
+		if(!stealth)
+			reply("Could not find account $b%s$b - did you register yet?", argv[1]);
 		argv[2] = "BADACCOUNT";
 		return 0;
 	}
 
 	if(strcmp(sha1(argv[2]), account->pass)) // Invalid password
 	{
-		reply("Invalid password for account $b%s$b.", account->name);
+		if(!stealth)
+			reply("Invalid password for account $b%s$b.", account->name);
 		argv[2] = "BADPASS";
 		return 1;
 	}
