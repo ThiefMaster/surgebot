@@ -200,20 +200,31 @@ static void spy_gotmsg(const char *channel, unsigned int type, const char *fmt, 
 
 IRC_HANDLER(privmsg)
 {
+	char *modechar = "";
+	struct irc_channel *channel;
+	struct irc_chanuser *chanuser;
 	assert(argc > 2);
 
 	if(!IsChannelName(argv[1]))
 		return;
 
+	if((channel = channel_find(argv[1])) && (chanuser = dict_find(channel->users, src->nick)))
+	{
+		if(chanuser->flags & MODE_OP)
+			modechar = "@";
+		else if(chanuser->flags & MODE_VOICE)
+			modechar = "+";
+	}
+
 	if(!strncasecmp(argv[2], "\001ACTION ", 8))
 	{
 		char *action = strdup(argv[2] + 8);
 		action[strlen(action)-1] = '\0';
-		spy_gotmsg(argv[1], CSPY_ACTION, "* %s %s", src->nick, action);
+		spy_gotmsg(argv[1], CSPY_ACTION, "* %s%s %s", modechar, src->nick, action);
 		free(action);
 	}
 	else
-		spy_gotmsg(argv[1], CSPY_PRIVMSG, "<%s> %s", src->nick, argv[2]);
+		spy_gotmsg(argv[1], CSPY_PRIVMSG, "<%s%s> %s", modechar, src->nick, argv[2]);
 }
 
 IRC_HANDLER(notice)

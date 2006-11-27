@@ -145,6 +145,7 @@ COMMAND(stats_bindings)
 	table->rows = i;
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_bindings);
 	table_send(table, src->nick);
+	table->rows = dict_size(bindings); // restore old row count so all rows get free()'d
 	table_free(table);
 	return 1;
 }
@@ -177,6 +178,7 @@ COMMAND(stats_bindings_verbose)
 	table->rows = i;
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_bindings);
 	table_send(table, src->nick);
+	table->rows = dict_size(bindings); // restore old row count so all rows get free()'d
 	table_free(table);
 	return 1;
 }
