@@ -11,7 +11,8 @@ enum cj_state
 	CJ_JOIN_PENDING,
 	CJ_JOINED,
 	CJ_REJOIN_PENDING,
-	CJ_INACTIVE
+	CJ_INACTIVE,
+	CJ_JOIN_LATER // Join when our perform hook got called
 };
 
 DECLARE_LIST(cj_channel_ref_list, struct cj_channel_ref *)

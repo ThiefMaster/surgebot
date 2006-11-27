@@ -27,8 +27,6 @@ IRC_HANDLER(kick);
 static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason);
 IRC_HANDLER(nick);
 IRC_HANDLER(topic);
-static void spy_db_init_tmr(void *bound, void *data);
-static void spy_db_init();
 static void spy_db_read(struct database *db);
 static int spy_db_write(struct database *db);
 static int sort_spies(const void *a_, const void *b_);
@@ -72,25 +70,15 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "chanspy del",	chanspy_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "chanspy list",	chanspy_list,	1, CMD_REQUIRE_AUTHED, "group(admins)");
 
-	if(!bot.ready)
-		reg_connected_func(spy_db_init);
-	else
-		timer_add(self, "chanspy_db_init", now + 1, spy_db_init_tmr, NULL, 0);
+	chanspy_db = database_create("chanspy", spy_db_read, spy_db_write);
+	database_read(chanspy_db, 1);
+	database_set_write_interval(chanspy_db, 300);
 }
 
 MODULE_FINI
 {
-	if(chanspy_db)
-	{
-		database_write(chanspy_db);
-		database_delete(chanspy_db);
-	}
-	else
-	{
-		// If chanspy_db is NULL, spy_db_init got never called -> remove hook/timer here.
-		unreg_connected_func(spy_db_init);
-		timer_del_boundname(self, "chanspy_db_init");
-	}
+	database_write(chanspy_db);
+	database_delete(chanspy_db);
 
 	unreg_irc_handler("PRIVMSG", privmsg);
 	unreg_irc_handler("NOTICE", notice);
@@ -103,20 +91,6 @@ MODULE_FINI
 	unreg_irc_handler("TOPIC", topic);
 
 	dict_free(spies);
-}
-
-static void spy_db_init_tmr(void *bound, void *data)
-{
-	spy_db_init();
-}
-
-static void spy_db_init()
-{
-	unreg_connected_func(spy_db_init);
-
-	chanspy_db = database_create("chanspy", spy_db_read, spy_db_write);
-	database_read(chanspy_db, 1);
-	database_set_write_interval(chanspy_db, 300);
 }
 
 static void spy_db_read(struct database *db)

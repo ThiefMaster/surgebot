@@ -1,3 +1,3 @@
-MODULES = parser commands help account admin perform info irc chanjoin
+MODULES = parser commands help account admin perform info irc chanjoin chanspy
 
 # vim: ft=make

@@ -1,6 +1,7 @@
 #include "global.h"
 #include "module.h"
 #include "chanjoin.h"
+#include "modules/perform/perform.h"
 #include "timer.h"
 #include "irc.h"
 #include "irc_handler.h"
@@ -8,7 +9,7 @@
 #include "timer.h"
 #include "conf.h"
 
-MODULE_DEPENDS(NULL);
+MODULE_DEPENDS("perform", NULL);
 
 IMPLEMENT_LIST(cj_channel_ref_list, struct cj_channel_ref *)
 
@@ -22,6 +23,7 @@ static struct
 } chanjoin_conf;
 
 static struct dict *cj_channels;
+static unsigned int ready_to_join = 0;
 
 static void chanjoin_conf_reload();
 static void chanjoin_join_timeout(struct cj_channel *chan, void *data);
@@ -29,6 +31,8 @@ static void chanjoin_addchan_tmr(struct cj_channel *chan, struct cj_channel_ref 
 static void chanjoin_ref_free(struct cj_channel_ref *ref);
 static void chanjoin_free(struct cj_channel *chan);
 static void module_unloaded(struct module *module);
+static void irc_disconnected();
+static void perform_done();
 IRC_HANDLER(join);
 static void channel_complete_hook(struct irc_channel *irc_chan);
 static void channel_del_hook(struct irc_channel *channel, const char *reason);
@@ -45,6 +49,8 @@ MODULE_INIT
 	dict_set_free_funcs(cj_channels, NULL, (dict_free_f*)chanjoin_free);
 
 	reg_module_load_func(NULL, module_unloaded);
+	reg_disconnected_func(irc_disconnected);
+	perform_func_reg("chanjoin_join_channels", perform_done);
 	chanuser_reg_channel_del_hook(channel_del_hook);
 	chanuser_reg_channel_complete_hook(channel_complete_hook);
 	reg_irc_handler("JOIN", join);
@@ -68,6 +74,8 @@ MODULE_FINI
 	unreg_irc_handler("475", num_badchannelkey);
 	chanuser_unreg_channel_complete_hook(channel_complete_hook);
 	chanuser_unreg_channel_del_hook(channel_del_hook);
+	perform_func_unreg("chanjoin_join_channels");
+	unreg_disconnected_func(irc_disconnected);
 	unreg_module_load_func(NULL, module_unloaded);
 
 	dict_free(cj_channels);
@@ -148,10 +156,18 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 
 	if(!chan->channel && chan->state != CJ_JOIN_PENDING && chan->state != CJ_REJOIN_PENDING)
 	{
-		chan->state = CJ_JOIN_PENDING;
-		irc_send("JOIN %s", name);
-		timer_del_boundname(chan, "chanjoin_join_timeout");
-		timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0);
+		if(ready_to_join)
+		{
+			chan->state = CJ_JOIN_PENDING;
+			irc_send("JOIN %s", name);
+			timer_del_boundname(chan, "chanjoin_join_timeout");
+			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0);
+		}
+		else
+		{
+			debug("Not ready to join channels yet; joining %s later.", chan->name);
+			chan->state = CJ_JOIN_LATER;
+		}
 	}
 	else if(chan->channel)
 	{
@@ -260,6 +276,39 @@ static void module_unloaded(struct module *module)
 				ref->success_func = NULL;
 				ref->error_func = NULL;
 			}
+		}
+	}
+}
+
+static void irc_disconnected()
+{
+	ready_to_join = 0;
+
+	dict_iter(node, cj_channels)
+	{
+		struct cj_channel *chan = node->data;
+		chan->tries = 0;
+		chan->channel = NULL;
+		chan->state = CJ_JOIN_LATER;
+		timer_del_boundname(chan, "chanjoin_join_timeout");
+		timer_del_boundname(chan, "chanjoin_joined");
+		timer_del_boundname(chan, "chanjoin_rejoin");
+	}
+}
+
+static void perform_done()
+{
+	ready_to_join = 1;
+
+	dict_iter(node, cj_channels)
+	{
+		struct cj_channel *chan = node->data;
+		if(chan->state == CJ_JOIN_LATER && !chan->channel)
+		{
+			chan->state = CJ_JOIN_PENDING;
+			irc_send("JOIN %s", chan->name);
+			timer_del_boundname(chan, "chanjoin_join_timeout");
+			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0);
 		}
 	}
 }

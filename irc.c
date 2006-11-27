@@ -8,8 +8,11 @@
 #include "conf.h"
 #include "chanuser.h"
 
+IMPLEMENT_LIST(disconnected_func_list, disconnected_f *)
+
 extern struct surgebot_conf bot_conf;
 extern int quit_poll;
+static struct disconnected_func_list *disconnected_funcs;
 
 static void irc_conf_reload();
 static void irc_sock_read(struct sock *sock, char *buf, size_t len);
@@ -28,10 +31,12 @@ void irc_init()
 		reg_loop_func(irc_poll_sendq);
 
 	reg_conf_reload_func(irc_conf_reload);
+	disconnected_funcs = disconnected_func_list_create();
 }
 
 void irc_fini()
 {
+	disconnected_func_list_free(disconnected_funcs);
 	unreg_conf_reload_func(irc_conf_reload);
 	unreg_loop_func(irc_poll_sendq);
 }
@@ -105,6 +110,8 @@ static void irc_disconnected()
 	log_append(LOG_INFO, "Connection closed by the server");
 	timer_del_boundname(&bot, "server_connect_timeout");
 	bot.server_sock = NULL;
+	for(unsigned int i = 0; i < disconnected_funcs->count; i++)
+		disconnected_funcs->data[i]();
 	irc_schedule_reconnect(5);
 }
 
@@ -119,6 +126,8 @@ static void irc_connect_timeout(void *bound, void *data)
 	log_append(LOG_INFO, "Could not connect to server - timeout");
 	sock_close(bot.server_sock);
 	bot.server_sock = NULL;
+	for(unsigned int i = 0; i < disconnected_funcs->count; i++)
+		disconnected_funcs->data[i]();
 	irc_schedule_reconnect(30);
 }
 
@@ -126,6 +135,8 @@ static void irc_error(int err)
 {
 	timer_del_boundname(&bot, "server_connect_timeout");
 	bot.server_sock = NULL;
+	for(unsigned int i = 0; i < disconnected_funcs->count; i++)
+		disconnected_funcs->data[i]();
 	irc_schedule_reconnect(15);
 }
 
@@ -405,4 +416,14 @@ char *irc_format_line(const char *msg)
 		buf[pos - 1] = '\0'; // -> remove it!
 
 	return buf;
+}
+
+void reg_disconnected_func(disconnected_f *func)
+{
+	disconnected_func_list_add(disconnected_funcs, func);
+}
+
+void unreg_disconnected_func(disconnected_f *func)
+{
+	disconnected_func_list_del(disconnected_funcs, func);
 }

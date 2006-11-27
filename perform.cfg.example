@@ -42,6 +42,7 @@
 		"PRIVMSG #help :I am a badly configured bot, please G-line me immediately."
 	);
 
+	"call" = "chanjoin_join_channels";
 	// "call" = "some_perform_function_from_another_module";
 };
 
