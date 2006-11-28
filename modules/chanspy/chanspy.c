@@ -40,7 +40,7 @@ static void spy_gotmsg(const char *channel, unsigned int type, const char *fmt, 
 static struct module *this;
 static struct database *chanspy_db = NULL;
 static struct dict *spies;
-static const char *spy_flags = "PANMJLKQNT";
+static const char *spy_flags = "PANmjpkqnt";
 static char spy_flags_inverse[256];
 
 MODULE_INIT
