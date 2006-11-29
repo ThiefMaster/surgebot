@@ -27,6 +27,7 @@
 	"$bP$b  Regular channel messages",
 	"$bA$b  CTCP ACTION (/me)",
 	"$bN$b  Notices",
+	"$bQ$b  Private messages (query)",
 	"$bm$b  Mode changes",
 	"$bj$b  Joins",
 	"$bp$b  Parts",

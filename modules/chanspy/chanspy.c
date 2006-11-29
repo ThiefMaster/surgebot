@@ -36,11 +36,12 @@ static void spy_free(struct chanspy *spy);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
 static void spy_gotmsg(const char *channel, unsigned int type, const char *fmt, ...)  PRINTF_LIKE(3, 4);
+static char *modechar(const char *chan, const char *nick);
 
 static struct module *this;
 static struct database *chanspy_db = NULL;
 static struct dict *spies;
-static const char *spy_flags = "PANmjpkqnt";
+static const char *spy_flags = "PANQmjpkqnt";
 static char spy_flags_inverse[256];
 
 MODULE_INIT
@@ -198,33 +199,65 @@ static void spy_gotmsg(const char *channel, unsigned int type, const char *fmt, 
 	}
 }
 
-IRC_HANDLER(privmsg)
+static char *modechar(const char *chan, const char *nick)
 {
-	char *modechar = "";
+	static char modechar[2];
 	struct irc_channel *channel;
 	struct irc_chanuser *chanuser;
-	assert(argc > 2);
 
-	if(!IsChannelName(argv[1]))
-		return;
-
-	if((channel = channel_find(argv[1])) && (chanuser = dict_find(channel->users, src->nick)))
+	strcpy(modechar, "");
+	if((channel = channel_find(chan)) && (chanuser = dict_find(channel->users, nick)))
 	{
 		if(chanuser->flags & MODE_OP)
-			modechar = "@";
+			strcpy(modechar, "@");
 		else if(chanuser->flags & MODE_VOICE)
-			modechar = "+";
+			strcpy(modechar, "+");
 	}
 
-	if(!strncasecmp(argv[2], "\001ACTION ", 8))
+	return modechar;
+}
+
+IRC_HANDLER(privmsg)
+{
+	struct irc_user *user;
+	assert(argc > 2);
+
+	if(!strcasecmp(argv[1], bot.nickname) && (user = user_find(src->nick)))
 	{
-		char *action = strdup(argv[2] + 8);
-		action[strlen(action)-1] = '\0';
-		spy_gotmsg(argv[1], CSPY_ACTION, "* %s%s %s", modechar, src->nick, action);
-		free(action);
+		if(!strncasecmp(argv[2], "\001ACTION ", 8))
+		{
+			char *action = strdup(argv[2] + 8);
+			action[strlen(action)-1] = '\0';
+			dict_iter(node, user->channels)
+			{
+				struct irc_chanuser *chanuser = node->data;
+				spy_gotmsg(chanuser->channel->name, CSPY_QUERY, "[PM] * %s %s", src->nick, action);
+			}
+			free(action);
+		}
+		else
+		{
+			dict_iter(node, user->channels)
+			{
+				struct irc_chanuser *chanuser = node->data;
+				spy_gotmsg(chanuser->channel->name, CSPY_QUERY, "[PM] <%s> %s", src->nick, argv[2]);
+			}
+		}
 	}
-	else
-		spy_gotmsg(argv[1], CSPY_PRIVMSG, "<%s%s> %s", modechar, src->nick, argv[2]);
+	else if(IsChannelName(argv[1]))
+	{
+		if(!strncasecmp(argv[2], "\001ACTION ", 8))
+		{
+			char *action = strdup(argv[2] + 8);
+			action[strlen(action)-1] = '\0';
+			spy_gotmsg(argv[1], CSPY_ACTION, "* %s%s %s", modechar(argv[1], src->nick), src->nick, action);
+			free(action);
+		}
+		else
+		{
+			spy_gotmsg(argv[1], CSPY_PRIVMSG, "<%s%s> %s", modechar(argv[1], src->nick), src->nick, argv[2]);
+		}
+	}
 }
 
 IRC_HANDLER(notice)
@@ -278,7 +311,7 @@ static void user_del_hook(struct irc_user *user, unsigned int quit, const char *
 	dict_iter(node, user->channels)
 	{
 		struct irc_chanuser *chanuser = node->data;
-		spy_gotmsg(chanuser->channel->name, CSPY_QUIT, "* Quits: %s (%s@%s) (%s)", user->nick, user->ident, user->host, reason);
+		spy_gotmsg(chanuser->channel->name, CSPY_QUIT, "* Quits: %s%s (%s@%s) (%s)", modechar(chanuser->channel->name, user->nick), user->nick, user->ident, user->host, reason);
 	}
 }
 
