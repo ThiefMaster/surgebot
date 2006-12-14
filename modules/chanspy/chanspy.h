@@ -19,9 +19,13 @@ struct chanspy
 	char	*name;
 	char	*channel;
 	char	*target;
+	char	*target_host;
+	char	*target_pass;
+	unsigned int target_port;
 	int	flags;
 	unsigned int active : 1;
 	const char *last_error;
+	struct sock *sock;
 };
 
 

@@ -5,8 +5,10 @@
 );
 
 "chanspy add" = (
-	"Usage: /msg $N chanspy add <name> <#from> <#target> <flags>",
-	"Creates a new channel spy that relays messages from #from to #target.",
+	"Usage: /msg $N chanspy add <name> <[<]#channel> <#channel|nick|>ip:port/pass> <flags>",
+	"Creates a new channel spy that relays messages from <from> to <target>.",
+	"If <from> is set to <#channel, the bot will not join the channel but act as a remote spying server.",
+	"If <target> is '>host:port/password', the bot will act as a remote spying client.",
 	"The flags specify which messages are relayed. Use $b*$b for everything.",
 	"$uSee also:$u chanspy list, chanspy del, chanspy rejoin, chanspy flags"
 );

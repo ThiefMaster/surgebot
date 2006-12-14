@@ -42,3 +42,10 @@
 	"invite_command" = "CHANSERV INVITEME %s";
 	"part_reason" = "My work here is done.";
 };
+
+"chanspy" = {
+	// To enable remote logging, change host/port if required and set a password.
+	"listen_host" = "127.0.0.1";
+	"listen_port" = "1234";
+	"password" = "";
+};
