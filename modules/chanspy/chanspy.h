@@ -28,5 +28,6 @@ struct chanspy
 	struct sock *sock;
 };
 
+#define IsSpySourceChannelName(NAME)	(IsChannelName((NAME)) || !strcmp((NAME), "*"))
 
 #endif

@@ -333,7 +333,7 @@ static void chanspy_server_read(struct sock *sock, char *buf, size_t len)
 		return;
 	}
 
-	if(argc > 1 && !strcmp(argv[0], "CHAN") && IsChannelName(argv[1]) && client->authed)
+	if(argc > 1 && !strcmp(argv[0], "CHAN") && IsSpySourceChannelName(argv[1]) && client->authed)
 	{
 		if(client->chan)
 			free(client->chan);
@@ -519,7 +519,7 @@ static struct chanspy *spy_add(const char *name, const char *channel, const char
 		spy->last_error = "No Error";
 	}
 
-	if(*channel != '<')
+	if(*channel != '<' && strcmp(channel, "*"))
 		chanjoin_addchan(channel, this, name, cj_success, cj_error, spy);
 
 	if(*spy->target == '>')
@@ -557,7 +557,7 @@ static void spy_free(struct chanspy *spy)
 {
 	if(spy->active && !reloading_module)
 	{
-		if(*spy->channel != '<')
+		if(*spy->channel != '<' && strcmp(spy->channel, "*"))
 			chanjoin_delchan(spy->channel, this, spy->name);
 	}
 
@@ -659,26 +659,40 @@ IRC_HANDLER(privmsg)
 	struct irc_user *user;
 	assert(argc > 2);
 
-	if(!strcasecmp(argv[1], bot.nickname) && (user = user_find(src->nick)))
+	if(!strcasecmp(argv[1], bot.nickname))
 	{
+		user = user_find(src->nick);
 		if(!strncasecmp(argv[2], "\001ACTION ", 8))
 		{
 			char *action = strdup(argv[2] + 8);
 			action[strlen(action)-1] = '\0';
-			dict_iter(node, user->channels)
+			if(user)
 			{
-				struct irc_chanuser *chanuser = node->data;
-				spy_gotmsg(chanuser->channel->name, 0, CSPY_QUERY, "[PM] * %s %s", src->nick, action);
+				dict_iter(node, user->channels)
+				{
+					struct irc_chanuser *chanuser = node->data;
+					spy_gotmsg(chanuser->channel->name, 0, CSPY_QUERY, "[PM] * %s %s", src->nick, action);
+				}
 			}
+
+			if(!user || !user->account)
+				spy_gotmsg("*", 0, CSPY_QUERY, "[PM] * %s %s", src->nick, action);
+
 			free(action);
 		}
 		else
 		{
-			dict_iter(node, user->channels)
+			if(user)
 			{
-				struct irc_chanuser *chanuser = node->data;
-				spy_gotmsg(chanuser->channel->name, 0, CSPY_QUERY, "[PM] <%s> %s", src->nick, argv[2]);
+				dict_iter(node, user->channels)
+				{
+					struct irc_chanuser *chanuser = node->data;
+					spy_gotmsg(chanuser->channel->name, 0, CSPY_QUERY, "[PM] <%s> %s", src->nick, argv[2]);
+				}
 			}
+
+			if(!user || !user->account)
+				spy_gotmsg("*", 0, CSPY_QUERY, "[PM] <%s> %s", src->nick, argv[2]);
 		}
 	}
 	else if(IsChannelName(argv[1]))
@@ -788,7 +802,7 @@ COMMAND(chanspy_add)
 		return 0;
 	}
 
-	if(!IsChannelName(argv[2]) && (*argv[2] != '<' || !IsChannelName(argv[2] + 1)))
+	if(!IsSpySourceChannelName(argv[2]) && (*argv[2] != '<' || !IsSpySourceChannelName(argv[2] + 1)))
 	{
 		reply("You must specify a valid source channel or <#channel to read from a socket.");
 		return 0;
@@ -856,6 +870,13 @@ COMMAND(chanspy_add)
 
 			flags |= 1 << (pos - 1);
 		}
+	}
+
+	// !IsChannelName at this position means that it's "*" or "<*"
+	if(!IsChannelName(argv[2]) && (*argv[2] != '<' || !IsChannelName(argv[2] + 1)) && flags != CSPY_QUERY)
+	{
+		reply("You may only use '$bQ$b' (PMs) when setting the source channel to $b*$b.");
+		return 0;
 	}
 
 	spy_add(argv[1], argv[2], argv[3], flags);
