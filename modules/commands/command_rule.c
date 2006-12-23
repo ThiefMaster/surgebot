@@ -190,9 +190,15 @@ PARSER_FUNC(inchannel)
 	struct irc_channel *chan;
 
 	if(!arg)
-		return RET_NONE;
+	{
+		if(!cr_ctx->channel)
+			return RET_TRUE;
+		else
+			arg = cr_ctx->channel->name;
+	}
 
 	if((chan = channel_find(arg)) && cr_ctx->user && channel_user_find(chan, (struct irc_user *)cr_ctx->user))
 		return RET_TRUE;
+
 	return RET_FALSE;
 }

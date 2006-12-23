@@ -1,0 +1,69 @@
+"cregister" = (
+	"Usage: /msg $N cregister <#channel> <nick|*account>",
+	"Registers a channel and gives owner (500) access to the specified user.",
+	"$uSee also:$u cunregister, stats chanreg"
+);
+
+"cunregister" = (
+	"Usage: /msg $N cunregister <#channel>",
+	"Unregisters a channel. Note: Channel settings and the userlist $bcannot$b be recovered after unregistration.",
+	"$uSee also:$u cregister, stats chanreg"
+);
+
+"stats chanreg" = (
+	"Usage: /msg $N stats chanreg",
+	"Displays a list of all registered channels.",
+	"$uSee also:$u cregister, cunregister"
+);
+
+
+"adduser" = (
+	"Usage: /msg $N adduser <#channel> <nick|*account> <level>",
+	"Adds a user to the channel userlist with the specified access level.",
+	"The level may be anything from 1 to 500, but only staff may add users with level 500 (owner) and you can only add users with less access than you have.",
+	"$uSee also:$u clvl, deluser, giveownership, access, users"
+);
+
+"deluser" = (
+	"Usage: /msg $N deluser <#channel> <nick|*account>",
+	"Removes a user to the channel userlist. Note that you can only delete users who have less access than you.",
+	"$uSee also:$u adduser, clvl, giveownership, suspend, access, users"
+);
+
+"clvl" = (
+	"Usage: /msg $N clvl <#channel> <nick|*account> <level>",
+	"Modifies access of a channel user with the same restrictions like when adding new users.",
+	"Additionally, you cannot change the access of someone with more or equal access than you.",
+	"$uSee also:$u adduser, deluser, giveownership, access, users"
+);
+
+"giveownership" = (
+	"Usage: /msg $N giveownership <#channel> <nick|*account> [FORCE]",
+	"Transfers ownership of the channel from you to another user on the userlist. Your own access will be changed at least to coowner (or higher if the new owner had more than 400 access).",
+	"Staff may use FORCE to transfer ownership to someone not on the userlist.",
+	"$uSee also:$u adduser, clvl, deluser, access, users"
+);
+
+"suspend" = (
+	"Usage: /msg $N suspend <#channel> <nick|*account>",
+	"Disables the user's access in the channel temporarily until it is restored with the unsuspend command.",
+	"$uSee also:$u deluser, unsuspend, access, users"
+);
+
+"unsuspend" = (
+	"Usage: /msg $N unsuspend <#channel> <nick|*account>",
+	"Restores the access of a suspended user.",
+	"$uSee also:$u deluser, suspend, access, users"
+);
+
+"access" = (
+	"Usage: /msg $N access <#channel> [nick|*account]",
+	"Displays information about a channel user. If you omit the nick/account, information about your own access will be returned.",
+	"$uSee also:$u adduser, clvl, deluser, giveownership, users"
+);
+
+"users" = (
+	"Usage: /msg $N users <#channel>",
+	"Displays the userlist of a channel.",
+	"$uSee also:$u adduser, clvl, deluser, giveownership, access"
+);

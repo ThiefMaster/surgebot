@@ -49,3 +49,11 @@
 	"listen_port" = "1234";
 	"password" = "";
 };
+
+"chanreg" = {
+	"default_modules" = ();
+	// Rule that allows to use staff features of regular commands (e.g. modifying your own access)
+	"staff_rule" = "group(admins)";
+};
+
+// vim: ft=cfg
