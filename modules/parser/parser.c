@@ -143,8 +143,12 @@ struct parser_token_list *parser_tokenize(struct parser *parser, const char *str
 
 			if(func_arg) // End of function argument
 			{
-				while(isspace(func_token->arg->string[func_token->arg->len - 1]))
-					func_token->arg->string[--func_token->arg->len] = '\0';
+				if(func_token->arg->len)
+				{
+					while(isspace(func_token->arg->string[func_token->arg->len - 1]))
+						func_token->arg->string[--func_token->arg->len] = '\0';
+				}
+
 				func_arg = 0;
 				func_token = NULL;
 			}
@@ -297,7 +301,7 @@ static pf_retval parser_eval_binary(struct parser *parser, pf_retval lhs, pf_ret
 
 static pf_retval parser_eval_func(struct parser *parser, struct parser_func_token *ftok, void *ctx)
 {
-	return ftok->func(ctx, ftok->name, ftok->arg->string);
+	return ftok->func(ctx, ftok->name, (ftok->arg->len ? ftok->arg->string : NULL));
 }
 
 int parser_execute(struct parser *parser, const struct parser_token_list *tokens, void *ctx)
@@ -393,7 +397,10 @@ static int parser_execute_recursive(struct parser *parser, const struct parser_t
 		assert_return(tmp == RET_TRUE || tmp == RET_FALSE, -4);
 
 		if(neg)
+		{
 			tmp = (tmp == RET_FALSE) ? RET_TRUE : RET_FALSE;
+			neg = 0;
+		}
 
 		if(lhs == RET_NONE)
 			lhs = tmp;

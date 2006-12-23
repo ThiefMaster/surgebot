@@ -28,7 +28,7 @@ static void command_db_read(struct database *db);
 static int command_db_write(struct database *db);
 static void handle_command(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *msg);
 static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, int argc, char **argv, char **exp_argv);
-static int binding_check_access(struct irc_source *src, struct irc_user *user, struct cmd_binding *binding, unsigned int quiet);
+static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, struct cmd_binding *binding, unsigned int quiet);
 static int show_subcmds(struct irc_source *src, struct irc_user *user, const char *prefix, int check_access);
 static char *make_cmd_key(struct module *module, const char *cmd);
 static void module_loaded(struct module *module);
@@ -219,13 +219,6 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		return;
 	}
 
-	if(!binding_check_access(src, user, binding, 0))
-	{
-		// Replies are done by binding_check_access() if the user lacks access
-		free(msg_dup);
-		return;
-	}
-
 	if(channel_arg && !(cmd->flags & CMD_ACCEPT_CHANNEL))
 	{
 		if(!command_conf.stealth || (user && user->account))
@@ -284,6 +277,13 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 			argc--;
 			argv++;
 		}
+	}
+
+	if(!binding_check_access(src, user, channel, binding, 0))
+	{
+		// Replies are done by binding_check_access() if the user lacks access
+		free(msg_dup);
+		return;
 	}
 
 	if(argc < cmd->min_argc)
@@ -472,7 +472,7 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 	return tokenize(buf, exp_argv+1, MAXARG-1, ' ', 0) + 1;
 }
 
-static int binding_check_access(struct irc_source *src, struct irc_user *user, struct cmd_binding *binding, unsigned int quiet)
+static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, struct cmd_binding *binding, unsigned int quiet)
 {
 	enum command_rule_result res;
 
@@ -497,7 +497,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 		return 0;
 	}
 
-	res = command_rule_exec(binding->comp_rule, src, user);
+	res = command_rule_exec(binding->comp_rule, src, user, channel);
 
 	// Hack to prevent people from removing their access to important commands.
 	// However, it does not prevent them from setting a bad access rule to the auth command.
@@ -536,7 +536,7 @@ static int show_subcmds(struct irc_source *src, struct irc_user *user, const cha
 
 		if(!strncasecmp(binding->name, prefix, strlen(prefix)) && binding->name[strlen(prefix)] == ' ')
 		{
-			if(!check_access || binding_check_access(src, user, binding, 1))
+			if(!check_access || binding_check_access(src, user, NULL, binding, 1))
 				stringlist_add(completions, strdup(binding->name));
 		}
 	}
