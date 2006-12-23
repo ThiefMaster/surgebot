@@ -48,7 +48,7 @@ struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read
 
 	type &= ~(SOCK_LISTEN | SOCK_CONNECT | SOCK_ZOMBIE);
 
-	switch(type & (SOCK_IPV4|SOCK_IPV6|SOCK_UNIX))
+	switch(type & (SOCK_IPV4|SOCK_IPV6|SOCK_UNIX|SOCK_NOSOCK))
 	{
 		case SOCK_IPV4:
 			domain_type = AF_INET;
@@ -65,8 +65,19 @@ struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read
 			proto_type = 0;
 			break;
 
+		case SOCK_NOSOCK:
+			// Just create a "blank" socket struct (without a socket) and return it
+			sock = malloc(sizeof(struct sock));
+			memset(sock, 0, sizeof(struct sock));
+			sock->flags = type;
+			sock->event_func = event_func;
+			sock->read_func = read_func;
+			sock->fd = -1;
+			return sock;
+			break;
+
 		default:
-			log_append(LOG_ERROR, "Invalid socket type %d in sock_create(); use SOCK_IPV4, SOCK_IPV6 or SOCK_UNIX", type);
+			log_append(LOG_ERROR, "Invalid socket type %d in sock_create(); use SOCK_IPV4, SOCK_IPV6, SOCK_UNIX or SOCK_NOSOCK", type);
 			return NULL;
 	}
 
@@ -355,6 +366,16 @@ int sock_listen(struct sock *sock, const char *ssl_pem)
 	return 0;
 }
 
+void sock_set_fd(struct sock *sock, int fd)
+{
+	if(!(sock->flags & SOCK_NOSOCK) || sock->fd != -1)
+		return;
+
+	sock->fd = fd;
+	sock_list_add(sock_list, sock);
+	debug("fd for sock %p set to %d", sock, fd);
+}
+
 struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_f *read_func)
 {
 	if(!(sock->flags & SOCK_LISTEN))
@@ -554,7 +575,7 @@ int sock_close(struct sock *sock)
 	if(sock->flags & SOCK_ZOMBIE)
 		return -1;
 
-	if(sock->fd)
+	if(sock->fd > 0)
 		close(sock->fd);
 
 	sock->flags |= SOCK_ZOMBIE;
@@ -725,7 +746,7 @@ int sock_poll()
 		ev_write = ((pollfds[i].revents & POLLOUT) ? 1 : 0);
 
 		len = sizeof(int);
-		if(getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, (void *)&error, &len) != 0 || error)
+		if(!(sock->flags & SOCK_NOSOCK) && (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, (void *)&error, &len) != 0 || error))
 		{
 			sock->event_func(sock, EV_ERROR, error);
 			sock_close(sock);
@@ -806,7 +827,7 @@ int sock_poll()
 						}
 					}
 #endif
-					else if(rres == 0)
+					else if(rres == 0 && !(sock->flags & SOCK_NOSOCK))
 					{
 						sock->event_func(sock, EV_HANGUP, 0);
 						sock_close(sock);

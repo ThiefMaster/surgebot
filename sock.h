@@ -10,6 +10,7 @@
 #define SOCK_LISTEN	0x10
 #define SOCK_CONNECT	0x20
 #define SOCK_ZOMBIE	0x40
+#define SOCK_NOSOCK	0x80 // Not a socket but something else with a fd (file, pipe, etc.)
 
 DECLARE_LIST(sock_list, struct sock *)
 
@@ -59,6 +60,7 @@ struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read
 int sock_bind(struct sock *sock, const char *addr, unsigned int port);
 int sock_connect(struct sock *sock, const char *addr, unsigned int port);
 int sock_listen(struct sock *sock, const char *ssl_pem);
+void sock_set_fd(struct sock *sock, int fd);
 int sock_close(struct sock *sock);
 struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_f *read_func);
 int sock_write(struct sock *sock, char *buf, size_t len);
