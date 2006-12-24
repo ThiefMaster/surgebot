@@ -28,7 +28,7 @@ static void command_db_read(struct database *db);
 static int command_db_write(struct database *db);
 static void handle_command(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *msg);
 static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, int argc, char **argv, char **exp_argv);
-static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, struct cmd_binding *binding, unsigned int quiet);
+static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, char *channelname, struct cmd_binding *binding, unsigned int quiet);
 static int show_subcmds(struct irc_source *src, struct irc_user *user, const char *prefix, int check_access);
 static char *make_cmd_key(struct module *module, const char *cmd);
 static void module_loaded(struct module *module);
@@ -240,7 +240,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		// If the channel does not exist, channel_find returns NULL.
 		// In this case we return an error since otherwise ".cmd #invalidchannel" done in "#validchannel" would
 		// result in 'channel' being set to channel_find("#validchannel") which is not expected
-		if((channel = channel_find(channel_arg)) == NULL)
+		if((channel = channel_find(channel_arg)) == NULL && !(cmd->flags & CMD_LAZY_ACCEPT_CHANNEL))
 		{
 			if(!command_conf.stealth || (user && user->account))
 				reply("You must provide a channel name that exists and is known to the bot.");
@@ -265,7 +265,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		// Again, try finding a channel name
 		if((cmd->flags & CMD_ACCEPT_CHANNEL) && argc > 1 && IsChannelName(argv[1]))
 		{
-			if((channel = channel_find(argv[1])) == NULL)
+			if((channel = channel_find(argv[1])) == NULL && !(cmd->flags & CMD_LAZY_ACCEPT_CHANNEL))
 			{
 				if(!command_conf.stealth || (user && user->account))
 					reply("You must provide a channel name that exists and is known to the bot.");
@@ -279,7 +279,10 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		}
 	}
 
-	if(!binding_check_access(src, user, channel, binding, 0))
+	if(channel && !channel_arg)
+		channel_arg = channel->name;
+
+	if(!binding_check_access(src, user, channel, channel_arg, binding, 0))
 	{
 		// Replies are done by binding_check_access() if the user lacks access
 		free(msg_dup);
@@ -295,7 +298,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 
 	// Call command function and log it if the return value is >0.
-	ret = cmd->func(src, user, channel, argc, argv);
+	ret = cmd->func(src, user, channel, channel_arg, argc, argv);
 
 	if(ret == -1) // Not enough arguments
 	{
@@ -472,7 +475,7 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 	return tokenize(buf, exp_argv+1, MAXARG-1, ' ', 0) + 1;
 }
 
-static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, struct cmd_binding *binding, unsigned int quiet)
+static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, char *channelname, struct cmd_binding *binding, unsigned int quiet)
 {
 	enum command_rule_result res;
 
@@ -497,7 +500,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 		return 0;
 	}
 
-	res = command_rule_exec(binding->comp_rule, src, user, channel);
+	res = command_rule_exec(binding->comp_rule, src, user, channel, channelname);
 
 	// Hack to prevent people from removing their access to important commands.
 	// However, it does not prevent them from setting a bad access rule to the auth command.
@@ -536,7 +539,7 @@ static int show_subcmds(struct irc_source *src, struct irc_user *user, const cha
 
 		if(!strncasecmp(binding->name, prefix, strlen(prefix)) && binding->name[strlen(prefix)] == ' ')
 		{
-			if(!check_access || binding_check_access(src, user, NULL, binding, 1))
+			if(!check_access || binding_check_access(src, user, NULL, NULL, binding, 1))
 				stringlist_add(completions, strdup(binding->name));
 		}
 	}

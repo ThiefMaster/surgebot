@@ -121,7 +121,7 @@ unsigned int command_rule_executable(unsigned int rule_idx)
 	return 1;
 }
 
-enum command_rule_result command_rule_exec(unsigned int rule_idx, const struct irc_source *src, const struct irc_user *user, const struct irc_channel *channel)
+enum command_rule_result command_rule_exec(unsigned int rule_idx, const struct irc_source *src, const struct irc_user *user, const struct irc_channel *channel, const char *channelname)
 {
 	struct command_rule_context ctx;
 	struct command_rule *crule;
@@ -139,6 +139,7 @@ enum command_rule_result command_rule_exec(unsigned int rule_idx, const struct i
 	ctx.src     = src;
 	ctx.user    = user;
 	ctx.channel = channel;
+	ctx.channelname = channelname;
 
 	res = parser_execute(parser, crule->rule, &ctx);
 
@@ -191,10 +192,10 @@ PARSER_FUNC(inchannel)
 
 	if(!arg)
 	{
-		if(!cr_ctx->channel)
+		if(!cr_ctx->channelname)
 			return RET_TRUE;
 		else
-			arg = cr_ctx->channel->name;
+			arg = cr_ctx->channelname;
 	}
 
 	if((chan = channel_find(arg)) && cr_ctx->user && channel_user_find(chan, (struct irc_user *)cr_ctx->user))

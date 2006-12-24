@@ -3,16 +3,17 @@
 
 #include "command_rule.h"
 
-#define COMMAND(CMD)	static int __command_ ## CMD(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, int argc, char **argv)
-typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, int argc, char **argv);
+#define COMMAND(CMD)	static int __command_ ## CMD(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, int argc, char **argv)
+typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, int argc, char **argv);
 #define DEFINE_COMMAND(MOD, NAME, FUNC, ARGC, FLAGS, RULE)	command_add(MOD, NAME, __command_ ## FUNC, ARGC, FLAGS, RULE)
 
 #define CMD_ACCEPT_CHANNEL	0x001 // accept channel argument
-#define CMD_LOG_HOSTMASK	0x002 // log full mask
-#define CMD_ONLY_PRIVMSG	0x004 // do not allow public use of this command
-#define CMD_ALLOW_UNKNOWN	0x008 // allow unknown users (no common channels) to use this command
-#define CMD_REQUIRE_AUTHED	0x010 // user must be authed to use this command
-#define CMD_KEEP_BOUND		0x020 // do not allow unbinding last binding of this command
+#define CMD_LAZY_ACCEPT_CHANNEL	(0x001 | 0x002) // accept channel argument even if channel is unknown to the bot
+#define CMD_LOG_HOSTMASK	0x004 // log full mask
+#define CMD_ONLY_PRIVMSG	0x008 // do not allow public use of this command
+#define CMD_ALLOW_UNKNOWN	0x010 // allow unknown users (no common channels) to use this command
+#define CMD_REQUIRE_AUTHED	0x020 // user must be authed to use this command
+#define CMD_KEEP_BOUND		0x040 // do not allow unbinding last binding of this command
 
 struct command
 {

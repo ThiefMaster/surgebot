@@ -67,17 +67,17 @@ MODULE_INIT
 	REG_COMMAND_RULE("privchan", privchan);
 
 	help_load(self, "chanreg.help");
-	DEFINE_COMMAND(self, "cregister",	cregister,	3, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "cunregister",	cunregister,	1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cregister",	cregister,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "cunregister",	cunregister,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
 	DEFINE_COMMAND(self, "stats chanreg",	stats_chanreg,	1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "adduser",		adduser,	3, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "deluser",		deluser,	2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "clvl",		clvl,		3, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "giveownership",	giveownership,	2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "suspend",		suspend,	2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "unsuspend",	unsuspend,	2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "access",		access,		1, CMD_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
-	DEFINE_COMMAND(self, "users",		users,		1, CMD_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "adduser",		adduser,	3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "deluser",		deluser,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "clvl",		clvl,		3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "giveownership",	giveownership,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "suspend",		suspend,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "unsuspend",	unsuspend,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "access",		access,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "users",		users,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
 
 	reg_conf_reload_func(chanreg_conf_reload);
 	chanreg_conf_reload();
@@ -266,12 +266,12 @@ PARSER_FUNC(chanuser)
 
 	min_level = arg ? atoi(arg) : 0;
 
-	if(!cr_ctx->channel)
+	if(!cr_ctx->channelname)
 		return RET_TRUE;
 
 	// Not registered -> return true since the command function is supposed to use
 	// the CHANREG_COMMAND; macro which aborts if the channel is not registered.
-	if(!(reg = chanreg_find(cr_ctx->channel->name)))
+	if(!(reg = chanreg_find(cr_ctx->channelname)))
 		return RET_TRUE;
 
 	if(cr_ctx->user->account && (c_user = chanreg_user_find(reg, cr_ctx->user->account->name)) &&
@@ -300,24 +300,24 @@ COMMAND(cregister)
 	struct chanreg *reg;
 	struct user_account *account;
 
-	if((reg = chanreg_find(argv[1])))
+	if(!channelname)
+	{
+		reply("You must provide a valid channel name.");
+		return 0;
+	}
+
+	if((reg = chanreg_find(channelname)))
 	{
 		reply("$b%s$b is already registered.", reg->channel);
 		return 0;
 	}
 
-	if(!IsChannelName(argv[1]))
-	{
-		reply("$b%s$b is not a valid channel name.", argv[1]);
-		return 0;
-	}
-
-	if(!(account = account_find_smart(src, argv[2])))
+	if(!(account = account_find_smart(src, argv[1])))
 		return 0;
 
-	reg = chanreg_add(argv[1]);
+	reg = chanreg_add(channelname);
 	chanreg_user_add(reg, account->name, UL_OWNER);
-	reply("Channel $b%s$b registered to $b%s$b.", argv[1], argv[2]);
+	reply("Channel $b%s$b registered to $b%s$b.", channelname, argv[1]);
 	return 1;
 }
 
@@ -325,8 +325,8 @@ COMMAND(cunregister)
 {
 	CHANREG_COMMAND;
 
-	reply("$b%s$b has been unregistered.", channel->name);
-	dict_delete(chanregs, channel->name);
+	reply("$b%s$b has been unregistered.", channelname);
+	dict_delete(chanregs, channelname);
 
 	return 1;
 }
@@ -380,12 +380,12 @@ COMMAND(adduser)
 
 	if((victim = chanreg_user_find(reg, account->name)))
 	{
-		reply("$b%s$b is already on the $b%s$b user list with $b%d$b access.", account->name, channel->name, victim->level);
+		reply("$b%s$b is already on the $b%s$b user list with $b%d$b access.", account->name, channelname, victim->level);
 		return 0;
 	}
 
 	chanreg_user_add(reg, account->name, level);
-	reply("Added $b%s$b to the $b%s$b user list with $b%d$b access.", account->name, channel->name, level);
+	reply("Added $b%s$b to the $b%s$b user list with $b%d$b access.", account->name, channelname, level);
 	return 1;
 }
 
@@ -407,7 +407,7 @@ COMMAND(deluser)
 
 	if(!(victim = chanreg_user_find(reg, account->name)))
 	{
-		reply("$b%s$b lacks access to $b%s$b.", account->name, channel->name);
+		reply("$b%s$b lacks access to $b%s$b.", account->name, channelname);
 		return 0;
 	}
 
@@ -417,7 +417,7 @@ COMMAND(deluser)
 		return 0;
 	}
 
-	reply("Removed $b%s$b (with $b%d$b access) from the $b%s$b user list.", account->name, victim->level, channel->name);
+	reply("Removed $b%s$b (with $b%d$b access) from the $b%s$b user list.", account->name, victim->level, channelname);
 	chanreg_user_del(reg, victim);
 	return 1;
 }
@@ -447,7 +447,7 @@ COMMAND(clvl)
 
 	if(!(victim = chanreg_user_find(reg, account->name)))
 	{
-		reply("$b%s$b lacks access to $b%s$b.", account->name, channel->name);
+		reply("$b%s$b lacks access to $b%s$b.", account->name, channelname);
 		return 0;
 	}
 
@@ -465,7 +465,7 @@ COMMAND(clvl)
 	}
 
 	victim->level = level;
-	reply("$b%s$b now has $b%d$b access in $b%s$b.", account->name, level, channel->name);
+	reply("$b%s$b now has $b%d$b access in $b%s$b.", account->name, level, channelname);
 	return 1;
 }
 
@@ -507,7 +507,7 @@ COMMAND(giveownership)
 			victim = chanreg_user_add(reg, account->name, UL_COOWNER);
 		else
 		{
-			reply("$b%s$b lacks access to $b%s$b.", account->name, channel->name);
+			reply("$b%s$b lacks access to $b%s$b.", account->name, channelname);
 			return 0;
 		}
 	}
@@ -516,7 +516,7 @@ COMMAND(giveownership)
 		current_owner->level = ((victim->level > UL_COOWNER) ? victim->level : UL_COOWNER);
 	victim->level = UL_OWNER;
 
-	reply("Ownership of $b%s$b has been transferred to $b%s$b.", channel->name, account->name);
+	reply("Ownership of $b%s$b has been transferred to $b%s$b.", channelname, account->name);
 	return 1;
 }
 
@@ -538,7 +538,7 @@ COMMAND(suspend)
 
 	if(!(victim = chanreg_user_find(reg, account->name)))
 	{
-		reply("$b%s$b lacks access to $b%s$b.", account->name, channel->name);
+		reply("$b%s$b lacks access to $b%s$b.", account->name, channelname);
 		return 0;
 	}
 
@@ -555,7 +555,7 @@ COMMAND(suspend)
 	}
 
 	victim->flags |= CHANREG_USER_SUSPENDED;
-	reply("$b%s$b's access to $b%s$b has been suspended.", account->name, channel->name);
+	reply("$b%s$b's access to $b%s$b has been suspended.", account->name, channelname);
 	return 1;
 }
 
@@ -571,7 +571,7 @@ COMMAND(unsuspend)
 
 	if(!(victim = chanreg_user_find(reg, account->name)))
 	{
-		reply("$b%s$b lacks access to $b%s$b.", account->name, channel->name);
+		reply("$b%s$b lacks access to $b%s$b.", account->name, channelname);
 		return 0;
 	}
 
@@ -588,7 +588,7 @@ COMMAND(unsuspend)
 	}
 
 	victim->flags &= ~CHANREG_USER_SUSPENDED;
-	reply("$b%s$b's access to $b%s$b has been restored.", account->name, channel->name);
+	reply("$b%s$b's access to $b%s$b has been restored.", account->name, channelname);
 	return 1;
 }
 
@@ -630,11 +630,11 @@ COMMAND(access)
 
 	if(!(c_user = chanreg_user_find(reg, account->name)))
 	{
-		reply("%s lacks access to $b%s$b.", prefix, channel->name);
+		reply("%s lacks access to $b%s$b.", prefix, channelname);
 		return 1;
 	}
 
-	reply("%s has $b%d$b access in $b%s$b.", prefix, c_user->level, channel->name);
+	reply("%s has $b%d$b access in $b%s$b.", prefix, c_user->level, channelname);
 	if(c_user->flags & CHANREG_USER_SUSPENDED)
 		reply("$b%s$b's access has been suspended.", target);
 	return 1;
@@ -661,7 +661,7 @@ COMMAND(users)
 	}
 
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_channel_users);
-	reply("$b%s$b users:", channel->name);
+	reply("$b%s$b users:", channelname);
 	table_send(table, src->nick);
 	table_free(table);
 

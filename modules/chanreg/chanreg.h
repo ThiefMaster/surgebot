@@ -35,18 +35,18 @@ struct chanreg_user
 
 #define CHANREG_COMMAND								\
 	struct chanreg *reg;							\
-	if(!channel)								\
+	if(!channelname)								\
 	{									\
 		reply("You must provide the name of a channel that exists.");	\
 		return 0;							\
 	}									\
-	else if(!(reg = chanreg_find(channel->name)))				\
+	else if(!(reg = chanreg_find(channelname)))				\
 	{									\
-		reply("$b%s$b is not registered.", channel->name);		\
+		reply("$b%s$b is not registered.", channelname);		\
 		return 0;							\
 	}
 
 extern unsigned int chanreg_staff_rule;
-#define IsStaff()	(chanreg_staff_rule && command_rule_exec(chanreg_staff_rule, src, user, channel) == CR_ALLOW)
+#define IsStaff()	(chanreg_staff_rule && command_rule_exec(chanreg_staff_rule, src, user, channel, channelname) == CR_ALLOW)
 
 #endif
