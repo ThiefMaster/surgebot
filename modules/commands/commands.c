@@ -279,7 +279,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		}
 	}
 
-	if(channel && !channel_arg)
+	if(channel)
 		channel_arg = channel->name;
 
 	if(!binding_check_access(src, user, channel, channel_arg, binding, 0))
