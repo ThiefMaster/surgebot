@@ -107,5 +107,8 @@ void database_end_object(struct database *db);
 void database_write_long(struct database *db, const char *key, long value);
 void database_write_string(struct database *db, const char *key, const char *value);
 void database_write_stringlist(struct database *db, const char *key, struct stringlist *slist);
+void database_write_object(struct database *db, const char *key, const struct dict *object);
+
+struct dict *database_copy_object(const struct dict *object);
 
 #endif

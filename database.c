@@ -802,6 +802,78 @@ void database_write_stringlist(struct database *db, const char *key, struct stri
 	database_puts(db, ");\n");
 }
 
+void database_write_object(struct database *db, const char *key, const struct dict *object)
+{
+	database_begin_object(db, key);
+
+	dict_iter(node, object)
+	{
+		struct db_node *child = node->data;
+
+		switch(child->type)
+		{
+			case DB_OBJECT:
+				database_write_object(db, node->key, child->data.object);
+				break;
+
+			case DB_STRING:
+				database_write_string(db, node->key, child->data.string);
+				break;
+
+			case DB_STRINGLIST:
+				database_write_stringlist(db, node->key, child->data.slist);
+				break;
+
+			default:
+				log_append(LOG_ERROR, "Invalid node type %d in database_write_object()", child->type);
+		}
+	}
+
+	database_end_object(db);
+}
+
+// misc functions
+struct dict *database_copy_object(const struct dict *object)
+{
+	struct dict *copy;
+	copy = dict_create();
+	dict_set_free_funcs(copy, free, (dict_free_f*)database_free_node);
+
+	dict_iter(node, object)
+	{
+		struct db_node *child, *node_copy;
+
+		child = node->data;
+		node_copy = malloc(sizeof(struct db_node));
+		node_copy->type = child->type;
+
+		switch(child->type)
+		{
+			case DB_OBJECT:
+				node_copy->data.object = database_copy_object(child->data.object);
+				break;
+
+			case DB_STRING:
+				node_copy->data.string = strdup(child->data.string);
+				break;
+
+			case DB_STRINGLIST:
+				node_copy->data.slist = stringlist_copy(child->data.slist);
+				break;
+
+			default:
+				log_append(LOG_ERROR, "Invalid node type %d in database_copy_object()", child->type);
+				free(node_copy);
+				node_copy = NULL;
+		}
+
+		if(node_copy)
+			dict_insert(copy, strdup(node->key), node_copy);
+	}
+
+	return copy;
+}
+
 // init/cleanup functions
 void database_init()
 {

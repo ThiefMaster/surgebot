@@ -67,3 +67,35 @@
 	"Displays the userlist of a channel.",
 	"$uSee also:$u adduser, clvl, deluser, giveownership, access"
 );
+
+
+"cset" = (
+	"Usage: /msg $N cset <#channel> [<[module.]setting> [value]]",
+	"Sets various options of a channel. If a setting exists in multiple modules, you must use the full name including the module.",
+	"When used with no arguments the command will show a list of available settings and their values.",
+	"When used with a single argument, it will display the value of this setting."
+);
+
+"cinfo" = (
+	"Usage: /msg $N cinfo <#channel>",
+	"Display various information about a registered channel."
+);
+
+"cmod list" = (
+	"Usage: /msg $N cmod list <#channel>",
+	"Displays a list of available/enabled channel modules.",
+	"$uSee also:$u cmod enable, cmod disable"
+);
+
+"cmod enable" = (
+	"Usage: /msg $N cmod enable <#channel> <module>",
+	"Enables a channel module. Note that certain modules may only be enabled by staff.",
+	"$uSee also:$u cmod list, cmod disable"
+);
+
+"cmod disable" = (
+	"Usage: /msg $N cmod disable <#channel> <module> [purge]",
+	"Disables a channel module. Note that certain modules may only be enabled by staff.",
+	"When using the third argument, $bpurge$b, all settings and other data from the module will be deleted.",
+	"$uSee also:$u cmod list, cmod enable"
+);

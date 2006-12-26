@@ -10,7 +10,6 @@
 #include "database.h"
 #include "irc.h"
 #include "irc_handler.h"
-#include "stringlist.h"
 #include "conf.h"
 #include "table.h"
 
@@ -37,23 +36,30 @@ COMMAND(suspend);
 COMMAND(unsuspend);
 COMMAND(access);
 COMMAND(users);
+COMMAND(cset);
+COMMAND(cinfo);
+COMMAND(cmod_list);
+COMMAND(cmod_enable);
+COMMAND(cmod_disable);
 static void chanreg_conf_reload();
 static void chanreg_db_read(struct database *db);
 static int chanreg_db_write(struct database *db);
 static int sort_channels(const void *a_, const void *b_);
 static int sort_channel_users(const void *a_, const void *b_);
-static struct chanreg *chanreg_add(const char *channel);
-static struct chanreg *chanreg_find(const char *channel);
+static struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules);
 static void chanreg_free(struct chanreg *reg);
 static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
-static struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname);
 static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user);
+static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, const char *setting, const char *value);
+static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod);
+static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data);
+static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
 
 static struct module *this;
 static struct database *chanreg_db = NULL;
-static struct dict *chanregs;
+static struct dict *chanregs, *chanreg_modules;
 unsigned int chanreg_staff_rule = 0;
 
 MODULE_INIT
@@ -61,6 +67,7 @@ MODULE_INIT
 	this = self;
 
 	chanregs = dict_create();
+	chanreg_modules = dict_create();
 	dict_set_free_funcs(chanregs, NULL, (dict_free_f *)chanreg_free);
 
 	REG_COMMAND_RULE("chanuser", chanuser);
@@ -78,6 +85,11 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "unsuspend",	unsuspend,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "access",		access,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
 	DEFINE_COMMAND(self, "users",		users,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "cset",		cset,		1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "cinfo",		cinfo,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "cmod list",	cmod_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cmod enable",	cmod_enable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cmod disable",	cmod_disable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
 
 	reg_conf_reload_func(chanreg_conf_reload);
 	chanreg_conf_reload();
@@ -97,6 +109,7 @@ MODULE_FINI
 	command_rule_unreg("chanuser");
 	command_rule_unreg("privchan");
 
+	dict_free(chanreg_modules);
 	dict_free(chanregs);
 
 	if(chanreg_staff_rule)
@@ -123,14 +136,24 @@ static void chanreg_db_read(struct database *db)
 		dict_iter(rec, db_node)
 		{
 			struct dict *obj = ((struct db_node *)rec->data)->data.object;
-			struct dict *users;
+			struct dict *dict;
+			struct stringlist *slist;
+			char *str;
 			struct chanreg *reg;
 			const char *channel = rec->key;
 
-			reg = chanreg_add(channel);
-			if((users = database_fetch(obj, "users", DB_OBJECT)))
+			slist = database_fetch(obj, "modules", DB_STRINGLIST);
+			reg = chanreg_add(channel, slist);
+
+			if((str = database_fetch(obj, "registered", DB_STRING)))
+				reg->registered = strtoul(str, NULL, 10);
+
+			if((str = database_fetch(obj, "registrar", DB_STRING)))
+				reg->registrar = strdup(str);
+
+			if((dict = database_fetch(obj, "users", DB_OBJECT)))
 			{
-				dict_iter(rec, users)
+				dict_iter(rec, dict)
 				{
 					struct dict *obj = ((struct db_node *)rec->data)->data.object;
 					const char *account = rec->key;
@@ -142,6 +165,28 @@ static void chanreg_db_read(struct database *db)
 					{
 						struct chanreg_user *c_user = chanreg_user_add(reg, account, level);
 						c_user->flags = flags_str ? strtoul(flags_str, NULL, 10) : 0;
+					}
+				}
+			}
+
+			if((dict = database_fetch(obj, "settings", DB_OBJECT)))
+			{
+				dict_iter(rec, dict)
+				{
+					struct dict *obj = ((struct db_node *)rec->data)->data.object;
+					const char *module = rec->key;
+
+					dict_iter(rec, obj)
+					{
+						struct db_node *node = rec->data;
+						if(node->type != DB_STRING)
+						{
+							log_append(LOG_WARNING, "Unexpected setting type for channel %s (module %s): %d; expected DB_STRING", reg->channel, module, node->type);
+							continue;
+						}
+
+						debug("Channel setting for %s: [%s] %s = '%s'", reg->channel, module, rec->key, node->data.string);
+						_chanreg_setting_set(reg, module, rec->key, node->data.string);
 					}
 				}
 			}
@@ -157,6 +202,11 @@ static int chanreg_db_write(struct database *db)
 			struct chanreg *reg = node->data;
 
 			database_begin_object(db, reg->channel);
+				database_write_stringlist(db, "modules", reg->modules);
+				database_write_long(db, "registered", reg->registered);
+				if(reg->registrar)
+					database_write_string(db, "registrar", reg->registrar);
+
 				database_begin_object(db, "users");
 					for(int j = 0; j < reg->users->count; j++)
 					{
@@ -167,27 +217,53 @@ static int chanreg_db_write(struct database *db)
 						database_end_object(db);
 					}
 				database_end_object(db);
+
+				database_begin_object(db, "settings");
+					dict_iter(node, reg->settings)
+					{
+						struct dict *module_settings = node->data;
+						database_begin_object(db, node->key);
+							dict_iter(node, module_settings)
+							{
+								database_write_string(db, node->key, node->data);
+							}
+						database_end_object(db);
+					}
+				database_end_object(db);
 			database_end_object(db);
 		}
 	database_end_object(db);
 	return 0;
 }
 
-static struct chanreg *chanreg_add(const char *channel)
+static struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules)
 {
 	struct chanreg *reg = malloc(sizeof(struct chanreg));
 	memset(reg, 0, sizeof(struct chanreg));
 
 	reg->channel = strdup(channel);
+	reg->registered = time(NULL);
+	reg->registrar = NULL;
 	reg->last_error = "No Error";
 	reg->users = chanreg_user_list_create();
+	reg->settings = dict_create();
+	reg->modules = stringlist_copy(modules ? modules : chanreg_conf.default_modules);
+	reg->active_modules = stringlist_create();
+
+	dict_set_free_funcs(reg->settings, free, (dict_free_f *)dict_free);
 	chanjoin_addchan(channel, this, NULL, cj_success, cj_error, reg);
+
+	dict_iter(node, chanreg_modules)
+	{
+		if(stringlist_find(reg->modules, node->key) != -1)
+			stringlist_add(reg->active_modules, strdup(node->key));
+	}
 
 	dict_insert(chanregs, reg->channel, reg);
 	return reg;
 }
 
-static struct chanreg *chanreg_find(const char *channel)
+struct chanreg *chanreg_find(const char *channel)
 {
 	return dict_find(chanregs, channel);
 }
@@ -201,6 +277,10 @@ static void chanreg_free(struct chanreg *reg)
 		free(reg->users->data[i]);
 	chanreg_user_list_free(reg->users);
 
+	dict_free(reg->settings);
+	stringlist_free(reg->modules);
+	stringlist_free(reg->active_modules);
+	free(reg->registrar);
 	free(reg->channel);
 	free(reg);
 }
@@ -230,7 +310,7 @@ static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user)
 	free(c_user);
 }
 
-static struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname)
+struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname)
 {
 	for(int i = 0; i < reg->users->count; i++)
 	{
@@ -240,6 +320,145 @@ static struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *a
 	}
 
 	return NULL;
+}
+
+static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, const char *setting, const char *value)
+{
+	struct dict *module_settings;
+	if(!(module_settings = dict_find(reg->settings, module_name)))
+	{
+		module_settings = dict_create();
+		dict_set_free_funcs(module_settings, free, free);
+		dict_insert(reg->settings, strdup(module_name), module_settings);
+	}
+
+	dict_delete(module_settings, setting);
+	dict_insert(module_settings, strdup(setting), (value ? strdup(value) : NULL));
+}
+
+void chanreg_setting_set(struct chanreg *reg, struct chanreg_module *cmod, const char *setting, const char *value)
+{
+	_chanreg_setting_set(reg, cmod->name, setting, value);
+}
+
+const char *chanreg_setting_get(struct chanreg *reg, struct chanreg_module *cmod, const char *setting)
+{
+	struct dict *module_settings;
+	struct chanreg_module_setting *cset;
+	const char *value;
+
+	if((module_settings = dict_find(reg->settings, cmod->name)) && (value = dict_find(module_settings, setting)))
+		return value;
+
+	if((cset = dict_find(cmod->settings, setting)))
+		return cset->default_value;
+
+	return NULL;
+}
+
+int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, const char *setting)
+{
+	const char *value = chanreg_setting_get(reg, cmod, setting);
+	if(!value)
+		return 0;
+	return atoi(value);
+}
+
+struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_enable_f *enable_func, cmod_enable_f *disable_func)
+{
+	struct chanreg_module *cmod = malloc(sizeof(struct chanreg_module));
+	memset(cmod, 0, sizeof(struct chanreg_module));
+
+	cmod->name = strdup(name);
+	cmod->settings = dict_create();
+	cmod->flags = flags;
+	cmod->enable_func = enable_func;
+	cmod->disable_func = disable_func;
+
+	dict_set_free_funcs(cmod->settings, NULL, (dict_free_f *)chanreg_module_setting_free);
+	dict_insert(chanreg_modules, cmod->name, cmod);
+
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *reg = node->data;
+		if(stringlist_find(reg->modules, name) != -1)
+			stringlist_add(reg->active_modules, strdup(name));
+	}
+
+	log_append(LOG_INFO, "Registered channel module: %s", name);
+	return cmod;
+}
+
+void chanreg_module_unreg(struct chanreg_module *cmod)
+{
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *reg = node->data;
+		int idx;
+		if((idx = stringlist_find(reg->active_modules, cmod->name)) != -1)
+			stringlist_del(reg->active_modules, idx);
+	}
+
+	dict_delete(chanreg_modules, cmod->name);
+	dict_free(cmod->settings);
+	free(cmod->name);
+	free(cmod);
+}
+
+struct chanreg_module *chanreg_module_find(const char *name)
+{
+	return dict_find(chanreg_modules, name);
+}
+
+static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod)
+{
+	assert(stringlist_find(reg->modules, cmod->name) == -1);
+	assert(stringlist_find(reg->active_modules, cmod->name) == -1);
+
+	stringlist_add(reg->modules, strdup(cmod->name));
+	stringlist_add(reg->active_modules, strdup(cmod->name));
+
+	if(cmod->enable_func)
+		cmod->enable_func(reg);
+}
+
+static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data)
+{
+	int idx;
+
+	assert((idx = stringlist_find(reg->modules, cmod->name)) != -1);
+	stringlist_del(reg->modules, idx);
+
+	assert((idx = stringlist_find(reg->active_modules, cmod->name)) != -1);
+	stringlist_del(reg->active_modules, idx);
+
+	if(cmod->disable_func)
+		cmod->disable_func(reg);
+
+	if(delete_data)
+		dict_delete(reg->settings, cmod->name);
+}
+
+
+struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter)
+{
+	struct chanreg_module_setting *cset = malloc(sizeof(struct chanreg_module_setting));
+
+	memset(cset, 0, sizeof(struct chanreg_module_setting));
+	cset->name = strdup(name);
+	cset->default_value = strdup(default_value);
+	cset->validator = validator;
+	cset->formatter = formatter;
+
+	dict_insert(cmod->settings, cset->name, cset);
+	return cset;
+}
+
+static void chanreg_module_setting_free(struct chanreg_module_setting *cset)
+{
+	free(cset->name);
+	free(cset->default_value);
+	free(cset);
 }
 
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time)
@@ -254,6 +473,25 @@ static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const 
 	struct chanreg *reg = ctx;
 	reg->active = 0;
 	reg->last_error = reason;
+}
+
+static int sort_channels(const void *a_, const void *b_)
+{
+	const char *name_a = (*((const char ***)a_))[0];
+	const char *name_b = (*((const char ***)b_))[0];
+	return strcasecmp(name_a, name_b);
+}
+
+static int sort_channel_users(const void *a_, const void *b_)
+{
+	unsigned int lvl_a = atoi((*((const char ***)a_))[0]);
+	unsigned int lvl_b = atoi((*((const char ***)b_))[0]);
+	if(lvl_a > lvl_b)
+		return -1;
+	else if(lvl_a < lvl_b)
+		return 1;
+	else
+		return 0;
 }
 
 
@@ -315,7 +553,8 @@ COMMAND(cregister)
 	if(!(account = account_find_smart(src, argv[1])))
 		return 0;
 
-	reg = chanreg_add(channelname);
+	reg = chanreg_add(channelname, NULL);
+	reg->registrar = strdup(user->account->name);
 	chanreg_user_add(reg, account->name, UL_OWNER);
 	reply("Channel $b%s$b registered to $b%s$b.", channelname, argv[1]);
 	return 1;
@@ -668,21 +907,316 @@ COMMAND(users)
 	return 1;
 }
 
-static int sort_channels(const void *a_, const void *b_)
+COMMAND(cset)
 {
-	const char *name_a = (*((const char ***)a_))[0];
-	const char *name_b = (*((const char ***)b_))[0];
-	return strcasecmp(name_a, name_b);
+	char *name_dup, *modname, *setting, *new_value;
+	const char *value;
+	struct chanreg_module *cmod = NULL;
+	struct chanreg_module_setting *cset;
+
+	CHANREG_COMMAND;
+
+	if(argc < 2)
+	{
+		struct table *table;
+		unsigned int row, header_sent = 0;
+		struct stringlist *free_strings;
+
+		stringlist_sort(reg->active_modules);
+		for(int i = 0; i < reg->active_modules->count; i++)
+		{
+			struct chanreg_module *cmod = chanreg_module_find(reg->active_modules->data[i]);
+			assert_continue(cmod);
+
+			if(!cmod->settings->count || ((cmod->flags & CMOD_HIDDEN) && !IsStaff()))
+				continue;
+
+			table = table_create(3, cmod->settings->count);
+			row = 0;
+			free_strings = stringlist_create();
+			dict_iter(node, cmod->settings)
+			{
+				struct chanreg_module_setting *cset = node->data;
+				char *str = malloc(2 + strlen(cset->name) + 3 + 1); // $b + name + :$b + '\0'
+				sprintf(str, "$b%s:$b", cset->name);
+				stringlist_add(free_strings, str);
+
+				value = chanreg_setting_get(reg, cmod, cset->name);
+				if(cset->formatter)
+					value = cset->formatter(value);
+
+				table->data[row][0] = ""; // Indent
+				table->data[row][1] = str;
+				table->data[row][2] = value;
+				row++;
+			}
+
+			if(!header_sent)
+			{
+				reply("$b%s$b settings:", channelname);
+				header_sent = 1;
+			}
+
+			reply("$u%s:$u", cmod->name);
+			table_send(table, src->nick);
+			table_free(table);
+			stringlist_free(free_strings);
+		}
+
+		if(!header_sent)
+			reply("$b%s$b has no settings.", channelname);
+
+		return 1;
+	}
+
+	name_dup = strdup(argv[1]);
+	if((setting = strchr(name_dup, '.')))
+	{
+		*setting++ = '\0'; // Split at '.' and point setting to char after '.'
+		modname = name_dup;
+	}
+	else
+	{
+		setting = name_dup;
+		modname = NULL;
+	}
+
+	if(!strlen(setting) || (modname && !strlen(modname)))
+	{
+		reply("$b%s$b does not look like a valid setting; use either $bmodule.setting$b or $bsetting$b", argv[1]);
+		free(name_dup);
+		return 0;
+	}
+
+	if(modname && !(cmod = chanreg_module_find(modname))) // Check if module exists.
+	{
+		reply("$b%s$b is not a valid module.", modname);
+		free(name_dup);
+		return 0;
+	}
+	else if(!modname) // Check if setting is not ambiguous.
+	{
+		for(int i = 0; i < reg->active_modules->count; i++)
+		{
+			struct chanreg_module *cmod_tmp = chanreg_module_find(reg->active_modules->data[i]);
+			assert_continue(cmod_tmp);
+			if(dict_find(cmod_tmp->settings, setting))
+			{
+				// This setting already exists in another visible module.
+				if(cmod && (!(cmod->flags & CMOD_HIDDEN) || IsStaff()))
+				{
+					reply("$b%s$b is ambiguous; please use $b<module>.%s$b", setting, setting);
+					free(name_dup);
+					return 0;
+				}
+
+				cmod = cmod_tmp;
+			}
+		}
+	}
+
+	if(cmod && (cmod->flags & CMOD_HIDDEN) && !IsStaff())
+	{
+		reply("$b%s$b is not a valid module.", cmod->name);
+		free(name_dup);
+		return 0;
+	}
+
+	// User provided a module name -> check if the module is active for the channel.
+	if(modname && stringlist_find(reg->active_modules, cmod->name) == -1)
+	{
+		reply("Module $b%s$b is not enabled in $b%s$b", modname, channelname);
+		free(name_dup);
+		return 0;
+	}
+
+	// No module name provided and no active module with specified setting -OR-
+	// Module name provided but setting does not exist in this module
+	if((!modname && !cmod) || (modname && !dict_find(cmod->settings, setting)))
+	{
+		reply("$b%s$b is not a valid setting.", argv[1]);
+		free(name_dup);
+		return 0;
+	}
+
+	assert_return(setting && cmod, 0);
+	cset = dict_find(cmod->settings, setting);
+
+	// User wants to change setting
+	if(argc > 2)
+	{
+		new_value = untokenize(argc - 2, argv + 2, " ");
+		if(!cset->validator || cset->validator(src, new_value))
+			chanreg_setting_set(reg, cmod, setting, new_value);
+		free(new_value);
+	}
+
+	// Display current (or new) value
+	value = chanreg_setting_get(reg, cmod, cset->name);
+	if(cset->formatter)
+		value = cset->formatter(value);
+	reply("$b%s.%s:$b  %s", cmod->name, cset->name, value);
+
+	free(name_dup);
+	return 1;
 }
 
-static int sort_channel_users(const void *a_, const void *b_)
+COMMAND(cinfo)
 {
-	unsigned int lvl_a = atoi((*((const char ***)a_))[0]);
-	unsigned int lvl_b = atoi((*((const char ***)b_))[0]);
-	if(lvl_a > lvl_b)
-		return -1;
-	else if(lvl_a < lvl_b)
-		return 1;
+	struct stringlist *slist;
+	char *str;
+
+	CHANREG_COMMAND;
+
+	reply("Information about $b%s$b:", channelname);
+	for(int i = 0; i < reg->users->count; i++)
+	{
+		struct chanreg_user *c_user = reg->users->data[i];
+		if(c_user->level == UL_OWNER)
+			reply("$bOwner:      $b %s", c_user->account->name);
+	}
+
+	reply("$bUser Count: $b %d", reg->users->count);
+
+	if(reg->active_modules->count)
+	{
+		slist = stringlist_create();
+		for(int i = 0; i < reg->active_modules->count; i++)
+		{
+			struct chanreg_module *cmod = chanreg_module_find(reg->active_modules->data[i]);
+			if(!(cmod->flags & CMOD_HIDDEN) || IsStaff())
+				stringlist_add(slist, strdup(cmod->name));
+		}
+
+		stringlist_sort(slist);
+		str = untokenize(slist->count, slist->data, ", ");
+		reply("$bModules:    $b %s", str);
+		free(str);
+		stringlist_free(slist);
+	}
+
+	if(reg->registrar)
+		reply("$bRegistrar:  $b %s", reg->registrar);
+	reply("$bRegistered: $b %s ago", duration2string(now - reg->registered));
+
+	return 0;
+}
+
+COMMAND(cmod_list)
+{
+	unsigned int staff = IsStaff();
+	struct stringlist *modules;
+	char buf[MAXLEN];
+	int pos = 0;
+
+	CHANREG_COMMAND;
+
+	modules = stringlist_create();
+	dict_iter(node, chanreg_modules)
+	{
+		struct chanreg_module *cmod = node->data;
+		if((cmod->flags & CMOD_HIDDEN) && !staff)
+			continue;
+
+		pos = 0;
+		if(stringlist_find(reg->modules, cmod->name) == -1) // Disabled
+			pos += snprintf(buf + pos, MAXLEN - pos, "%s", cmod->name);
+		else // Enabled
+			pos += snprintf(buf + pos, MAXLEN - pos, "$b%s$b", cmod->name);
+
+		if(cmod->flags & CMOD_STAFF)
+		{
+			safestrncpy(buf + pos, " (staff)", MAXLEN - pos);
+			pos += strlen(" (staff)");
+		}
+
+		if(cmod->flags & CMOD_HIDDEN)
+		{
+			safestrncpy(buf + pos, " (hidden)", MAXLEN - pos);
+			pos += strlen(" (hidden)");
+		}
+
+		buf[pos] = '\0';
+
+		stringlist_add(modules, strdup(buf));
+	}
+
+	if(modules->count)
+	{
+		reply("Available modules ($bbold$b modules are loaded):");
+		stringlist_sort(modules);
+		for(int i = 0; i < modules->count; i++)
+			reply("  %s", modules->data[i]);
+	}
 	else
+	{
+		reply("No modules available.");
+	}
+
+	stringlist_free(modules);
+	return 1;
+}
+
+COMMAND(cmod_enable)
+{
+	struct chanreg_module *cmod;
+
+	CHANREG_COMMAND;
+
+	if(!(cmod = chanreg_module_find(argv[1])) || ((cmod->flags & CMOD_HIDDEN) && !IsStaff()))
+	{
+		reply("A module named $b%s$b does not exist.", argv[1]);
 		return 0;
+	}
+
+	if(stringlist_find(reg->modules, cmod->name) != -1)
+	{
+		reply("Module $b%s$b is already enabled in $b%s$b.", cmod->name, channelname);
+		return 0;
+	}
+
+	if((cmod->flags & CMOD_STAFF) && !IsStaff())
+	{
+		reply("Only staff may enable module $b%s$b.", cmod->name);
+		return 0;
+	}
+
+	chanreg_module_enable(reg, cmod);
+	reply("Module $b%s$b has been enabled in $b%s$b.", cmod->name, channelname);
+	return 1;
+}
+
+COMMAND(cmod_disable)
+{
+	struct chanreg_module *cmod;
+	unsigned int delete_data = 0;
+
+	CHANREG_COMMAND;
+
+	if(!(cmod = chanreg_module_find(argv[1])) || ((cmod->flags & CMOD_HIDDEN) && !IsStaff()))
+	{
+		reply("A module named $b%s$b does not exist.", argv[1]);
+		return 0;
+	}
+
+	if(stringlist_find(reg->modules, cmod->name) == -1)
+	{
+		reply("Module $b%s$b is not enabled in $b%s$b.", cmod->name, channelname);
+		return 0;
+	}
+
+	if((cmod->flags & CMOD_STAFF) && !IsStaff())
+	{
+		reply("Only staff may disable module $b%s$b.", cmod->name);
+		return 0;
+	}
+
+	if(argc > 2 && !strcasecmp(argv[2], "purge"))
+		delete_data = 1;
+
+	chanreg_module_disable(reg, cmod, delete_data);
+	reply("Module $b%s$b has been disabled in $b%s$b.", cmod->name, channelname);
+	if(delete_data)
+		reply("All settings/data from this module have been deleted.");
+	return 1;
 }
