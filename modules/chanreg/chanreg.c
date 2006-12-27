@@ -21,6 +21,7 @@ static struct
 	char *staff_rule;
 } chanreg_conf;
 
+IMPLEMENT_LIST(chanreg_list, struct chanreg *)
 IMPLEMENT_LIST(chanreg_user_list, struct chanreg_user *)
 
 PARSER_FUNC(chanuser);
@@ -51,8 +52,8 @@ static void chanreg_free(struct chanreg *reg);
 static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
 static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user);
 static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, const char *setting, const char *value);
-static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod);
-static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data);
+static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason);
+static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason);
 static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
@@ -185,9 +186,17 @@ static void chanreg_db_read(struct database *db)
 							continue;
 						}
 
-						debug("Channel setting for %s: [%s] %s = '%s'", reg->channel, module, rec->key, node->data.string);
 						_chanreg_setting_set(reg, module, rec->key, node->data.string);
 					}
+				}
+			}
+
+			if((dict = database_fetch(obj, "data", DB_OBJECT)))
+			{
+				dict_iter(rec, dict)
+				{
+					struct dict *obj = ((struct db_node *)rec->data)->data.object;
+					dict_insert(reg->db_data, strdup(rec->key), database_copy_object(obj));
 				}
 			}
 		}
@@ -196,6 +205,16 @@ static void chanreg_db_read(struct database *db)
 
 static int chanreg_db_write(struct database *db)
 {
+	// Call write functions of active channel modules.
+	// During shutdown this list is empty so modules need to call
+	// chanreg_module_writedb() manually in their fini function.
+	dict_iter(node, chanreg_modules)
+	{
+		struct chanreg_module *cmod = node->data;
+		if(cmod->db_write)
+			chanreg_module_writedb(cmod);
+	}
+
 	database_begin_object(db, "chanregs");
 		dict_iter(node, chanregs)
 		{
@@ -230,6 +249,22 @@ static int chanreg_db_write(struct database *db)
 						database_end_object(db);
 					}
 				database_end_object(db);
+
+				database_begin_object(db, "data");
+					for(int i = 0; i < reg->modules->count; i++)
+					{
+						struct dict *object = dict_find(reg->db_data, reg->modules->data[i]);
+						if(object)
+							database_write_object(db, reg->modules->data[i], object);
+					}
+
+					dict_iter(node, reg->db_data)
+					{
+						struct dict *object = node->data;
+						if(stringlist_find(reg->modules, node->key) == -1)
+							database_write_object(db, node->key, object);
+					}
+				database_end_object(db);
 			database_end_object(db);
 		}
 	database_end_object(db);
@@ -247,19 +282,32 @@ static struct chanreg *chanreg_add(const char *channel, const struct stringlist 
 	reg->last_error = "No Error";
 	reg->users = chanreg_user_list_create();
 	reg->settings = dict_create();
+	reg->db_data = dict_create();
 	reg->modules = stringlist_copy(modules ? modules : chanreg_conf.default_modules);
 	reg->active_modules = stringlist_create();
 
 	dict_set_free_funcs(reg->settings, free, (dict_free_f *)dict_free);
+	dict_set_free_funcs(reg->db_data, free, (dict_free_f *)dict_free);
+
 	chanjoin_addchan(channel, this, NULL, cj_success, cj_error, reg);
+	dict_insert(chanregs, reg->channel, reg);
 
 	dict_iter(node, chanreg_modules)
 	{
 		if(stringlist_find(reg->modules, node->key) != -1)
+		{
+			struct chanreg_module *cmod = chanreg_module_find(node->key);
+
 			stringlist_add(reg->active_modules, strdup(node->key));
+			if(cmod)
+			{
+				chanreg_list_add(cmod->channels, reg);
+				if(cmod->enable_func)
+					cmod->enable_func(reg, CER_REG);
+			}
+		}
 	}
 
-	dict_insert(chanregs, reg->channel, reg);
 	return reg;
 }
 
@@ -278,6 +326,7 @@ static void chanreg_free(struct chanreg *reg)
 	chanreg_user_list_free(reg->users);
 
 	dict_free(reg->settings);
+	dict_free(reg->db_data);
 	stringlist_free(reg->modules);
 	stringlist_free(reg->active_modules);
 	free(reg->registrar);
@@ -364,7 +413,7 @@ int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, co
 	return atoi(value);
 }
 
-struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_enable_f *enable_func, cmod_enable_f *disable_func)
+struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func)
 {
 	struct chanreg_module *cmod = malloc(sizeof(struct chanreg_module));
 	memset(cmod, 0, sizeof(struct chanreg_module));
@@ -372,8 +421,11 @@ struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, 
 	cmod->name = strdup(name);
 	cmod->settings = dict_create();
 	cmod->flags = flags;
+	cmod->db_read = db_read;
+	cmod->db_write = db_write;
 	cmod->enable_func = enable_func;
 	cmod->disable_func = disable_func;
+	cmod->channels = chanreg_list_create();
 
 	dict_set_free_funcs(cmod->settings, NULL, (dict_free_f *)chanreg_module_setting_free);
 	dict_insert(chanreg_modules, cmod->name, cmod);
@@ -382,7 +434,10 @@ struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, 
 	{
 		struct chanreg *reg = node->data;
 		if(stringlist_find(reg->modules, name) != -1)
+		{
 			stringlist_add(reg->active_modules, strdup(name));
+			chanreg_list_add(cmod->channels, reg);
+		}
 	}
 
 	log_append(LOG_INFO, "Registered channel module: %s", name);
@@ -400,9 +455,45 @@ void chanreg_module_unreg(struct chanreg_module *cmod)
 	}
 
 	dict_delete(chanreg_modules, cmod->name);
+	chanreg_list_free(cmod->channels);
 	dict_free(cmod->settings);
 	free(cmod->name);
 	free(cmod);
+}
+
+void chanreg_module_readdb(struct chanreg_module *cmod)
+{
+	assert(cmod->db_read);
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *reg = node->data;
+		struct dict *db_nodes = dict_find(reg->db_data, cmod->name);
+		if(db_nodes)
+			cmod->db_read(db_nodes, reg);
+	}
+}
+
+void chanreg_module_writedb(struct chanreg_module *cmod)
+{
+	struct database_object *dbo;
+
+	assert(cmod->db_write);
+	for(int i = 0; i < cmod->channels->count; i++)
+	{
+		struct chanreg *reg = cmod->channels->data[i];
+
+		dbo = database_obj_create();
+		if(cmod->db_write(dbo, reg))
+		{
+			dict_free(dbo->current);
+			database_obj_free(dbo);
+			continue;
+		}
+
+		dict_delete(reg->db_data, cmod->name);
+		dict_insert(reg->db_data, strdup(cmod->name), dbo->current);
+		database_obj_free(dbo);
+	}
 }
 
 struct chanreg_module *chanreg_module_find(const char *name)
@@ -410,7 +501,7 @@ struct chanreg_module *chanreg_module_find(const char *name)
 	return dict_find(chanreg_modules, name);
 }
 
-static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod)
+static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason)
 {
 	assert(stringlist_find(reg->modules, cmod->name) == -1);
 	assert(stringlist_find(reg->active_modules, cmod->name) == -1);
@@ -418,25 +509,47 @@ static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cm
 	stringlist_add(reg->modules, strdup(cmod->name));
 	stringlist_add(reg->active_modules, strdup(cmod->name));
 
+	chanreg_list_add(cmod->channels, reg);
+
 	if(cmod->enable_func)
-		cmod->enable_func(reg);
+		cmod->enable_func(reg, reason);
 }
 
-static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data)
+static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason)
 {
 	int idx;
 
-	assert((idx = stringlist_find(reg->modules, cmod->name)) != -1);
-	stringlist_del(reg->modules, idx);
+	if((idx = stringlist_find(reg->modules, cmod->name)) != -1)
+		stringlist_del(reg->modules, idx);
 
-	assert((idx = stringlist_find(reg->active_modules, cmod->name)) != -1);
-	stringlist_del(reg->active_modules, idx);
+	if((idx = stringlist_find(reg->active_modules, cmod->name)) != -1)
+		stringlist_del(reg->active_modules, idx);
 
 	if(cmod->disable_func)
-		cmod->disable_func(reg);
+		cmod->disable_func(reg, delete_data, reason);
+
+	chanreg_list_del(cmod->channels, reg);
 
 	if(delete_data)
+	{
 		dict_delete(reg->settings, cmod->name);
+		dict_delete(reg->db_data, cmod->name);
+	}
+	else
+	{
+		// If we don't delete the module's data, we must write them since the timed writes won't write
+		// data from disabled modules.
+		struct database_object *dbo = database_obj_create();
+		if(cmod->db_write(dbo, reg))
+			dict_free(dbo->current);
+		else
+		{
+			dict_delete(reg->db_data, cmod->name);
+			dict_insert(reg->db_data, strdup(cmod->name), dbo->current);
+		}
+
+		database_obj_free(dbo);
+	}
 }
 
 
@@ -564,9 +677,15 @@ COMMAND(cunregister)
 {
 	CHANREG_COMMAND;
 
-	reply("$b%s$b has been unregistered.", channelname);
-	dict_delete(chanregs, channelname);
+	dict_iter(node, reg->db_data)
+	{
+		struct chanreg_module *cmod = chanreg_module_find(node->key);
+		if(cmod)
+			chanreg_module_disable(reg, cmod, 1, CDR_UNREG);
+	}
 
+	dict_delete(chanregs, channelname);
+	reply("$b%s$b has been unregistered.", channelname);
 	return 1;
 }
 
@@ -1181,7 +1300,7 @@ COMMAND(cmod_enable)
 		return 0;
 	}
 
-	chanreg_module_enable(reg, cmod);
+	chanreg_module_enable(reg, cmod, CER_ENABLED);
 	reply("Module $b%s$b has been enabled in $b%s$b.", cmod->name, channelname);
 	return 1;
 }
@@ -1214,7 +1333,7 @@ COMMAND(cmod_disable)
 	if(argc > 2 && !strcasecmp(argv[2], "purge"))
 		delete_data = 1;
 
-	chanreg_module_disable(reg, cmod, delete_data);
+	chanreg_module_disable(reg, cmod, delete_data, CDR_DISABLED);
 	reply("Module $b%s$b has been disabled in $b%s$b.", cmod->name, channelname);
 	if(delete_data)
 		reply("All settings/data from this module have been deleted.");

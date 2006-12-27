@@ -25,7 +25,6 @@ static const char *errors[] = {
 	"Expected comment end (\"*/\")"
 };
 
-static void database_free_node(struct db_node *node);
 static unsigned int database_eof(struct database *db);
 static struct db_node *database_read_record(struct database *db, char **key);
 
@@ -173,7 +172,7 @@ void *database_fetch(struct dict *db_nodes, const char *path, enum db_type type)
 	return ((node && node->type == type) ? node->data.ptr : NULL);
 }
 
-static void database_free_node(struct db_node *node)
+void database_free_node(struct db_node *node)
 {
 	if(node->type != DB_EMPTY)
 	{
@@ -830,6 +829,87 @@ void database_write_object(struct database *db, const char *key, const struct di
 	}
 
 	database_end_object(db);
+}
+
+// object write functions
+struct database_object *database_obj_create()
+{
+	struct database_object *dbo = malloc(sizeof(struct database_object));
+	memset(dbo, 0, sizeof(struct database_object));
+
+	dbo->current	= dict_create();
+	dbo->stack_used	= 0;
+	dbo->stack_size	= 4;
+	dbo->stack	= calloc(dbo->stack_size, sizeof(struct dict *));
+	dict_set_free_funcs(dbo->current, free, (dict_free_f*)database_free_node);
+
+	return dbo;
+}
+
+void database_obj_free(struct database_object *dbo)
+{
+	// We do NOT free the dict
+	free(dbo->stack);
+	free(dbo);
+}
+
+void database_obj_begin_object(struct database_object *dbo, const char *key)
+{
+	struct dict *object;
+	struct db_node *node;
+
+	object = dict_create();
+	dict_set_free_funcs(object, free, (dict_free_f*)database_free_node);
+
+	node = malloc(sizeof(struct db_node));
+	node->type = DB_OBJECT;
+	node->data.object = object;
+
+	dict_insert(dbo->current, strdup(key), node);
+
+	if(dbo->stack_size == dbo->stack_used)
+	{
+		dbo->stack_size += 2;
+		dbo->stack = realloc(dbo->stack, dbo->stack_size * sizeof(struct dict *));
+	}
+
+	dbo->stack[dbo->stack_used++] = dbo->current;
+	dbo->current = object;
+}
+
+void database_obj_end_object(struct database_object *dbo)
+{
+	assert(dbo->stack_used);
+	dbo->current = dbo->stack[--dbo->stack_used];
+}
+
+void database_obj_write_long(struct database_object *dbo, const char *key, long value)
+{
+	char str[16];
+	snprintf(str, sizeof(str), "%lu", value);
+	database_obj_write_string(dbo, key, str);
+}
+
+void database_obj_write_string(struct database_object *dbo, const char *key, const char *value)
+{
+	struct db_node *node;
+
+	node = malloc(sizeof(struct db_node));
+	node->type = DB_STRING;
+	node->data.string = strdup(value);;
+
+	dict_insert(dbo->current, strdup(key), node);
+}
+
+void database_obj_write_stringlist(struct database_object *dbo, const char *key, struct stringlist *slist)
+{
+	struct db_node *node;
+
+	node = malloc(sizeof(struct db_node));
+	node->type = DB_STRINGLIST;
+	node->data.slist = stringlist_copy(slist);
+
+	dict_insert(dbo->current, strdup(key), node);
 }
 
 // misc functions

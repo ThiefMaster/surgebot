@@ -3,10 +3,12 @@
 
 #include "list.h"
 #include "stringlist.h"
+#include "database.h"
 
 struct chanreg;
 struct chanreg_user;
 
+DECLARE_LIST(chanreg_list, struct chanreg *)
 DECLARE_LIST(chanreg_user_list, struct chanreg_user *)
 
 // Channel user flags
@@ -16,18 +18,33 @@ DECLARE_LIST(chanreg_user_list, struct chanreg_user *)
 #define CMOD_STAFF	0x1	// Only staff may enable/disable this module
 #define CMOD_HIDDEN	0x2	// Hidden to non-staff
 
-typedef int (cset_validator_f)(struct irc_source *src, const char *value);
-typedef const char* (cset_format_f)(const char *value);
-typedef void (cmod_enable_f)(struct chanreg *reg);
-
 enum user_levels
 {
-    UL_PEON	= 100,
-    UL_OP	= 200,
-    UL_MASTER	= 300,
-    UL_COOWNER	= 400,
-    UL_OWNER 	= 500
+	UL_PEON		= 100,
+	UL_OP		= 200,
+	UL_MASTER	= 300,
+	UL_COOWNER	= 400,
+	UL_OWNER 	= 500
 };
+
+enum cmod_enable_reason
+{
+	CER_REG		= 1,
+	CER_ENABLED	= 2
+};
+
+enum cmod_disable_reason
+{
+	CDR_UNREG	= 1,
+	CDR_DISABLED	= 2
+};
+
+typedef int (cset_validator_f)(struct irc_source *src, const char *value);
+typedef const char* (cset_format_f)(const char *value);
+typedef void (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
+typedef void (cmod_disable_f)(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+typedef void (cmod_db_read_f)(struct dict *db_nodes, struct chanreg *reg);
+typedef int (cmod_db_write_f)(struct database_object *dbo, struct chanreg *reg);
 
 struct chanreg
 {
@@ -40,6 +57,7 @@ struct chanreg
 
 	struct chanreg_user_list *users;
 	struct dict *settings;
+	struct dict *db_data;
 
 	struct stringlist *modules;
 	struct stringlist *active_modules;
@@ -58,8 +76,11 @@ struct chanreg_module
 	char *name;
 	struct dict *settings;
 	unsigned int flags;
+	cmod_db_read_f *db_read;
+	cmod_db_write_f *db_write;
 	cmod_enable_f *enable_func;
-	cmod_enable_f *disable_func;
+	cmod_disable_f *disable_func;
+	struct chanreg_list *channels;
 };
 
 struct chanreg_module_setting
@@ -104,8 +125,11 @@ void chanreg_setting_set(struct chanreg *reg, struct chanreg_module *cmod, const
 const char *chanreg_setting_get(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
 int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
 
-struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_enable_f *enable_func, cmod_enable_f *disable_func);
+struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func);
 void chanreg_module_unreg(struct chanreg_module *cmod);
+void chanreg_module_readdb(struct chanreg_module *cmod);
+void chanreg_module_writedb(struct chanreg_module *cmod);
+struct chanreg_module *chanreg_module_find(const char *name);
 struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter);
 
 #endif
