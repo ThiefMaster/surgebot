@@ -131,5 +131,6 @@ void chanreg_module_readdb(struct chanreg_module *cmod);
 void chanreg_module_writedb(struct chanreg_module *cmod);
 struct chanreg_module *chanreg_module_find(const char *name);
 struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter);
+unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *channel);
 
 #endif

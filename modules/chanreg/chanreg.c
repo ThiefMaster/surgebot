@@ -574,6 +574,22 @@ static void chanreg_module_setting_free(struct chanreg_module_setting *cset)
 	free(cset);
 }
 
+unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *channel)
+{
+	struct chanreg *reg = chanreg_find(channel);
+
+	if(!channel)
+		return 0;
+
+	for(int i = 0; i < cmod->channels->count; i++)
+	{
+		if(cmod->channels->data[i] == reg)
+			return 1;
+	}
+
+	return 0;
+}
+
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time)
 {
 	struct chanreg *reg = ctx;
