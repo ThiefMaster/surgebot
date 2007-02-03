@@ -449,10 +449,12 @@ CHANUSER_IRC_HANDLER(num_namereply)
 CHANUSER_IRC_HANDLER(num_whospecial)
 {
 	struct irc_user *user;
-	assert_return(argc > 6, 0);
+	assert_return(argc > 2, 0);
 
 	if(strcmp(argv[2], "1")) // query type must be 1
 		return 0;
+
+	assert_return(argc > 6, 0);
 
 	assert_return(user = user_find(argv[5]), 0);
 	user_complete(user, argv[3], argv[4]);
