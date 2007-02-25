@@ -278,6 +278,13 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 			argv++;
 		}
 	}
+	
+	if((cmd->flags & CMD_REQUIRE_CHANNEL) && !channel)
+	{
+		reply("This command can only be used in channels.");
+		free(msg_dup);
+		return;
+	}
 
 	if(channel)
 		channel_arg = channel->name;

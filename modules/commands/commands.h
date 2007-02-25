@@ -14,6 +14,7 @@ typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct ir
 #define CMD_ALLOW_UNKNOWN	0x010 // allow unknown users (no common channels) to use this command
 #define CMD_REQUIRE_AUTHED	0x020 // user must be authed to use this command
 #define CMD_KEEP_BOUND		0x040 // do not allow unbinding last binding of this command
+#define CMD_REQUIRE_CHANNEL     0x080 // require an existing channel
 
 struct command
 {
