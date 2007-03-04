@@ -32,6 +32,11 @@ void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *
 	next_timer_id++;
 }
 
+struct dict *timer_dict()
+{
+	return timers;
+}
+
 unsigned int timer_exists(void *bound, const char *name, time_t time, timer_f *func, void *data, long flags)
 {
 	struct dict_node *node;

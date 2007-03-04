@@ -30,3 +30,8 @@
 	"Displays a detailed list of all bindings.",
 	"If a mask is specified, only bindings matching this mask will be displayed."
 );
+
+"stats timers" = (
+        "Usage: /msg $N stats timers",
+        "Displays a list of active timers."
+);

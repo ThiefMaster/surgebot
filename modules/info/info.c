@@ -5,6 +5,8 @@
 #include "chanuser.h"
 #include "irc.h"
 #include "table.h"
+#include "irc_handler.h"
+#include "timer.h"
 
 MODULE_DEPENDS("commands", "help", NULL);
 
@@ -13,6 +15,7 @@ COMMAND(stats_bot);
 COMMAND(stats_commands);
 COMMAND(stats_bindings);
 COMMAND(stats_bindings_verbose);
+COMMAND(stats_timers);
 
 static int sort_commands(const void *a_, const void *b_);
 static int sort_bindings(const void *a_, const void *b_);
@@ -26,6 +29,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "stats commands",	stats_commands,		1, 0, "true");
 	DEFINE_COMMAND(self, "stats bindings",	stats_bindings,		1, 0, "true");
 	DEFINE_COMMAND(self, "stats bindings2",	stats_bindings_verbose,	1, 0, "true");
+	DEFINE_COMMAND(self, "stats timers",	stats_timers,		1, 0, "group(admins)");
 }
 
 MODULE_FINI
@@ -33,6 +37,34 @@ MODULE_FINI
 
 }
 
+COMMAND(stats_timers)
+{
+	struct dict *timers = timer_dict();
+	struct table *timer_table = table_create(4, dict_size(timers));
+	unsigned int i = 0;
+
+	table_set_header(timer_table, "Id", "Name", "Execute in", "Data");
+	dict_iter(node, timers)
+	{
+		struct timer *tmr = node->data;
+
+		if(tmr->triggered || !tmr->name || tmr->time <= now)
+			continue;
+
+		timer_table->data[i][0] = strtab(tmr->id);
+		timer_table->data[i][1] = tmr->name;
+		timer_table->data[i][2] = strdupa(duration2string(tmr->time - now));
+		timer_table->data[i][3] = tmr->data ? strdupa(tmr->data) : "-";
+
+		i++;
+	}
+
+	table_send(timer_table, src->nick);
+	reply("There are $b%d$b active timers.", timers->count);
+
+	table_free(timer_table);
+	return 1;
+}
 
 COMMAND(command)
 {
@@ -199,3 +231,4 @@ static int sort_bindings(const void *a_, const void *b_)
 	const char *name_b = (*((const char ***)b_))[0];
 	return strcasecmp(name_a, name_b);
 }
+
