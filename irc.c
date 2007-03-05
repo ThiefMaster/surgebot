@@ -85,6 +85,7 @@ static void irc_connected()
 {
 	log_append(LOG_INFO, "Connection to server successful, logging in");
 	timer_del_boundname(&bot, "server_connect_timeout");
+	bot.linked = now;
 
 	if(bot_conf.server_pass)
 		irc_send("PASS :%s", bot_conf.server_pass);
