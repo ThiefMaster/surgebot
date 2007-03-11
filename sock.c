@@ -737,10 +737,11 @@ int sock_poll()
 		int error, len;
 
 		sock = sock_list->data[i];
-		assert_return(sock->fd == pollfds[i].fd, -1);
 
 		if(sock->flags & SOCK_ZOMBIE)
 			continue;
+
+		assert_return(sock->fd == pollfds[i].fd, -1);
 
 		ev_read  = ((pollfds[i].revents & POLLIN) ? 1 : 0);
 		ev_write = ((pollfds[i].revents & POLLOUT) ? 1 : 0);
