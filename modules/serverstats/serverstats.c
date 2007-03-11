@@ -431,12 +431,16 @@ COMMAND(serverstats_graphs)
 static void stats_collected()
 {
 	rrd_network_update();
-	dict_iter(node, servers)
+
+	if(servers)
 	{
-		struct irc_server *server = node->data;
-		if(serverstats_conf.ignore_servers && stringlist_find(serverstats_conf.ignore_servers, server->name) != -1)
-			continue;
-		rrd_server_update(server);
+		dict_iter(node, servers)
+		{
+			struct irc_server *server = node->data;
+			if(serverstats_conf.ignore_servers && stringlist_find(serverstats_conf.ignore_servers, server->name) != -1)
+				continue;
+			rrd_server_update(server);
+		}
 	}
 
 	stats_requested = 0;
