@@ -264,7 +264,7 @@ const char *sha1(const char *str)
 	unsigned int i;
 
 	SHA1Init(&context);
-	SHA1Update(&context, str, strlen(str));
+	SHA1Update(&context, (const unsigned char *)str, strlen(str));
 	SHA1Final(rawhash, &context);
 
 	for(i = 0; i < 20; i++)

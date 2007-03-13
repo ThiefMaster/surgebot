@@ -734,7 +734,8 @@ int sock_poll()
 	{
 		struct sock *sock;
 		unsigned char ev_read, ev_write;
-		int error, len;
+		int error;
+		unsigned int len;
 
 		sock = sock_list->data[i];
 

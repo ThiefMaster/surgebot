@@ -313,7 +313,7 @@ void irc_parse_line(const char *line)
 
 	if(*orig_argv[0] == ':') // message has a source
 	{
-		*orig_argv[0]++; // get rid of colon
+		orig_argv[0]++; // get rid of colon
 		raw_src = orig_argv[0];
 		argv = orig_argv + 1;
 		argc--;
