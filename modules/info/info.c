@@ -5,7 +5,6 @@
 #include "chanuser.h"
 #include "irc.h"
 #include "table.h"
-#include "irc_handler.h"
 #include "timer.h"
 
 MODULE_DEPENDS("commands", "help", NULL);

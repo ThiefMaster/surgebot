@@ -535,7 +535,7 @@ static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *c
 		dict_delete(reg->settings, cmod->name);
 		dict_delete(reg->db_data, cmod->name);
 	}
-	else
+	else if(cmod->db_write)
 	{
 		// If we don't delete the module's data, we must write them since the timed writes won't write
 		// data from disabled modules.
