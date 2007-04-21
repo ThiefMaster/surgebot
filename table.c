@@ -9,6 +9,7 @@ struct table *table_create(unsigned int cols, unsigned int rows)
 
 	table->cols = cols;
 	table->rows = rows;
+	table->bold_cols = 0;
 	table->header = NULL;
 
 	table->data = calloc(table->rows , sizeof(char **));
@@ -32,6 +33,16 @@ void table_set_header(struct table *table, const char *str, ...)
 	va_end(args);
 }
 
+void table_bold_column(struct table *table, unsigned int col, unsigned char enable)
+{
+	assert(col < table->cols);
+
+	if(enable)
+		table->bold_cols |= (1 << col);
+	else
+		table->bold_cols &= ~(1 << col);
+}
+
 void table_free(struct table *table)
 {
 	for(int i = 0; i < table->rows; i++)
@@ -43,6 +54,7 @@ void table_free(struct table *table)
 	free(table);
 }
 
+#define col_bold(TABLE, COL)	((TABLE)->bold_cols & (1 << COL))
 void table_send(struct table *table, const char *target)
 {
 	unsigned int len, spaces, *maxlens;
@@ -82,6 +94,8 @@ void table_send(struct table *table, const char *target)
 			}
 			else
 			{
+				if(col_bold(table, col))
+					stringbuffer_append_string(line, "$b");
 				stringbuffer_append_string(line, ptr[col]);
 				spaces = maxlens[col] - strlen(ptr[col]);
 			}
@@ -90,8 +104,14 @@ void table_send(struct table *table, const char *target)
 			{
 				while(spaces--)
 					stringbuffer_append_char(line, ' ');
+				if(col_bold(table, col))
+					stringbuffer_append_string(line, "$b");
 
 				stringbuffer_append_string(line, "  ");
+			}
+			else if(col_bold(table, col))
+			{
+				stringbuffer_append_string(line, "$b");
 			}
 		}
 
@@ -102,3 +122,4 @@ void table_send(struct table *table, const char *target)
 	stringbuffer_free(line);
 	free(maxlens);
 }
+#undef col_bol

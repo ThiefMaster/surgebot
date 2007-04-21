@@ -1067,13 +1067,14 @@ COMMAND(cset)
 				continue;
 
 			table = table_create(3, cmod->settings->count);
+			table_bold_column(table, 1, 1);
 			row = 0;
 			free_strings = stringlist_create();
 			dict_iter(node, cmod->settings)
 			{
 				struct chanreg_module_setting *cset = node->data;
-				char *str = malloc(2 + strlen(cset->name) + 3 + 1); // $b + name + :$b + '\0'
-				sprintf(str, "$b%s:$b", cset->name);
+				char *str = malloc(strlen(cset->name) + 2); // $b + name + :\0
+				sprintf(str, "%s:", cset->name);
 				stringlist_add(free_strings, str);
 
 				value = chanreg_setting_get(reg, cmod, cset->name);
