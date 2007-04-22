@@ -322,3 +322,29 @@ size_t strlcat(char *out, const char *in, size_t len)
 	return out_len + in_len;
 }
 
+unsigned int is_valid_string(const char *str)
+{
+	const char *temp = str;
+	do
+	{
+		unsigned int i = *temp;
+		switch(i)
+		{
+			case 0:
+				 return 1;
+			case 2:
+			case 3:
+			case 9:
+			case 15:
+			case 22:
+				continue;
+			default:
+				if(i >= 31 && i <= 255)
+					continue;
+				else
+					return 0;
+		}
+	 } while(*temp++);
+
+	 return 1;
+}
