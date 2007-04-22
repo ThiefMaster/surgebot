@@ -560,7 +560,7 @@ struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module 
 
 	memset(cset, 0, sizeof(struct chanreg_module_setting));
 	cset->name = strdup(name);
-	cset->default_value = strdup(default_value);
+	cset->default_value = default_value ? strdup(default_value) : NULL;
 	cset->validator = validator;
 	cset->formatter = formatter;
 	cset->encoder = encoder;
