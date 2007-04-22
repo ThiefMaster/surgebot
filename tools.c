@@ -288,3 +288,37 @@ const char *strtab(unsigned int num)
 
 	return str_tab[num];
 }
+
+size_t strlcpy(char *out, const char *in, size_t len)
+{
+	size_t in_len;
+
+	in_len = strlen(in);
+	if (in_len < --len)
+		memcpy(out, in, in_len + 1);
+	else
+	{
+		memcpy(out, in, len);
+		out[len] = '\0';
+	}
+	return in_len;
+}
+
+size_t strlcat(char *out, const char *in, size_t len)
+{
+	size_t out_len, in_len;
+
+	out_len = strlen(out);
+	in_len = strlen(in);
+	if (out_len > --len)
+		out[len] = '\0';
+	else if (out_len + in_len < len)
+		memcpy(out + out_len, in, in_len + 1);
+	else
+	{
+		memcpy(out + out_len, in, len - out_len);
+		out[len] = '\0';
+	}
+	return out_len + in_len;
+}
+

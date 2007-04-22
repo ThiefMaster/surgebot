@@ -382,7 +382,8 @@ static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, c
 	}
 
 	dict_delete(module_settings, setting);
-	dict_insert(module_settings, strdup(setting), (value ? strdup(value) : NULL));
+	if(value)
+		dict_insert(module_settings, strdup(setting), strdup(value));
 }
 
 void chanreg_setting_set(struct chanreg *reg, struct chanreg_module *cmod, const char *setting, const char *value)
@@ -553,7 +554,7 @@ static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *c
 }
 
 
-struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter)
+struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter, cset_encode_f *encoder)
 {
 	struct chanreg_module_setting *cset = malloc(sizeof(struct chanreg_module_setting));
 
@@ -562,6 +563,7 @@ struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module 
 	cset->default_value = strdup(default_value);
 	cset->validator = validator;
 	cset->formatter = formatter;
+	cset->encoder = encoder;
 
 	dict_insert(cmod->settings, cset->name, cset);
 	return cset;
@@ -1183,7 +1185,12 @@ COMMAND(cset)
 	{
 		new_value = untokenize(argc - 2, argv + 2, " ");
 		if(!cset->validator || cset->validator(src, new_value))
-			chanreg_setting_set(reg, cmod, setting, new_value);
+		{
+			if(cset->encoder)
+				chanreg_setting_set(reg, cmod, setting, cset->encoder(chanreg_setting_get(reg, cmod, cset->name), new_value));
+			else
+				chanreg_setting_set(reg, cmod, setting, new_value);
+		}
 		free(new_value);
 	}
 

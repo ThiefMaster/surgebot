@@ -41,6 +41,7 @@ enum cmod_disable_reason
 
 typedef int (cset_validator_f)(struct irc_source *src, const char *value);
 typedef const char* (cset_format_f)(const char *value);
+typedef const char* (cset_encode_f)(const char *old_value, const char *value);
 typedef void (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
 typedef void (cmod_disable_f)(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 typedef void (cmod_db_read_f)(struct dict *db_nodes, struct chanreg *reg);
@@ -89,6 +90,7 @@ struct chanreg_module_setting
 	char *default_value;
 	cset_validator_f *validator;
 	cset_format_f *formatter;
+	cset_encode_f *encoder;
 };
 
 // Regular chanreg commands just need to check if the channel is registered.
@@ -130,7 +132,7 @@ void chanreg_module_unreg(struct chanreg_module *cmod);
 void chanreg_module_readdb(struct chanreg_module *cmod);
 void chanreg_module_writedb(struct chanreg_module *cmod);
 struct chanreg_module *chanreg_module_find(const char *name);
-struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter);
+struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter, cset_encode_f *encoder);
 unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *channel);
 
 #endif
