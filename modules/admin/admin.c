@@ -357,7 +357,7 @@ COMMAND(binding_rule)
 				reply("Could not change rule.");
 
 			free(rule);
-			return 0;
+			return 1;
 		}
 	}
 
