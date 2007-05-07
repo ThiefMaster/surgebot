@@ -278,7 +278,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 			argv++;
 		}
 	}
-	
+
 	if((cmd->flags & CMD_REQUIRE_CHANNEL) && !channel)
 	{
 		reply("This command can only be used in channels.");
@@ -346,6 +346,14 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		}
 
 		stringbuffer_append_string(log_entry, "]: ");
+
+		if(binding->alias)
+		{
+			stringbuffer_append_char(log_entry, '(');
+			stringbuffer_append_string(log_entry, binding->name);
+			stringbuffer_append_string(log_entry, ") ");
+			argv[0] = binding->cmd_name;
+		}
 
 		new_msg = untokenize(argc, argv, " ");
 		stringbuffer_append_string(log_entry, new_msg);
