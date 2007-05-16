@@ -375,6 +375,9 @@ char *irc_format_line(const char *msg)
 				case 'b': // bold
 					buf[pos++] = '\002';
 					break;
+				case 'c':
+					buf[pos++] = '\003';
+					break;
 				case 'o': // clear
 					buf[pos++] = '\017';
 					break;
