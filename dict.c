@@ -123,5 +123,5 @@ unsigned int dict_delete_key_value(struct dict *dict, const char *key, void *dat
 void dict_clear(struct dict *dict)
 {
 	while(dict->count)
-		dict_delete_node(dict->head);
+		dict_delete_node(dict, dict->head);
 }
