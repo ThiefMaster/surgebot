@@ -54,6 +54,7 @@ struct user_account
 {
 	char	*name;
 	char	pass[41]; // sha1 hash + \0
+	char	*login_mask;
 	time_t	registered;
 
 	struct dict	*users;

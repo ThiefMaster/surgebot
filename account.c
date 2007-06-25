@@ -42,8 +42,11 @@ static void account_db_read(struct database *db)
 		char *name = rec->key;
 		char *pass = database_fetch(obj, "password", DB_STRING);
 		char *registered = database_fetch(obj, "registered", DB_STRING);
+		char *loginmask = database_fetch(obj, "loginmask", DB_STRING);
 
-		account_add(name, pass, registered ? atoi(registered) : 0);
+		struct user_account *account = account_add(name, pass, registered ? atoi(registered) : 0);
+		if(loginmask)
+			account->login_mask = strdup(loginmask);
 	}
 }
 
@@ -56,6 +59,8 @@ static int account_db_write(struct database *db)
 		database_begin_object(db, account->name);
 			database_write_string(db, "password", account->pass);
 			database_write_long(db, "registered", account->registered);
+			if(account->login_mask)
+				database_write_string(db, "loginmask", account->login_mask);
 		database_end_object(db);
 	}
 	return 0;
@@ -80,7 +85,6 @@ struct user_account *account_register(const char *name, const char *pass)
 		assert_return(group = group_find("admins"), account);
 		group_member_add(group, account);
 	}
-
 
 	return account;
 }
@@ -129,6 +133,8 @@ void account_del(struct user_account *account)
 	dict_free(account->users);
 	dict_free(account->groups);
 	free(account->name);
+	if(account->login_mask)
+		free(account->login_mask);
 	free(account);
 }
 

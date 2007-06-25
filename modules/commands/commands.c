@@ -9,8 +9,9 @@
 #include "irc_handler.h"
 #include "chanuser.h"
 #include "conf.h"
+#include "account.h"
 
-MODULE_DEPENDS("parser", NULL);
+MODULE_DEPENDS("parser",  NULL);
 
 static struct
 {
@@ -360,6 +361,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		free(new_msg);
 
 		log_append(LOG_CMD, "%s", log_entry->string);
+		irc_send("NOTICE @#surgebot.intern :%s", log_entry->string);
 		stringbuffer_free(log_entry);
 	}
 	else
@@ -493,6 +495,29 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, char *channelname, struct cmd_binding *binding, unsigned int quiet)
 {
 	enum command_rule_result res;
+	unsigned char authed = 1;
+	char *user_mask;
+
+	if(user && !user->account)
+	{
+		authed = 0;
+		struct dict *accounts = account_dict();
+		user_mask = malloc(strlen(src->ident) + strlen(src->host) + 2);
+		sprintf(user_mask, "%s@%s", src->ident, src->host);
+		dict_iter(node, accounts)
+		{
+			struct user_account *acc = node->data;
+			if(acc->login_mask && !match(acc->login_mask, user_mask))
+			{
+				account_user_add(acc, user);
+				irc_send("PRIVMSG #surgebot.intern :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", src->nick, user_mask, acc->name, acc->login_mask);
+				debug("Auto-Auth by user %s (%s) to account %s (loginmask %s)", src->nick, user_mask, acc->name, acc->login_mask);
+				authed = 1;
+				break;
+			}
+		}
+		free(user_mask);
+	}
 
 	if(!user && !(binding->cmd->flags & CMD_ALLOW_UNKNOWN))
 	{
@@ -501,7 +526,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 		return 0;
 	}
 
-	if((!user || !user->account) && (binding->cmd->flags & CMD_REQUIRE_AUTHED))
+	if(!authed && (binding->cmd->flags & CMD_REQUIRE_AUTHED))
 	{
 		if(!quiet && (!command_conf.stealth || (user && user->account)))
 			reply("You must be authed to use $b%s$b.", binding->name);

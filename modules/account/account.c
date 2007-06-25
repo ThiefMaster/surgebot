@@ -16,6 +16,7 @@ COMMAND(auth);
 COMMAND(pass);
 COMMAND(unregister);
 COMMAND(accountinfo);
+COMMAND(loginmask);
 
 COMMAND(group_list);
 COMMAND(group_info);
@@ -34,6 +35,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "pass",		pass,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED, "true");
 	DEFINE_COMMAND(self, "unregister",	unregister,	2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED, "true");
 	DEFINE_COMMAND(self, "accountinfo",	accountinfo,	1, 0, "true");
+	DEFINE_COMMAND(self, "loginmask",	loginmask,	1, CMD_REQUIRE_AUTHED, "true");
 
 	/* Administrative commands */
 	DEFINE_COMMAND(self, "group list",	group_list,		1, 0, "group(admins)");
@@ -192,6 +194,11 @@ COMMAND(accountinfo)
 		stringlist_free(slist);
 		stringlist_free(lines);
 	}
+	
+	if(account->login_mask && ((argc < 2 && user->account) ||(!strcasecmp(src->nick, argv[1]) || !strcasecmp(user->account->name, account->name))))
+	{
+		reply("  $bLoginmask:      $b %s", account->login_mask);
+	}
 
 	if(dict_size(account->users))
 	{
@@ -211,6 +218,38 @@ COMMAND(accountinfo)
 		stringlist_free(lines);
 	}
 
+	return 1;
+}
+
+COMMAND(loginmask)
+{
+	char *loginmask;
+	if(argc > 1)
+	{
+		// We have been given a mask, let's check it for validity
+		if(!strcmp("*@*", argv[1]))
+		{
+			reply("Your hostmask must NOT be *@* for security reasons, please choose another one.");
+			return 0;
+		}
+		if(match("?*@?*", argv[1]))
+		{
+			reply("The provided hostmask does not match *@*, please choose another one.");
+			return 0;
+		}
+		loginmask = strdup(argv[1]);
+	}
+	else
+	{
+		// No loginmask given, using the current ident@host
+		loginmask = malloc(strlen(src->ident) + strlen(src->host) + 2);
+		sprintf(loginmask, "%s@%s", src->ident, src->host);
+	}
+
+	if(user->account->login_mask)
+		free(user->account->login_mask);
+	user->account->login_mask = loginmask;
+	reply("Your loginmask has been set to $b%s$b.", loginmask);
 	return 1;
 }
 
