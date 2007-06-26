@@ -70,4 +70,4 @@
 	"Used to set an ident@host mask which will allow you to authenticate to your account automatically without using a password.",
 	"If no mask is provided, your current ident@host will be used.",
 	"This must not be *@* for security reasons but has to match against *@*."
-};
+);
