@@ -496,7 +496,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 	enum command_rule_result res;
 	char *user_mask;
 
-	if(user && !user->account)
+	if(user && !user->account && !(binding->cmd->flags & CMD_IGNORE_LOGINMASK))
 	{
 		struct dict *accounts = account_dict();
 		user_mask = malloc(strlen(src->ident) + strlen(src->host) + 2);
@@ -508,7 +508,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 			{
 				account_user_add(acc, user);
 				irc_send("PRIVMSG #surgebot.intern :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", src->nick, user_mask, acc->name, acc->login_mask);
-				debug("Auto-Auth by user %s (%s) to account %s (loginmask %s)", src->nick, user_mask, acc->name, acc->login_mask);
+				reply("You have been automatically logged in as $b%s$b.", acc->name);
 				break;
 			}
 		}

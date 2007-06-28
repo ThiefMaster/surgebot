@@ -15,6 +15,7 @@ typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct ir
 #define CMD_REQUIRE_AUTHED	0x020 // user must be authed to use this command
 #define CMD_KEEP_BOUND		0x040 // do not allow unbinding last binding of this command
 #define CMD_REQUIRE_CHANNEL     0x080 // require an existing channel
+#define CMD_IGNORE_LOGINMASK	0x100
 
 struct command
 {

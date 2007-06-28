@@ -8,8 +8,24 @@
 #include "irc.h"
 #include "stringlist.h"
 #include "conf.h"
+#include "dict.h"
+#include "policer.h"
+#include "timer.h"
 
 MODULE_DEPENDS("commands", "help", NULL);
+
+struct dict *auth_policers;
+struct policer_params *auth_policer_params;
+
+struct auth_policer
+{
+	char *host;
+	struct policer *policer;
+	unsigned char gagged : 1;
+};
+void auth_policer_free(struct auth_policer *);
+void auth_policer_add_timer(struct auth_policer *);
+void auth_policer_timer_func(void *bound, struct auth_policer *policer);
 
 COMMAND(register);
 COMMAND(auth);
@@ -17,6 +33,7 @@ COMMAND(pass);
 COMMAND(unregister);
 COMMAND(accountinfo);
 COMMAND(loginmask);
+COMMAND(logout);
 
 COMMAND(group_list);
 COMMAND(group_info);
@@ -24,18 +41,20 @@ COMMAND(group_add);
 COMMAND(group_del);
 COMMAND(group_member_add);
 COMMAND(group_member_del);
+COMMAND(rename);
 
 MODULE_INIT
 {
 	help_load(self, "account.help");
 
 	/* Regular commands */
-	DEFINE_COMMAND(self, "register",	register,	3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND, "true");
-	DEFINE_COMMAND(self, "auth",		auth,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND, "true");
-	DEFINE_COMMAND(self, "pass",		pass,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED, "true");
-	DEFINE_COMMAND(self, "unregister",	unregister,	2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED, "true");
-	DEFINE_COMMAND(self, "accountinfo",	accountinfo,	1, 0, "true");
-	DEFINE_COMMAND(self, "loginmask",	loginmask,	1, CMD_REQUIRE_AUTHED, "true");
+	DEFINE_COMMAND(self, "register",	register,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "auth",		auth,			3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "pass",		pass,			3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "unregister",	unregister,		2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		1, 0, "true");
+	DEFINE_COMMAND(self, "loginmask",	loginmask,		1, CMD_REQUIRE_AUTHED, "true");
+	DEFINE_COMMAND(self, "logout",		logout,			1, CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
 
 	/* Administrative commands */
 	DEFINE_COMMAND(self, "group list",	group_list,		1, 0, "group(admins)");
@@ -44,11 +63,18 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "group remove",	group_del,		2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "group addmember",	group_member_add,	3, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "group delmember",	group_member_del,	3, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "rename",		rename,			3, 0, "group(admins)");
+
+	auth_policers = dict_create();
+	dict_set_free_funcs(auth_policers, NULL, (dict_free_f*)auth_policer_free);
+	auth_policer_params = policer_params_create(5.0, 0.2);
 }
 
 MODULE_FINI
 {
-
+	timer_del_boundname(NULL, "auth_del_policer");
+	dict_free(auth_policers);
+	policer_params_free(auth_policer_params);
 }
 
 COMMAND(register)
@@ -92,11 +118,29 @@ COMMAND(auth)
 {
 	struct user_account *account;
 	unsigned int stealth = conf_bool("commands/stealth");
+	struct auth_policer *auth_policer;
 
 	if(user->account)
 	{
 		reply("You are already authed to account $b%s$b.", user->account->name);
 		argv[2] = "AUTHED";
+		return 0;
+	}
+
+	if(!(auth_policer = dict_find(auth_policers, src->host)))
+	{
+		auth_policer = malloc(sizeof(struct auth_policer));
+		memset(auth_policer, 0, sizeof(struct auth_policer));
+		auth_policer->host = strdup(src->host);
+		auth_policer->policer = policer_create(auth_policer_params);
+		dict_insert(auth_policers, auth_policer->host, auth_policer);
+	}
+	else if(auth_policer->gagged)
+		return 0;
+	else if(!policer_conforms(auth_policer->policer, now, 1.0))
+	{
+		auth_policer->gagged = 1;
+		auth_policer_add_timer(auth_policer);
 		return 0;
 	}
 
@@ -119,8 +163,8 @@ COMMAND(auth)
 	account_user_add(account, user);
 	reply("You are now authed to account $b%s$b.", account->name);
 	argv[2] = "****";
+	timer_del(NULL, "auth_del_policer", 0, NULL, auth_policer, TIMER_IGNORE_BOUND | TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 	return 1;
-
 }
 
 COMMAND(pass)
@@ -194,7 +238,7 @@ COMMAND(accountinfo)
 		stringlist_free(slist);
 		stringlist_free(lines);
 	}
-	
+
 	if(account->login_mask && ((argc < 2 && user->account) ||(!strcasecmp(src->nick, argv[1]) || !strcasecmp(user->account->name, account->name))))
 	{
 		reply("  $bLoginmask:      $b %s", account->login_mask);
@@ -227,6 +271,21 @@ COMMAND(loginmask)
 	if(argc > 1)
 	{
 		// We have been given a mask, let's check it for validity
+		if(!strcmp("*", argv[1]))
+		{
+			if(user->account->login_mask)
+			{
+				free(user->account->login_mask);
+				user->account->login_mask = NULL;
+				reply("Your login mask has been deleted.");
+				return 1;
+			}
+			else
+			{
+				reply("You have no login mask set which could be deleted.");
+				return 0;
+			}
+		}
 		if(!strcmp("*@*", argv[1]))
 		{
 			reply("Your hostmask must NOT be *@* for security reasons, please choose another one.");
@@ -247,9 +306,26 @@ COMMAND(loginmask)
 	}
 
 	if(user->account->login_mask)
+	{
+		if(!strcasecmp(user->account->login_mask, loginmask))
+		{
+			reply("Your loginmask is already set to $b%s$b.", loginmask);
+			return 0;
+		}
+		reply("Changing your loginmask from %s to $b%s$b.", user->account->login_mask, loginmask);
 		free(user->account->login_mask);
+	}
+	else
+		reply("Your loginmask has been set to $b%s$b.", loginmask);
+
 	user->account->login_mask = loginmask;
-	reply("Your loginmask has been set to $b%s$b.", loginmask);
+	return 1;
+}
+
+COMMAND(logout)
+{
+	account_user_del(user->account, user);
+	reply("You have been logged out.");
 	return 1;
 }
 
@@ -415,3 +491,48 @@ COMMAND(group_member_del)
 	return 1;
 }
 
+COMMAND(rename)
+{
+	struct user_account *acc;
+	char c;
+
+	if(!(acc = account_find_smart(src, argv[1])))
+		return 0;
+
+	else if(account_find(argv[2]))
+	{
+		reply("An account named $b%s$b already exists.", argv[1]);
+		return 0;
+	}
+
+	else if(!validate_string(argv[2], VALID_ACCOUNT_CHARS, &c))
+	{
+		reply("Account name contains invalid characters (first invalid char: %c)", c);
+		return 0;
+	}
+
+	reply("Account $b%s$b has been renamed to $b%s$b", acc->name, argv[2]);
+
+	// Update dict
+	struct dict_node *node = dict_find_node(account_dict(), acc->name);
+	free(acc->name);
+	acc->name = node->key = strdup(argv[2]);
+	return 1;
+}
+
+void auth_policer_free(struct auth_policer *auth_policer)
+{
+	free(auth_policer->host);
+	policer_free(auth_policer->policer);
+	free(auth_policer);
+}
+
+void auth_policer_add_timer(struct auth_policer *policer)
+{
+	timer_add(NULL, "auth_del_policer", now + (60 * 60), (timer_f*)auth_policer_timer_func, policer, 0);
+}
+
+void auth_policer_timer_func(void *bound, struct auth_policer *policer)
+{
+	auth_policer_free(policer);
+}
