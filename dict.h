@@ -27,7 +27,7 @@ struct dict *dict_create();
 void dict_free(struct dict *dict);
 void dict_set_free_funcs(struct dict *dict, dict_free_f free_keys_func, dict_free_f free_data_func);
 void dict_insert(struct dict *dict, char *key, void *data);
-struct dict_node *dict_find_node(struct dict *dict, const char *key)
+struct dict_node *dict_find_node(struct dict *dict, const char *key);
 void *dict_find(struct dict *dict, const char *key);
 void dict_delete_node(struct dict *dict, struct dict_node *node);
 unsigned int dict_delete(struct dict *dict, const char *key);
