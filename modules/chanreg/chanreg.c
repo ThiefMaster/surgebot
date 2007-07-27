@@ -1405,7 +1405,7 @@ COMMAND(cmod_disable)
 	reply("Module $b%s$b has been disabled in $b%s$b.", cmod->name, channelname);
 	if(delete_data)
 	{
-		if(ret)
+		if(!ret)
 			reply("All settings/data from this module have been deleted.");
 		else
 		{

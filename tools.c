@@ -387,7 +387,7 @@ int remdir(const char *path, unsigned char exists)
 	if(!(dir = opendir(path)))
 	{
 		debug("Failed to open directory %s", path);
-		return !exists;
+		return exists;
 	}
 	
 	strncpy(new_path, path, sizeof(new_path));
@@ -406,19 +406,19 @@ int remdir(const char *path, unsigned char exists)
 			if(!remdir((const char*)new_path, 1))
 			{
 				debug("Failed removing directory: %s", new_path);
-				return 0;
+				return 2;
 			}
 		}
 
 		else if(unlink(new_path))
 		{
 			debug("Failed to unlink %s", new_path);
-			return 0;
+			return 3;
 		}
 	}
 	closedir(dir);
 	
-	return !rmdir(path);
+	return rmdir(path);
 }
 
 char *strip_codes(char *str)

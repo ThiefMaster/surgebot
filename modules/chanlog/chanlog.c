@@ -41,6 +41,7 @@ static void chanlog_free(struct chanlog *);
 static int cmod_enabled(struct chanreg *, enum cmod_enable_reason);
 static int cmod_disabled(struct chanreg *, unsigned int, enum cmod_disable_reason);
 int cset_purgeafter_validator(struct irc_source *src, const char *value);
+const char *cset_purgeafter_formatter(const char *value);
 
 IRC_HANDLER(join);
 IRC_HANDLER(kick);
@@ -55,7 +56,7 @@ MODULE_INIT
 	struct irc_user *me;
 
 	cmod = chanreg_module_reg("Chanlog", CMOD_STAFF | CMOD_HIDDEN, NULL, NULL, cmod_enabled, cmod_disabled);
-	chanreg_module_setting_reg(cmod, "PurgeAfter", "7", cset_purgeafter_validator, NULL, NULL);
+	chanreg_module_setting_reg(cmod, "PurgeAfter", "7", cset_purgeafter_validator, cset_purgeafter_formatter, NULL);
 
 	reg_irc_handler("JOIN", join);
 	reg_irc_handler("KICK", kick);
@@ -361,10 +362,15 @@ static int cmod_enabled(struct chanreg *creg, enum cmod_enable_reason reason)
 
 static int cmod_disabled(struct chanreg *creg, unsigned int delete_data, enum cmod_disable_reason reason)
 {
-	int ret = 1;
+	int ret = 0;
 	chanlog_del(creg->channel);
-	if(delete_data)
-		ret = chanlog_purge(creg->channel);
+	if(delete_data && chanlog_conf.directory)
+	{
+		char dir[PATH_MAX];
+		snprintf(dir, sizeof(dir), "%s/%s", chanlog_conf.directory, creg->channel);
+		strtolower(dir);
+		ret = remdir(dir, 1);
+	}
 	
 	return ret;
 }
@@ -392,6 +398,23 @@ int cset_purgeafter_validator(struct irc_source *src, const char *value)
 		return 1;
 
 	return 0;
+}
+
+const char *cset_purgeafter_formatter(const char *value)
+{
+	static char str[30];
+	int iValue = atoi(value);
+	if(value[0] == '0' && value[1] == '\0')
+		return "0 - Never purge logs";
+		
+	else if(iValue == 0)
+		return value;
+	
+	else
+	{
+		snprintf(str, sizeof(str), "%d day%s", iValue, (iValue != 1 ? "s" : ""));
+		return str;
+	}
 }
 
 static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, const char *reason)
