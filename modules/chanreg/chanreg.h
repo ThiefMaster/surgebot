@@ -42,8 +42,8 @@ enum cmod_disable_reason
 typedef int (cset_validator_f)(struct irc_source *src, const char *value);
 typedef const char* (cset_format_f)(const char *value);
 typedef const char* (cset_encode_f)(const char *old_value, const char *value);
-typedef void (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
-typedef void (cmod_disable_f)(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+typedef int (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
+typedef int (cmod_disable_f)(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 typedef void (cmod_db_read_f)(struct dict *db_nodes, struct chanreg *reg);
 typedef int (cmod_db_write_f)(struct database_object *dbo, struct chanreg *reg);
 

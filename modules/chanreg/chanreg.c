@@ -40,8 +40,10 @@ COMMAND(users);
 COMMAND(cset);
 COMMAND(cinfo);
 COMMAND(cmod_list);
+COMMAND(cmod_info);
 COMMAND(cmod_enable);
 COMMAND(cmod_disable);
+COMMAND(chanreg);
 static void chanreg_conf_reload();
 static void chanreg_db_read(struct database *db);
 static int chanreg_db_write(struct database *db);
@@ -52,8 +54,8 @@ static void chanreg_free(struct chanreg *reg);
 static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
 static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user);
 static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, const char *setting, const char *value);
-static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason);
-static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason);
+static int chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason);
+static int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason);
 static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
@@ -89,8 +91,10 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "cset",		cset,		1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "cinfo",		cinfo,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
 	DEFINE_COMMAND(self, "cmod list",	cmod_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cmod info",	cmod_info,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "cmod enable",	cmod_enable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
 	DEFINE_COMMAND(self, "cmod disable",	cmod_disable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "chanreg",		chanreg,	1, 0, "group(admins)");
 
 	reg_conf_reload_func(chanreg_conf_reload);
 	chanreg_conf_reload();
@@ -502,23 +506,22 @@ struct chanreg_module *chanreg_module_find(const char *name)
 	return dict_find(chanreg_modules, name);
 }
 
-static void chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason)
+static int chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason)
 {
-	assert(stringlist_find(reg->modules, cmod->name) == -1);
-	assert(stringlist_find(reg->active_modules, cmod->name) == -1);
+	assert_return(stringlist_find(reg->modules, cmod->name) == -1, -1);
+	assert_return(stringlist_find(reg->active_modules, cmod->name) == -1, -1);
 
 	stringlist_add(reg->modules, strdup(cmod->name));
 	stringlist_add(reg->active_modules, strdup(cmod->name));
 
 	chanreg_list_add(cmod->channels, reg);
 
-	if(cmod->enable_func)
-		cmod->enable_func(reg, reason);
+	return cmod->enable_func ? cmod->enable_func(reg, reason) : 0;
 }
 
-static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason)
+static int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason)
 {
-	int idx;
+	int idx, ret = 1;
 
 	if((idx = stringlist_find(reg->modules, cmod->name)) != -1)
 		stringlist_del(reg->modules, idx);
@@ -527,7 +530,7 @@ static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *c
 		stringlist_del(reg->active_modules, idx);
 
 	if(cmod->disable_func)
-		cmod->disable_func(reg, delete_data, reason);
+		ret = cmod->disable_func(reg, delete_data, reason);
 
 	chanreg_list_del(cmod->channels, reg);
 
@@ -551,6 +554,8 @@ static void chanreg_module_disable(struct chanreg *reg, struct chanreg_module *c
 
 		database_obj_free(dbo);
 	}
+
+	return ret;
 }
 
 
@@ -712,8 +717,8 @@ COMMAND(stats_chanreg)
 	struct table *table;
 	unsigned int i = 0;
 
-	table = table_create(2, dict_size(chanregs));
-	table_set_header(table, "Channel", "State");
+	table = table_create(3, dict_size(chanregs));
+	table_set_header(table, "Channel", "State", "Registrar");
 
 	dict_iter(node, chanregs)
 	{
@@ -721,6 +726,7 @@ COMMAND(stats_chanreg)
 
 		table->data[i][0] = reg->channel;
 		table->data[i][1] = reg->active ? "Active" : reg->last_error;
+		table->data[i][2] = reg->registrar ? reg->registrar : "-";
 		i++;
 	}
 
@@ -1231,10 +1237,15 @@ COMMAND(cinfo)
 				stringlist_add(slist, strdup(cmod->name));
 		}
 
-		stringlist_sort(slist);
-		str = untokenize(slist->count, slist->data, ", ");
-		reply("$bModules:    $b %s", str);
-		free(str);
+		
+		if(slist->count)
+		{
+			stringlist_sort(slist);
+			str = untokenize(slist->count, slist->data, ", ");
+			reply("$bModules:    $b %s", str);
+			free(str);
+		}
+
 		stringlist_free(slist);
 	}
 
@@ -1300,6 +1311,36 @@ COMMAND(cmod_list)
 	return 1;
 }
 
+COMMAND(cmod_info)
+{
+	struct chanreg_module *cmod;
+	struct stringlist *slist, *channels;
+
+	if(!(cmod = chanreg_module_find(argv[1])))
+	{
+		reply("A module named $b%s$b does not exist.", argv[1]);
+		return 0;
+	}
+	
+	if(!cmod->channels->count)
+		reply("The module $b%s$b is not activated in any channels.", argv[1]);
+	else
+	{
+		slist = stringlist_create();
+		for(int i = 0; i < cmod->channels->count; i++)
+			stringlist_add(slist, strdup(cmod->channels->data[i]->channel));
+		stringlist_sort(slist);
+		channels = stringlist_to_irclines(src->nick, slist);
+		reply("The module $b%s$b is activated in the following channel%s:", argv[1], channels->count == 1 ? "" : "s");
+		for(int i = 0; i < channels->count; i++)
+			reply("  %s", channels->data[i]);
+
+		stringlist_free(slist);
+		stringlist_free(channels);
+	}
+	return 1;
+}
+
 COMMAND(cmod_enable)
 {
 	struct chanreg_module *cmod;
@@ -1324,8 +1365,10 @@ COMMAND(cmod_enable)
 		return 0;
 	}
 
-	chanreg_module_enable(reg, cmod, CER_ENABLED);
-	reply("Module $b%s$b has been enabled in $b%s$b.", cmod->name, channelname);
+	if(!chanreg_module_enable(reg, cmod, CER_ENABLED))
+		reply("Module $b%s$b has been enabled in $b%s$b.", cmod->name, channelname);
+	else
+		reply("An error occurred while attempting to load module %s.", cmod->name);
 	return 1;
 }
 
@@ -1333,6 +1376,7 @@ COMMAND(cmod_disable)
 {
 	struct chanreg_module *cmod;
 	unsigned int delete_data = 0;
+	int ret;
 
 	CHANREG_COMMAND;
 
@@ -1357,9 +1401,23 @@ COMMAND(cmod_disable)
 	if(argc > 2 && !strcasecmp(argv[2], "purge"))
 		delete_data = 1;
 
-	chanreg_module_disable(reg, cmod, delete_data, CDR_DISABLED);
+	ret = chanreg_module_disable(reg, cmod, delete_data, CDR_DISABLED);
 	reply("Module $b%s$b has been disabled in $b%s$b.", cmod->name, channelname);
 	if(delete_data)
-		reply("All settings/data from this module have been deleted.");
+	{
+		if(ret)
+			reply("All settings/data from this module have been deleted.");
+		else
+		{
+			reply("All module-settings were deleted, some data could not be removed.");
+			log_append(LOG_WARNING, "Some data from module %s could not be deleted.", cmod->name);
+		}
+	}
 	return 1;
 }
+
+COMMAND(chanreg)
+{
+	return 0;
+}
+

@@ -44,6 +44,7 @@ static struct dict *users;
 CHANUSER_IMPLEMENT_HOOKABLE(channel_del);
 CHANUSER_IMPLEMENT_HOOKABLE(channel_complete);
 CHANUSER_IMPLEMENT_HOOKABLE(user_del);
+CHANUSER_IMPLEMENT_HOOKABLE(chanuser_del);
 
 void chanuser_init()
 {
@@ -56,6 +57,7 @@ void chanuser_fini()
 	chanuser_clear_channel_del_hooks();
 	chanuser_clear_channel_complete_hooks();
 	chanuser_clear_user_del_hooks();
+	chanuser_clear_chanuser_del_hooks();
 
 	chanuser_flush();
 	dict_free(users);
@@ -67,7 +69,7 @@ void chanuser_flush()
 	while(dict_size(users))
 		user_del(dict_first_data(users), 0, NULL);
 	while(dict_size(channels))
-		channel_del(dict_first_data(channels), NULL);
+		channel_del(dict_first_data(channels), 0, NULL);
 }
 
 
@@ -84,7 +86,7 @@ struct irc_channel* channel_add(const char *name, int do_burst)
 	if((channel = channel_find(name)))
 	{
 		log_append(LOG_WARNING, "Channel %s was already added; re-adding it", channel->name);
-		channel_del(channel, NULL);
+		channel_del(channel, 0, NULL);
 	}
 
 	channel = malloc(sizeof(struct irc_channel));
@@ -117,15 +119,14 @@ struct irc_channel* channel_find(const char *name)
 	return dict_find(channels, name);
 }
 
-void channel_del(struct irc_channel *channel, const char *reason)
+void channel_del(struct irc_channel *channel, unsigned int del_type, const char *reason)
 {
-	if(reason)
-		CHANUSER_CALL_HOOKS(channel_del, (channel, reason));
+	CHANUSER_CALL_HOOKS(channel_del, (channel, reason));
 
 	dict_iter(node, channel->users)
 	{
 		struct irc_chanuser *chanuser = node->data;
-		channel_user_del(channel, chanuser->user, 1);
+		channel_user_del(channel, chanuser->user, 0, 1, reason);
 	}
 
 	dict_iter(node, channel->bans)
@@ -233,14 +234,14 @@ struct irc_user* user_find(const char *nick)
 	return dict_find(users, nick);
 }
 
-void user_del(struct irc_user *user, unsigned int quit, const char *reason)
+void user_del(struct irc_user *user, unsigned int del_type, const char *reason)
 {
-	CHANUSER_CALL_HOOKS(user_del, (user, quit, reason));
+	CHANUSER_CALL_HOOKS(user_del, (user, del_type, reason));
 
 	dict_iter(node, user->channels)
 	{
 		struct irc_chanuser *chanuser = node->data;
-		channel_user_del(chanuser->channel, user, 0);
+		channel_user_del(chanuser->channel, user, del_type, 0, reason);
 	}
 
 	if(user->account)
@@ -311,10 +312,12 @@ struct irc_chanuser* channel_user_find(struct irc_channel *channel, struct irc_u
 	return dict_find(channel->users, user->nick);
 }
 
-int channel_user_del(struct irc_channel *channel, struct irc_user *user, int check_dead)
+int channel_user_del(struct irc_channel *channel, struct irc_user *user, unsigned int del_type, int check_dead, const char *reason)
 {
 	struct irc_chanuser *chanuser = channel_user_find(channel, user);
 	assert_return(chanuser, 0);
+
+	CHANUSER_CALL_HOOKS(chanuser_del, (chanuser, del_type, reason));
 
 	dict_delete(channel->users, user->nick);
 	dict_delete(user->channels, channel->name);
@@ -323,7 +326,7 @@ int channel_user_del(struct irc_channel *channel, struct irc_user *user, int che
 	if(check_dead && dict_size(user->channels) == 0)
 	{
 		debug("Deleting dead user %s", user->nick);
-		user_del(user, 0, "dead");
+		user_del(user, del_type, reason);
 		return 1;
 	}
 
@@ -365,5 +368,18 @@ void channel_ban_del(struct irc_channel *channel, const char *mask)
 	dict_delete(channel->bans, ban->mask);
 	free(ban->mask);
 	free(ban);
+}
+
+char *get_mode_char(struct irc_chanuser *cuser)
+{
+	if(cuser)
+	{
+		if(cuser->flags & MODE_OP)
+			return "@";
+		if(cuser->flags & MODE_VOICE)
+			return "+";
+	}
+	
+	return ""; // No modechar
 }
 

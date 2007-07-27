@@ -183,11 +183,15 @@ CHANUSER_IRC_HANDLER(part)
 {
 	struct irc_channel *channel;
 	struct irc_user *user;
+	char *part_reason = NULL;
 	assert_return(argc > 1, 0);
 	assert_return(channel = channel_find(argv[1]), 0);
 
 	if(check_burst(channel, raw_line))
 		return -1;
+	
+	if(argc > 2)
+		part_reason = argv[2];
 
 	assert_return(user = user_find(src->nick), 0);
 	user_complete(user, src->ident, src->host);
@@ -195,12 +199,13 @@ CHANUSER_IRC_HANDLER(part)
 	if(!strcasecmp(src->nick, bot.nickname))
 	{
 		debug("We left %s, deleting channel", argv[1]);
-		channel_del(channel, "parted");
+		channel_user_del(channel, user, DEL_PART, 0, part_reason);
+		channel_del(channel, DEL_PART, part_reason);
 	}
 	else
 	{
 		debug("%s left %s", src->nick, argv[1]);
-		channel_user_del(channel, user, 1);
+		channel_user_del(channel, user, DEL_PART, 1, part_reason);
 	}
 	return 0;
 }
@@ -209,11 +214,15 @@ CHANUSER_IRC_HANDLER(kick)
 {
 	struct irc_channel *channel;
 	struct irc_user *user, *victim;
+	char *kick_reason = NULL;
 	assert_return(argc > 2, 0);
 	assert_return(channel = channel_find(argv[1]), 0);
 
 	if(check_burst(channel, raw_line))
 		return -1;
+	
+	if(argc > 3)
+		kick_reason = argv[3];
 
 	if((user = user_find(src->nick)))
 		user_complete(user, src->ident, src->host);
@@ -222,12 +231,12 @@ CHANUSER_IRC_HANDLER(kick)
 	if(!strcasecmp(argv[2], bot.nickname))
 	{
 		debug("We were kicked from %s by %s, deleting channel", argv[1], src->nick);
-		channel_del(channel, "kicked");
+		channel_del(channel, DEL_KICK, kick_reason);
 	}
 	else
 	{
 		debug("%s was kicked from %s by %s", argv[2], argv[1], src->nick);
-		channel_user_del(channel, victim, 1);
+		channel_user_del(channel, victim, DEL_KICK, 1, kick_reason);
 	}
 	return 0;
 }
@@ -260,7 +269,7 @@ CHANUSER_IRC_HANDLER(quit)
 	assert_return(user = user_find(src->nick), 0);
 
 	debug("%s has quit: %s", src->nick, (argc > 1 ? argv[1] : "(no message)"));
-	user_del(user, 1, (argc > 1 ? argv[1] : ""));
+	user_del(user, DEL_QUIT, (argc > 1 ? argv[1] : ""));
 	return 0;
 }
 

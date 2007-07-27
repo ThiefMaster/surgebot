@@ -348,3 +348,107 @@ unsigned int is_valid_string(const char *str)
 
 	 return 1;
 }
+
+void strtolower(char *str)
+{
+	for(char *ptr = str; *ptr; ptr++)
+		*ptr = tolower(*ptr);
+}
+
+unsigned char check_date(int day, int month, int year)
+{
+	struct tm timeinfo, *tm;
+	time_t timestamp;
+
+	// First check the month, since it's the easiest, and the day and year for positivity
+	if(month < 1 || month > 12 || day <= 0 || year < 1970)
+		return 0;
+
+	timeinfo.tm_year = year - 1900;
+	timeinfo.tm_mon = month;
+	timeinfo.tm_mday = 0;
+	timeinfo.tm_hour = timeinfo.tm_min = timeinfo.tm_sec = 0;
+
+	timestamp = mktime(&timeinfo);
+	if(timestamp == -1)
+		return 0;
+
+	tm = localtime(&timestamp);
+	return day <= tm->tm_mday;
+}
+
+int remdir(const char *path, unsigned char exists)
+{
+	DIR *dir;
+	struct dirent *direntry;
+	char new_path[PATH_MAX];
+	struct stat attribut;
+	
+	if(!(dir = opendir(path)))
+	{
+		debug("Failed to open directory %s", path);
+		return !exists;
+	}
+	
+	strncpy(new_path, path, sizeof(new_path));
+	int len = strlen(new_path);
+	if(new_path[len - 1] == '/') new_path[--len] = '\0';
+
+	while((direntry = readdir(dir)))
+	{
+		if(!strcmp(direntry->d_name, ".") || !strcmp(direntry->d_name, ".."))
+			continue;
+
+		snprintf(new_path + len, sizeof(new_path) - len, "/%s", direntry->d_name);
+		stat(new_path, &attribut);
+		if(attribut.st_mode & S_IFDIR)
+		{
+			if(!remdir((const char*)new_path, 1))
+			{
+				debug("Failed removing directory: %s", new_path);
+				return 0;
+			}
+		}
+
+		else if(unlink(new_path))
+		{
+			debug("Failed to unlink %s", new_path);
+			return 0;
+		}
+	}
+	closedir(dir);
+	
+	return !rmdir(path);
+}
+
+char *strip_codes(char *str)
+{
+    int col, j;
+    char *dup;
+
+    col = j = 0;
+
+    for(dup = str; *dup; dup++)
+    {
+        if(*dup == 2 || *dup == 15 || *dup == 22 || *dup == 31)
+            continue;
+
+        else if(*dup == 3)
+            col = 1;
+
+        else if((col == 2 || col == 3) && *dup == ',')
+            col = 4;
+
+        else if((col == 1 || col == 2 || col == 4 || col == 5) && *dup >= '0' && *dup <= '9')
+            col++;
+
+        else
+        {
+            str[j++] = *dup;
+            col = 0;
+        }
+    }
+    str[j]= '\0';
+	return str;
+}
+

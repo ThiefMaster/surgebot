@@ -128,14 +128,29 @@ COMMAND(stats_commands)
 {
 	struct dict *commands = command_dict();
 	struct table *table;
-	unsigned int i = 0;
+	unsigned int i = 0, command_count;
+	struct module *module = NULL;
+
+	if(argc > 1 && !(module = module_find(argv[1])))
+	{
+		reply("There is no module called $b%s$b.", argv[1]);
+		return 0;
+	}
 
 	table = table_create(5, dict_size(commands));
 	table_set_header(table, "Module", "Command", "Min. Args", "Bind Count", "Access Rule");
 
+	command_count = dict_size(commands);
+
 	dict_iter(node, commands)
 	{
 		struct command *command = node->data;
+		if(argc > 1 && command->module != module)
+		{
+			command_count--;
+			continue;
+		}
+
 		table->data[i][0] = command->module->name;
 		table->data[i][1] = command->name;
 		table->data[i][2] = strtab(command->min_argc - 1);
@@ -143,12 +158,19 @@ COMMAND(stats_commands)
 		table->data[i][4] = command->rule;
 		i++;
 	}
-
+	
+	table->rows = i;
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_commands);
-	table_send(table, src->nick);
-	table_free(table);
 
-	reply("$b%d$b commands registered.", dict_size(commands));
+	if(command_count)
+	{
+		table_send(table, src->nick);
+		table_free(table);
+		reply("$b%d$b commands registered.", command_count);
+	}
+	else if(module)
+		reply("Module $b%s$b does not seem to implement any commands.", module->name);
+		
 	return 1;
 }
 

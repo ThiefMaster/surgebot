@@ -507,7 +507,6 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 			if(acc->login_mask && !match(acc->login_mask, user_mask))
 			{
 				account_user_add(acc, user);
-				irc_send("PRIVMSG #surgebot.intern :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", src->nick, user_mask, acc->name, acc->login_mask);
 				reply("You have been automatically logged in as $b%s$b.", acc->name);
 				break;
 			}
