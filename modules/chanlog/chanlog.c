@@ -40,7 +40,7 @@ static void chanlog(const char *target, const char *format, ...);
 static void chanlog_free(struct chanlog *);
 static int cmod_enabled(struct chanreg *, enum cmod_enable_reason);
 static int cmod_disabled(struct chanreg *, unsigned int, enum cmod_disable_reason);
-int cset_purgeafter_validator(struct irc_source *src, const char *value);
+int cset_purgeafter_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 const char *cset_purgeafter_formatter(const char *value);
 
 IRC_HANDLER(join);
@@ -375,7 +375,7 @@ static int cmod_disabled(struct chanreg *creg, unsigned int delete_data, enum cm
 	return ret;
 }
 
-int cset_purgeafter_validator(struct irc_source *src, const char *value)
+int cset_purgeafter_validator(struct chanreg *reg, struct irc_source *src, const char *value)
 {
 	long val;
 
@@ -444,12 +444,14 @@ static void chanlog_timer(void *bound, void *data)
 IRC_HANDLER(join)
 {
 	assert(argc > 1);
-	if(chanreg_module_active(cmod, argv[1]) && !strcasecmp(src->nick, bot.nickname))
+	if(chanreg_module_active(cmod, argv[1]))
 	{
-		if(chanlog_add(argv[1]))
-			return;
+		if(!strcasecmp(src->nick, bot.nickname))
+			if(chanlog_add(argv[1]))
+				return;
+
+		chanlog(argv[1], "*** Joins: %s (%s@%s)", src->nick, src->ident, src->host);
 	}
-	chanlog(argv[1], "*** Joins: %s (%s@%s)", src->nick, src->ident, src->host);
 }
 
 IRC_HANDLER(kick)

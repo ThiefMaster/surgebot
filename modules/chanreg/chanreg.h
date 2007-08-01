@@ -39,7 +39,7 @@ enum cmod_disable_reason
 	CDR_DISABLED	= 2
 };
 
-typedef int (cset_validator_f)(struct irc_source *src, const char *value);
+typedef int (cset_validator_f)(struct chanreg *reg, struct irc_source *src, const char *value);
 typedef const char* (cset_format_f)(const char *value);
 typedef const char* (cset_encode_f)(const char *old_value, const char *value);
 typedef int (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
@@ -134,5 +134,8 @@ void chanreg_module_writedb(struct chanreg_module *cmod);
 struct chanreg_module *chanreg_module_find(const char *name);
 struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter, cset_encode_f *encoder);
 unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *channel);
+
+// Some default validators for module settings
+int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 
 #endif

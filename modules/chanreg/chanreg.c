@@ -12,6 +12,7 @@
 #include "irc_handler.h"
 #include "conf.h"
 #include "table.h"
+#include "stringlist.h"
 
 MODULE_DEPENDS("commands", "help", "chanjoin", NULL);
 
@@ -43,7 +44,8 @@ COMMAND(cmod_list);
 COMMAND(cmod_info);
 COMMAND(cmod_enable);
 COMMAND(cmod_disable);
-COMMAND(chanreg);
+COMMAND(rejoin);
+COMMAND(move);
 static void chanreg_conf_reload();
 static void chanreg_db_read(struct database *db);
 static int chanreg_db_write(struct database *db);
@@ -59,6 +61,7 @@ static int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cm
 static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
+static void chanreg_join(struct chanreg *creg);
 
 static struct module *this;
 static struct database *chanreg_db = NULL;
@@ -94,7 +97,8 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "cmod info",	cmod_info,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "cmod enable",	cmod_enable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
 	DEFINE_COMMAND(self, "cmod disable",	cmod_disable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "chanreg",		chanreg,	1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "rejoin",		rejoin,		1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "move",		move,		3, 0, "group(admins)");
 
 	reg_conf_reload_func(chanreg_conf_reload);
 	chanreg_conf_reload();
@@ -293,7 +297,7 @@ static struct chanreg *chanreg_add(const char *channel, const struct stringlist 
 	dict_set_free_funcs(reg->settings, free, (dict_free_f *)dict_free);
 	dict_set_free_funcs(reg->db_data, free, (dict_free_f *)dict_free);
 
-	chanjoin_addchan(channel, this, NULL, cj_success, cj_error, reg);
+	chanreg_join(reg);
 	dict_insert(chanregs, reg->channel, reg);
 
 	dict_iter(node, chanreg_modules)
@@ -609,6 +613,11 @@ static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const 
 	struct chanreg *reg = ctx;
 	reg->active = 0;
 	reg->last_error = reason;
+}
+
+static void chanreg_join(struct chanreg *creg)
+{
+	chanjoin_addchan(creg->channel, this, NULL, cj_success, cj_error, creg);
 }
 
 static int sort_channels(const void *a_, const void *b_)
@@ -1190,7 +1199,7 @@ COMMAND(cset)
 	if(argc > 2)
 	{
 		new_value = untokenize(argc - 2, argv + 2, " ");
-		if(!cset->validator || cset->validator(src, new_value))
+		if(!cset->validator || cset->validator(reg, src, new_value))
 		{
 			if(cset->encoder)
 				chanreg_setting_set(reg, cmod, setting, cset->encoder(chanreg_setting_get(reg, cmod, cset->name), new_value));
@@ -1416,8 +1425,102 @@ COMMAND(cmod_disable)
 	return 1;
 }
 
-COMMAND(chanreg)
+COMMAND(rejoin)
 {
+	struct chanreg *creg;
+	unsigned int count = 0;
+	
+	if(argc > 1)
+	{
+		if(!IsChannelName(argv[1]))
+		{
+			reply("$b%s$b is no valid channel name.", argv[1]);
+			return 0;
+		}
+
+		else if(!(creg = chanreg_find(argv[1])))
+		{
+			reply("$b%s$b is not registered.", argv[1]);
+			return 0;
+		}
+
+		else if(creg->active)
+		{
+			reply("We are already in $b%s$b, no need to rejoin.", argv[1]);
+			return 0;
+		}
+
+		chanreg_join(creg);
+		reply("Attempting to rejoin $b%s$b (Last error: %s)", creg->channel, creg->last_error ? creg->last_error : "None");
+	}
+	else
+	{
+		struct stringlist *slist = stringlist_create();
+		dict_iter(node, chanregs)
+		{
+			creg = node->data;
+			if(creg->active)
+				continue;
+
+			stringlist_add(slist, strdup(creg->channel));
+			chanreg_join(creg);
+			count++;
+		}
+		if(count)
+		{
+			if(count == 1)
+				reply("Attempting to rejoin $b%s$b.", slist->data[0]);
+			else
+			{
+				struct stringlist *irclist = stringlist_to_irclines(src->nick, slist);
+				int i;
+				reply("Attempting to rejoin the following $b%d$b channels:", count);
+				for(i = 0; i < irclist->count; i++)
+					reply("  %s", irclist->data[i]);
+				
+				stringlist_free(irclist);
+			}
+		}
+		else
+			reply("There is no need to rejoin any channels at this very moment.");
+
+		stringlist_free(slist);
+	}
+	
+	return count ? 1 : 0;
+}
+
+COMMAND(move)
+{
+	struct chanreg *creg;
+	if(!IsChannelName(argv[1]))
+		reply("$b%s$b is no valid channel name.", argv[1]);
+
+	else if(!IsChannelName(argv[2]))
+		reply("$b%s$b is no valid channel name.", argv[2]);
+
+	else if(!(creg = chanreg_find(argv[1])))
+		reply("$b%s$b is not registered.", argv[1]);
+
+	else if(chanreg_find(argv[2]))
+		reply("$b%s$b is already registered.", argv[2]);
+
+	else
+	{
+		struct dict_node *node = dict_find_node(chanregs, creg->channel);
+		chanjoin_delchan(creg->channel, this, NULL);
+		free(creg->channel);
+		creg->channel = strdup(argv[2]);
+		node->key = creg->channel;
+		chanreg_join(creg);
+		reply("Channel registration has been moved to $b%s$b.", creg->channel);
+		return 1;
+	}
+	
 	return 0;
 }
 
+int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value)
+{
+	return (true_string(value) || false_string(value));
+}
