@@ -96,6 +96,8 @@ enum ptr_types // for free_on_error ptrlist
 void database_init();
 void database_fini();
 
+struct dict *database_dict();
+
 struct dict *database_load(const char *filename); // load database from file
 
 struct database *database_create(const char *name, db_read_f *read_func, db_write_f *write_func); // register database

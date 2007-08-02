@@ -28,6 +28,11 @@ static const char *errors[] = {
 static unsigned int database_eof(struct database *db);
 static struct db_node *database_read_record(struct database *db, char **key);
 
+struct dict *database_dict()
+{
+	return databases;
+}
+
 struct dict *database_load(const char *filename)
 {
 	struct dict *nodes = NULL;
@@ -98,15 +103,12 @@ void database_delete(struct database *db)
 
 void database_timed_write(struct database *db, UNUSED_ARG(void *data))
 {
-	char tmp[MAXLEN];
 	log_append(LOG_INFO, "Database %s last written: %s%s, write interval is %s", db->name,
 	      (db->last_write ? duration2string(now - db->last_write) : "never"),
 	      (db->last_write ? " ago" : ""),
 	      duration2string(db->write_interval));
 
 	database_write(db);
-	snprintf(tmp, sizeof(tmp), "db_write_%s", db->name);
-	timer_add(db, tmp, now + db->write_interval, (timer_f*)database_timed_write, NULL, 0);
 }
 
 void database_set_write_interval(struct database *db, time_t interval)
@@ -686,6 +688,9 @@ void database_dump(struct dict *db_nodes)
 int database_write(struct database *db)
 {
 	int result;
+
+	database_set_write_interval(db, db->write_interval);
+
 	assert_return(db->tmp_filename && db->write_func, -1);
 	log_append(LOG_INFO, "Writing database %s", db->name);
 

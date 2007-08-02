@@ -1524,3 +1524,16 @@ int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *v
 {
 	return (true_string(value) || false_string(value));
 }
+
+const char *null_none(const char *value)
+{
+	return value ? value : "None";
+}
+
+const char *asterisk_null(const char *old_value, const char *value)
+{
+	if(!strcmp(value, "*"))
+		return NULL;
+	return value;
+}
+

@@ -135,7 +135,13 @@ struct chanreg_module *chanreg_module_find(const char *name);
 struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter, cset_encode_f *encoder);
 unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *channel);
 
-// Some default validators for module settings
+// Default validators for module settings
 int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value);
+
+// Default formatters
+const char *null_none(const char *value);
+
+// Default encoders
+const char *asterisk_null(const char *old_value, const char *value);
 
 #endif

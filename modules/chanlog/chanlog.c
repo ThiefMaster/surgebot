@@ -25,6 +25,9 @@ static struct {
 static struct dict *chanlogs;
 static struct chanreg_module *cmod;
 
+static void chanlog_init();
+static void chanlog_fini();
+
 static FILE *fd_find(const char *);
 static int chanlog_add(const char *);
 static void chanlog_del(const char *);
@@ -32,6 +35,7 @@ static void chanlog_readconf();
 static void chanlog_timer_add();
 static void chanlog_timer_del();
 static int chanlog_purge(const char *target);
+static void chanlog_rotate();
 
 static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, const char *reason);
 static void chanlog_timer(void *bound, void *data);
@@ -53,8 +57,6 @@ IRC_HANDLER(topic);
 
 MODULE_INIT
 {
-	struct irc_user *me;
-
 	cmod = chanreg_module_reg("Chanlog", CMOD_STAFF | CMOD_HIDDEN, NULL, NULL, cmod_enabled, cmod_disabled);
 	chanreg_module_setting_reg(cmod, "PurgeAfter", "7", cset_purgeafter_validator, cset_purgeafter_formatter, NULL);
 
@@ -71,19 +73,13 @@ MODULE_INIT
 	dict_set_free_funcs(chanlogs, NULL, (dict_free_f*)chanlog_free);
 
 	chanlog_readconf();
-
-	if((me = user_find(bot.nickname)))
-	{
-		dict_iter(node, me->channels)
-		{
-			if(chanreg_module_active(cmod, node->key))
-				chanlog_add(node->key);
-		}
-	}
+	chanlog_init();
 }
 
 MODULE_FINI
 {
+	chanlog_fini();
+
 	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("KICK", kick);
 	unreg_irc_handler("MODE", mode);
@@ -95,11 +91,27 @@ MODULE_FINI
 	chanuser_unreg_chanuser_del_hook(chanuser_del_hook);
 	chanlog_timer_del();
 
-	for(int i = 0; i < cmod->channels->count; i++)
-		chanlog_del(cmod->channels->data[i]->channel);
-
 	chanreg_module_unreg(cmod);
 	dict_free(chanlogs);
+}
+
+static void chanlog_init()
+{
+	struct irc_user *me;
+	if(!(me = user_find(bot.nickname)))
+		return;
+
+	dict_iter(node, me->channels)
+	{
+		if(chanreg_module_active(cmod, node->key))
+			chanlog_add(node->key);
+	}
+}
+
+static void chanlog_fini()
+{
+	dict_iter(node, chanlogs)
+		chanlog_del(((struct chanlog *)node->data)->target);
 }
 
 static FILE *fd_find(const char *target)
@@ -226,7 +238,7 @@ static void chanlog_timer_add()
 
 	struct tm *timeinfo = localtime(&now);
 	time_t timestamp;
-
+	
 	timeinfo->tm_hour = 0;
 	timeinfo->tm_min = 0;
 	timeinfo->tm_sec = 0;
@@ -335,6 +347,13 @@ static int chanlog_purge(const char *target)
 	return count;
 }
 
+static void chanlog_rotate()
+{
+	debug("Rotating logfiles of module chanlog");
+	chanlog_fini();
+	chanlog_init();
+}
+
 static void chanlog(const char *target, const char *format, ...)
 {
 	va_list args;
@@ -437,6 +456,7 @@ static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, 
 
 static void chanlog_timer(void *bound, void *data)
 {
+	chanlog_rotate();
 	chanlog_purge(NULL);
 	chanlog_timer_add();
 }

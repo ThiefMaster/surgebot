@@ -31,12 +31,10 @@ static void chanfw_user_free(struct chanfw_user *);
 static void chanfw_new_victim(struct chanreg *reg, const char *nick, unsigned int send_channel_notify);
 static void remove_user(void *bound, struct chanfw_user *data);
 static void channel_complete_hook(struct irc_channel *);
-static int number_validate(struct irc_source *src, const char *value);
-static int notification_validate(struct irc_source *src, const char *value);
+static int number_validate(struct chanreg *reg, struct irc_source *src, const char *value);
+static int notification_validate(struct chanreg *reg, struct irc_source *src, const char *value);
 static const char *notification_format(const char *value);
 static const char *notification_encode(const char *old_value, const char *value);
-static const char *null_none(const char *value);
-static const char *asterisk_null(const char *old_value, const char *value);
 static int cmod_enabled(struct chanreg *reg, enum cmod_enable_reason reason);
 static int cmod_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 
@@ -261,7 +259,7 @@ static void channel_complete_hook(struct irc_channel *channel)
 		timer_add(this, "channel_complete", now, (timer_f *)channel_complete_hook_tmr, channel, 0);
 }
 
-static int number_validate(struct irc_source *src, const char *value)
+static int number_validate(struct chanreg *reg, struct irc_source *src, const char *value)
 {
 	if(!aredigits(value))
 	{
@@ -355,7 +353,7 @@ static int notification_parse(unsigned int current_flags, const char *str, char 
 	return new_flags;
 }
 
-static int notification_validate(struct irc_source *src, const char *value)
+static int notification_validate(struct chanreg *reg, struct irc_source *src, const char *value)
 {
 	char *error = NULL;
 	if(notification_parse(0, value, &error) < 0)
@@ -398,18 +396,6 @@ static const char *notification_encode(const char *old_value, const char *value)
 
 	snprintf(flag_str, sizeof(flag_str), "%u", flags);
 	return flag_str;
-}
-
-static const char *asterisk_null(const char *old_value, const char *value)
-{
-	if(!strcmp(value, "*"))
-		return NULL;
-	return value;
-}
-
-static const char *null_none(const char *value)
-{
-	return value ? value : "None";
 }
 
 static void chanfw_user_free(struct chanfw_user *user)

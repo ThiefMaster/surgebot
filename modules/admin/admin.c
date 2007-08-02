@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include "global.h"
 #include "module.h"
 #include "modules/commands/commands.h"
@@ -26,6 +27,7 @@ COMMAND(module_reload);
 COMMAND(binding_add);
 COMMAND(binding_del);
 COMMAND(binding_rule);
+COMMAND(writeall);
 
 MODULE_INIT
 {
@@ -45,6 +47,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "binding add",	binding_add,	3, CMD_REQUIRE_AUTHED | CMD_KEEP_BOUND, "group(admins)");
 	DEFINE_COMMAND(self, "binding del",	binding_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "binding rule",	binding_rule,	2, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "writeall",	writeall,	1,	0,	"group(admins)");
 }
 
 MODULE_FINI
@@ -371,6 +374,37 @@ COMMAND(binding_rule)
 	return 1;
 }
 
+COMMAND(writeall)
+{
+	struct dict *databases = database_dict();
+	struct timeval start, stop;
+	int count = 0, bad_count = 0;
+	
+	gettimeofday(&start, NULL);
+	dict_iter(node, databases)
+	{
+		if(!database_write(node->data))
+			count++;
+		else
+			bad_count++;
+	}
+	gettimeofday(&stop, NULL);
+	stop.tv_sec -= start.tv_sec;
+	stop.tv_usec -= start.tv_usec;
+	
+	if(stop.tv_usec < 0)
+	{
+		stop.tv_sec -= 1;
+		stop.tv_usec += 1000000;
+	}
+
+	if(!bad_count)
+		reply("Wrote all databases in %ld.%ld seconds.", stop.tv_sec, stop.tv_usec);
+	else
+		reply("Wrote %d out of %d dataases in %ld.%ld seconds", count, (count + bad_count), stop.tv_sec, stop.tv_usec);
+	
+	return 1;
+}
 
 static void module_deps_recursive(struct irc_source *src, struct module *module, unsigned int depth)
 {
