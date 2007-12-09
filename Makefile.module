@@ -1,10 +1,14 @@
 LIBS_mod =
 CFLAGS_mod = -pipe -Werror -Wall -g -fPIC -I.
+CXXFLAGS_mod = -pipe -Werror -Wall -g -fPIC -I.
 LDFLAGS_mod = -shared
 
 SRC_mod = $(wildcard modules/$(MODULE)/*.c)
+SRCX_mod = $(wildcard modules/$(MODULE)/*.cc)
 OBJ_mod = $(patsubst %.c,.tmp/%.o,$(SRC_mod))
+OBJX_mod = $(patsubst %.cc,.tmp/%.oo,$(SRCX_mod))
 DEP_mod = $(patsubst %.c,.tmp/%.d,$(SRC_mod))
+DEPX_mod = $(patsubst %.cc,.tmp/%.dd,$(SRCX_mod))
 LIB_mod	= modules/$(MODULE).so
 
 -include modules/$(MODULE)/Makefile.in
@@ -15,12 +19,12 @@ all: $(DEP_mod) $(LIB_mod)
 
 clean:
 	@echo "   CLEANMOD  $(MODULE)"
-	rm -f .tmp/modules/$(MODULE)/*.d .tmp/modules/$(MODULE)/*.o $(LIB_mod)
+	rm -f .tmp/modules/$(MODULE)/*.d .tmp/modules/$(MODULE)/*.dd .tmp/modules/$(MODULE)/*.o .tmp/modules/$(MODULE)/*.oo $(LIB_mod)
 
 # rule for creating final binary
-$(LIB_mod): $(OBJ_mod)
+$(LIB_mod): $(OBJ_mod) $(OBJX_mod)
 	@echo "   LD        [$(MODULE)] $@"
-	$(CC) $(LDFLAGS_mod) $(LIBS_mod) $(OBJ_mod) -o $(LIB_mod)
+	$(CC) $(LDFLAGS_mod) $(LIBS_mod) $(OBJ_mod) $(OBJX_mod) -o $(LIB_mod)
 
 # rule for creating object files
 $(OBJ_mod) : .tmp/modules/$(MODULE)/%.o : modules/$(MODULE)/%.c
@@ -33,9 +37,21 @@ $(DEP_mod) : .tmp/modules/$(MODULE)/%.d : modules/$(MODULE)/%.c
 	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.d))"
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MM -MT $(@:.d=.o) $< > $@
 
+# rule for creating object files (c++)
+$(OBJX_mod) : .tmp/modules/$(MODULE)/%.oo : modules/$(MODULE)/%.cc
+	@echo "   CXX       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.cc=.oo))"
+	@$(CXX) $(CXXFLAGS_mod) -MMD -MF .tmp/$(<:.cc=.dd) -MT $@ -o $@ -c $<
+
+# rule for creating dependency files (c++)
+$(DEPX_mod) : .tmp/modules/$(MODULE)/%.dd : modules/$(MODULE)/%.cc
+	@mkdir -p .tmp/modules/$(MODULE)
+	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.cc=.dd))"
+	@$(CXX) $(CXXFLAGS_mod) -MM -MT $(@:.dd=.o) $< > $@
+
+
 # include dependency files
 ifneq ($(MAKECMDGOALS),clean)
--include $(DEP_mod)
+-include $(DEP_mod) $(DEPX_mod)
 endif
 
 # vim: ft=make
