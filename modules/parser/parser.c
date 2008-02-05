@@ -247,6 +247,11 @@ struct parser_token_list *parser_tokenize(struct parser *parser, const char *str
 				goto error;
 			}
 		}
+		else
+		{
+			parser_error(parser, "Unexpected string '%s' after %s", c, token_names[last_token]);
+			goto error;
+		}
 	}
 
 	if(open_parens)
