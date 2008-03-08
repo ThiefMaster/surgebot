@@ -101,6 +101,7 @@ struct irc_chanuser
 	struct irc_channel	*channel;
 	struct irc_user		*user;
 	int			flags;
+	time_t			joined;
 };
 
 struct irc_ban

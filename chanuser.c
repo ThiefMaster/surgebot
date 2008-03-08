@@ -300,6 +300,7 @@ struct irc_chanuser* channel_user_add(struct irc_channel *channel, struct irc_us
 	chanuser->channel = channel;
 	chanuser->user    = user;
 	chanuser->flags   = flags;
+	chanuser->joined  = now;
 
 	dict_insert(channel->users, user->nick, chanuser);
 	dict_insert(user->channels, channel->name, chanuser);

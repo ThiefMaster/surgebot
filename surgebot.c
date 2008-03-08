@@ -163,6 +163,7 @@ int main(int argc, char **argv)
 
 	chdir(dirname(argv[0])); // make sure we are in the bot's main directory
 	now = time(NULL);
+	srand(now);
 
 	signal_init();
 	if(conf_init() != 0)
