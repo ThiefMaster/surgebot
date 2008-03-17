@@ -196,11 +196,12 @@ int main(int argc, char **argv)
 	while(!quit_poll)
 	{
 		now = time(NULL);
-		sock_poll();
-		timer_poll();
 
 		for(i = 0; i < loop_funcs->count; i++) // call loop funcs
 			loop_funcs->data[i]();
+
+		sock_poll();
+		timer_poll();
 
 		if(reload_conf)
 		{
