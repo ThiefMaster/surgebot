@@ -20,6 +20,8 @@ static void irc_sock_event(struct sock *sock, enum sock_event event, int err);
 static void irc_connected();
 static void irc_disconnected();
 static void irc_connect_timeout(void *bound, void *data);
+static void irc_ping(void *bound, void *data);
+static void irc_stoned(void *bound, void *data);
 static void irc_error(int err);
 static void irc_schedule_reconnect(unsigned int wait);
 static void irc_reconnect(void *bound, void *data);
@@ -104,6 +106,27 @@ static void irc_connected()
 	bot.hostname = NULL;
 
 	bot.last_msg = now;
+
+	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0);
+	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0);
+}
+
+void irc_watchdog_reset()
+{
+	timer_del_boundname(&bot, "server_stoned");
+	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0);
+}
+
+static void irc_ping(void *bound, void *data)
+{
+	irc_send_fast("PING :%lu", now);
+	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0);
+}
+
+static void irc_stoned(void *bound, void *data)
+{
+	irc_send_fast("QUIT :Server seems to be stoned; reconnecting");
+	irc_schedule_reconnect(0);
 }
 
 static void irc_disconnected()

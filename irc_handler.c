@@ -94,6 +94,11 @@ IRC_HANDLER(ping)
 	irc_send_fast("PONG :%s", argv[1]);
 }
 
+IRC_HANDLER(pong)
+{
+	irc_watchdog_reset();
+}
+
 IRC_HANDLER(num_welcome)
 {
 	log_append(LOG_INFO, "Successfully logged in to the irc server");
@@ -175,6 +180,7 @@ IRC_HANDLER(num_hosthidden)
 static void reg_default_handlers()
 {
 	reg_irc_handler("PING", ping);
+	reg_irc_handler("PONG", pong);
 	reg_irc_handler("001", num_welcome);
 	reg_irc_handler("004", num_myinfo);
 	reg_irc_handler("311", num_whoisuser);
