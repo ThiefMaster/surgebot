@@ -169,6 +169,9 @@ static void irc_schedule_reconnect(unsigned int wait)
 	if(timer_exists_boundname(&bot, "server_reconnect"))
 		return;
 
+	timer_del_boundname(&bot, "server_ping");
+	timer_del_boundname(&bot, "server_stoned");
+
 	bot.server_tries++;
 	if(bot_conf.max_server_tries && bot.server_tries > bot_conf.max_server_tries)
 	{
