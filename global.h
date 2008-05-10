@@ -81,9 +81,6 @@ extern struct surgebot bot;
 
 #if __GNUC__ >= 2
 #define UNUSED_ARG(ARG) ARG __attribute__((unused))
-#elif defined(S_SPLINT_S)
-#define UNUSED_ARG(ARG) /*@unused@*/ ARG
-#define const /*@observer@*/ /*@temp@*/
 #else
 #define UNUSED_ARG(ARG) ARG
 #endif
