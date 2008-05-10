@@ -60,4 +60,8 @@
 	"directory" = "logs";
 };
 
+"ctcp" = {
+	"version" = "This is a SurgeBot. What are you?";
+};
+
 // vim: ft=cfg
