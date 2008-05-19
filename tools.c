@@ -1,3 +1,5 @@
+#include <string.h>
+#include <sys/stat.h>
 #include "global.h"
 #include "tools.h"
 #include "chanuser.h"
@@ -378,50 +380,7 @@ unsigned char check_date(int day, int month, int year)
 	return day <= tm->tm_mday;
 }
 
-int remdir(const char *path, unsigned char exists)
-{
-	DIR *dir;
-	struct dirent *direntry;
-	char new_path[PATH_MAX];
-	struct stat attribut;
-	
-	if(!(dir = opendir(path)))
-	{
-		debug("Failed to open directory %s", path);
-		return exists;
-	}
-	
-	strncpy(new_path, path, sizeof(new_path));
-	int len = strlen(new_path);
-	if(new_path[len - 1] == '/') new_path[--len] = '\0';
-
-	while((direntry = readdir(dir)))
-	{
-		if(!strcmp(direntry->d_name, ".") || !strcmp(direntry->d_name, ".."))
-			continue;
-
-		snprintf(new_path + len, sizeof(new_path) - len, "/%s", direntry->d_name);
-		stat(new_path, &attribut);
-		if(attribut.st_mode & S_IFDIR)
-		{
-			if(!remdir((const char*)new_path, 1))
-			{
-				debug("Failed removing directory: %s", new_path);
-				return 2;
-			}
-		}
-
-		else if(unlink(new_path))
-		{
-			debug("Failed to unlink %s", new_path);
-			return 3;
-		}
-	}
-	closedir(dir);
-	
-	return rmdir(path);
-}
-
+// No, this code is not beautiful, but it works
 char *strip_codes(char *str)
 {
     int col, j;
@@ -453,3 +412,12 @@ char *strip_codes(char *str)
 	return str;
 }
 
+inline long min(long a, long b)
+{
+	return (a < b) ? a : b;
+}
+
+inline long max(long a, long b)
+{
+	return (a > b) ? a : b;
+}

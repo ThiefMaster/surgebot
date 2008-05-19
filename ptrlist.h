@@ -19,6 +19,7 @@ struct ptrlist *ptrlist_create();
 void ptrlist_free(struct ptrlist *list);
 
 unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr);
+unsigned int ptrlist_find(struct ptrlist *list, void *ptr);
 void ptrlist_del(struct ptrlist *list, unsigned int pos, unsigned int *pos_ptr);
 
 #endif

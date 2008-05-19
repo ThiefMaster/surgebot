@@ -64,4 +64,9 @@
 	"version" = "This is a SurgeBot. What are you?";
 };
 
+"google" = {
+	"url" = "www.google.com/search?q=%s";
+	"results" = "2";
+};
+
 // vim: ft=cfg

@@ -1,6 +1,8 @@
 #ifndef STRINGBUFFER_H
 #define STRINGBUFFER_H
 
+#include <stddef.h> // size_t
+
 struct stringbuffer
 {
 	unsigned int len;
@@ -13,7 +15,13 @@ struct stringbuffer *stringbuffer_create();
 void stringbuffer_free(struct stringbuffer *sbuf);
 
 void stringbuffer_append_char(struct stringbuffer *sbuf, char c);
+void stringbuffer_append_string_n(struct stringbuffer *sbuf, const char *str, size_t len);
 void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str);
+
+char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned char require_token);
+char *stringbuffer_shiftspn(struct stringbuffer *sbuf, const char *delim_list, unsigned char require_token);
+
 void stringbuffer_flush(struct stringbuffer *sbuf);
+char *stringbuffer_flush_return(struct stringbuffer *sbuf, size_t len);
 
 #endif

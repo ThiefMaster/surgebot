@@ -24,6 +24,9 @@ unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr)
 {
 	struct ptrlist_node *node;
 	unsigned int pos;
+	
+	if((pos = ptrlist_find(list, ptr)) != -1)
+		return pos;
 
 	if(list->count == list->size) // list is full, we need to allocate more memory
 	{
@@ -38,6 +41,17 @@ unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr)
 	pos = list->count++;
 	list->data[pos] = node;
 	return pos;
+}
+
+unsigned int ptrlist_find(struct ptrlist *list, void *ptr)
+{
+	int i;
+	
+	for(i = 0; i < list->count; i++)
+		if(list->data[i] == ptr)
+			return i;
+	
+	return -1;
 }
 
 void ptrlist_del(struct ptrlist *list, unsigned int pos, unsigned int *pos_ptr)

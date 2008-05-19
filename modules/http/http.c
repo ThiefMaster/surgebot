@@ -150,7 +150,7 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 			// Socket was closed by remote side = reached end of http content
 			// -> Dump read buffer to socket_read_functions
 			unsigned int i;
-			debug("Read %u chars for HTTP Request %s, passing to read funcs", i, http->id);
+			debug("Read %u chars for HTTP Request %s, passing to read funcs", http->buf->len, http->id);
 			for(i = 0; i < http->read_funcs->count; i++)
 				((http_read_f*)http->read_funcs->data[i]->ptr)(http, http->buf->string, (unsigned int)http->buf->len);
 			
@@ -219,7 +219,7 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 				log_append(LOG_ERROR, "(HTTP Request %s) Invalid HTTP header format: %s", http->id, str);
 				// Send timeout event and free request
 				HTTPRequest_event(http, H_EV_TIMEOUT);
-				dict_delete(requests, http->id);
+				sock_close(sock); // Will trigger a socket event deleting the HTTP Request
 				
 				free(str);
 				return;

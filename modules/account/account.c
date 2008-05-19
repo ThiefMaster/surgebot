@@ -12,6 +12,9 @@
 #include "policer.h"
 #include "timer.h"
 
+#define OPTION_FUNC(NAME) int NAME(struct irc_source *src, struct user_account *account, int argc, char **argv)
+typedef OPTION_FUNC(option_func);
+
 MODULE_DEPENDS("commands", "help", NULL);
 
 struct dict *auth_policers;
@@ -42,6 +45,10 @@ COMMAND(group_del);
 COMMAND(group_member_add);
 COMMAND(group_member_del);
 COMMAND(rename);
+COMMAND(oset);
+
+OPTION_FUNC(oset_password);
+OPTION_FUNC(oset_loginmask);
 
 MODULE_INIT
 {
@@ -50,7 +57,7 @@ MODULE_INIT
 	/* Regular commands */
 	DEFINE_COMMAND(self, "register",	register,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "auth",		auth,			3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "pass",		pass,			3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "pass",		pass,			1, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "unregister",	unregister,		2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		1, 0, "true");
 	DEFINE_COMMAND(self, "loginmask",	loginmask,		1, CMD_REQUIRE_AUTHED, "true");
@@ -64,6 +71,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "group addmember",	group_member_add,	3, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "group delmember",	group_member_del,	3, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "rename",		rename,			3, 0, "group(admins)");
+	DEFINE_COMMAND(self, "oset",		oset,			3, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
 
 	auth_policers = dict_create();
 	dict_set_free_funcs(auth_policers, NULL, (dict_free_f*)auth_policer_free);
@@ -152,7 +160,7 @@ COMMAND(auth)
 		return 0;
 	}
 
-	if(strcmp(sha1(argv[2]), account->pass)) // Invalid password
+	if(!strcmp("*", account->pass) || strcmp(sha1(argv[2]), account->pass)) // Invalid password
 	{
 		if(!stealth)
 			reply("Invalid password for account $b%s$b.", account->name);
@@ -169,6 +177,23 @@ COMMAND(auth)
 
 COMMAND(pass)
 {
+	if(argc == 1)
+	{
+		// Password set?
+		if(strcmp(user->account->pass, "*"))
+			reply("$bPassword:$b [Encrypted]");
+		else
+			reply("You have no password set. You can only be automatically authed based on your loginmask.");
+		
+		return 0;
+	}
+	
+	if(argc <= 2)
+	{
+		reply("Not enough arguments.");
+		return 0;
+	}
+	
 	if(strcmp(sha1(argv[1]), user->account->pass)) // Invalid old password
 	{
 		reply("Invalid password for account $b%s$b.", user->account->name);
@@ -239,7 +264,7 @@ COMMAND(accountinfo)
 		stringlist_free(lines);
 	}
 
-	if(account->login_mask && ((argc < 2 && user->account) ||(!strcasecmp(src->nick, argv[1]) || !strcasecmp(user->account->name, account->name))))
+	if(account->login_mask && ((argc < 2 && user->account) || (!strcasecmp(src->nick, argv[1]) || !strcasecmp(user->account->name, account->name))))
 	{
 		reply("  $bLoginmask:      $b %s", account->login_mask);
 	}
@@ -267,58 +292,14 @@ COMMAND(accountinfo)
 
 COMMAND(loginmask)
 {
-	char *loginmask;
 	if(argc > 1)
-	{
-		// We have been given a mask, let's check it for validity
-		if(!strcmp("*", argv[1]))
-		{
-			if(user->account->login_mask)
-			{
-				free(user->account->login_mask);
-				user->account->login_mask = NULL;
-				reply("Your login mask has been deleted.");
-				return 1;
-			}
-			else
-			{
-				reply("You have no login mask set which could be deleted.");
-				return 0;
-			}
-		}
-		if(!strcmp("*@*", argv[1]))
-		{
-			reply("Your hostmask must NOT be *@* for security reasons, please choose another one.");
-			return 0;
-		}
-		if(match("?*@?*", argv[1]))
-		{
-			reply("The provided hostmask does not match *@*, please choose another one.");
-			return 0;
-		}
-		loginmask = strdup(argv[1]);
-	}
-	else
-	{
-		// No loginmask given, using the current ident@host
-		loginmask = malloc(strlen(src->ident) + strlen(src->host) + 2);
-		sprintf(loginmask, "%s@%s", src->ident, src->host);
-	}
-
+		return  oset_loginmask(src, user->account, argc - 1, argv + 1);
+	
 	if(user->account->login_mask)
-	{
-		if(!strcasecmp(user->account->login_mask, loginmask))
-		{
-			reply("Your loginmask is already set to $b%s$b.", loginmask);
-			return 0;
-		}
-		reply("Changing your loginmask from %s to $b%s$b.", user->account->login_mask, loginmask);
-		free(user->account->login_mask);
-	}
+		reply("Your loginmask is $b%s$b.", user->account->login_mask);
 	else
-		reply("Your loginmask has been set to $b%s$b.", loginmask);
+		reply("You have no loginmask set.");
 
-	user->account->login_mask = loginmask;
 	return 1;
 }
 
@@ -519,6 +500,114 @@ COMMAND(rename)
 	acc->name = node->key = strdup(argv[2]);
 	return 1;
 }
+
+COMMAND(oset)
+{
+	struct user_account *acc;
+	option_func *opfunc;
+	
+	if(!(acc = account_find_smart(src, argv[1])))
+		return 0;
+	
+	if(!strcasecmp(argv[2], "password") || !strcasecmp(argv[2], "pass"))
+		opfunc = oset_password;
+	
+	else if(!strcasecmp(argv[2], "loginmask"))
+		opfunc = oset_loginmask;
+	
+	else
+	{
+		reply("There is no such setting.");
+		return 0;
+	}
+	
+	return opfunc(src, acc, argc - 3, argv + 3);
+}
+
+OPTION_FUNC(oset_password)
+{
+	if(argc > 0)
+	{
+		if(!strcmp(argv[0], "*"))
+		{
+			if(!account->login_mask)
+			{
+				reply("The password can only be deleted if there is a loginmask.");
+				return 0;
+			}
+			strcpy(account->pass, argv[0]);
+			reply("$bPassword:$b None");
+		}
+		else
+		{
+			account_set_pass(account, argv[0]);
+			reply("$bPassword:$b ***");
+		}
+		return 1;
+	}
+	else
+		reply("You need to specify a new password as well.");
+	
+	return 0;
+}
+
+OPTION_FUNC(oset_loginmask)
+{
+	if(!argc)
+	{
+		if(account->login_mask)
+			reply("$bLoginmask:$b %s", account->login_mask);
+		else
+			reply("$b%s$b has no loginmask set.", account->name);
+		
+		return 0;
+	}
+	
+	if(!strcmp("*", argv[0]))
+	{
+		if(!strcmp(account->pass, "*"))
+		{
+			reply("This account has no password set. You may not delete its loginmask.");
+			return 0;
+		}
+		
+		if(account->login_mask)
+		{
+			free(account->login_mask);
+			account->login_mask = NULL;
+		}
+		
+		reply("$bLoginmask:$b None");
+		return 1;
+	}
+	if(!strcmp("*@*", argv[0]))
+	{
+		reply("The loginmask MUST NOT be *@* for security reasons, please choose another one.");
+		return 0;
+	}
+	if(match("?*@?*", argv[0]))
+	{
+		reply("The provided hostmask does not match *@*, please choose another one.");
+		return 0;
+	}
+	
+	if(account->login_mask)
+	{
+		if(!strcasecmp(account->login_mask, argv[0]))
+		{
+			reply("This loginmask is already set.");
+			return 0;
+		}
+		reply("Changed the loginmask from from %s to $b%s$b.", account->login_mask, argv[0]);
+		free(account->login_mask);
+	}
+	else
+		reply("Your loginmask has been set to $b%s$b.", argv[0]);
+
+	account->login_mask = strdup(argv[0]);
+	return 1;
+}
+
 
 void auth_policer_free(struct auth_policer *auth_policer)
 {

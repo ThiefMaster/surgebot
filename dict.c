@@ -85,10 +85,10 @@ void dict_delete_node(struct dict *dict, struct dict_node *node)
 	if(node->next)
 		node->next->prev = node->prev;
 
-	if(dict->free_keys_func && node->key)
-		dict->free_keys_func(node->key);
 	if(dict->free_data_func && node->data)
 		dict->free_data_func(node->data);
+	if(dict->free_keys_func && node->key)
+		dict->free_keys_func(node->key);
 
 	dict->count--;
 

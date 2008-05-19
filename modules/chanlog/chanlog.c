@@ -2,6 +2,7 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/chanreg/chanreg.h"
+#include "modules/tools/tools.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "table.h"
@@ -11,7 +12,7 @@
 
 #define CHANLOG_ACTIVE if(argc < 2 || !chanreg_module_active(cmod, argv[1])) return
 
-MODULE_DEPENDS("commands", "chanreg", NULL);
+MODULE_DEPENDS("tools", "commands", "chanreg", NULL);
 
 struct chanlog {
 	char *target;

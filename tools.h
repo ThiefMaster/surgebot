@@ -18,8 +18,10 @@ size_t strlcat(char *out, const char *in, size_t len);
 unsigned int is_valid_string(const char *str);
 void strtolower(char *str);
 unsigned char check_date(int day, int month, int year);
-int remdir(const char *path, unsigned char exists);
 char *strip_codes(char *str);
+
+inline long min(long a, long b);
+inline long max(long a, long b);
 
 #define true_string(STR)	((STR) && (!strcasecmp((STR), "on") || !strcasecmp((STR), "true") || !strcmp((STR), "1") || !strcasecmp((STR), "yes")))
 #define false_string(STR)	(!(STR) || !strcasecmp((STR), "off") || !strcasecmp((STR), "false") || !strcmp((STR), "0") || !strcasecmp((STR), "no"))
