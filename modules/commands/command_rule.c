@@ -18,10 +18,11 @@ static struct parser *parser = NULL;
 static struct command_rule_list *rules;
 static unsigned int next_rule_idx = 1;
 
-
 PARSER_FUNC(group);
 PARSER_FUNC(inchannel);
 PARSER_FUNC(channel);
+PARSER_FUNC(oped);
+PARSER_FUNC(voiced);
 struct command_rule *command_rule_get(unsigned int rule_idx);
 
 
@@ -32,6 +33,8 @@ void command_rule_init()
 	REG_COMMAND_RULE("group", group);
 	REG_COMMAND_RULE("inchannel", inchannel);
 	REG_COMMAND_RULE("channel", channel);
+	REG_COMMAND_RULE("oped", oped);
+	REG_COMMAND_RULE("voiced", voiced);
 }
 
 void command_rule_fini()
@@ -39,6 +42,8 @@ void command_rule_fini()
 	command_rule_unreg("group");
 	command_rule_unreg("inchannel");
 	command_rule_unreg("channel");
+	command_rule_unreg("oped");
+	command_rule_unreg("voiced");
 	parser_free(parser);
 	command_rule_list_free(rules);
 }
@@ -196,7 +201,7 @@ PARSER_FUNC(inchannel)
 	if(!arg)
 	{
 		if(!cr_ctx->channelname)
-			return RET_TRUE;
+			return RET_FALSE;
 		else
 			arg = cr_ctx->channelname;
 	}
@@ -217,5 +222,45 @@ PARSER_FUNC(channel)
 	if(!strcasecmp(cr_ctx->channelname, arg))
 		return RET_TRUE;
 
+	return RET_FALSE;
+}
+
+PARSER_FUNC(oped)
+{
+	struct command_rule_context *cr_ctx = ctx;
+	struct irc_channel *chan;
+	struct irc_chanuser *chanuser;
+	
+	if(!arg)
+	{
+		if(!cr_ctx->channelname)
+			return RET_FALSE;
+		else
+			arg = cr_ctx->channelname;
+	}
+	
+	if((chan = channel_find(arg)) && cr_ctx->user && (chanuser = channel_user_find(chan, (struct irc_user *)cr_ctx->user)) && (chanuser->flags & MODE_OP))
+		return RET_TRUE;
+	
+	return RET_FALSE;
+}
+
+PARSER_FUNC(voiced)
+{
+	struct command_rule_context *cr_ctx = ctx;
+	struct irc_channel *chan;
+	struct irc_chanuser *chanuser;
+	
+	if(!arg)
+	{
+		if(!cr_ctx->channelname)
+			return RET_FALSE;
+		else
+			arg = cr_ctx->channelname;
+	}
+	
+	if((chan = channel_find(arg)) && cr_ctx->user && (chanuser = channel_user_find(chan, (struct irc_user *)cr_ctx->user)) && (chanuser->flags & MODE_VOICE))
+		return RET_TRUE;
+	
 	return RET_FALSE;
 }
