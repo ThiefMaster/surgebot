@@ -161,7 +161,7 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 			chan->state = CJ_JOIN_PENDING;
 			irc_send("JOIN %s", name);
 			timer_del_boundname(chan, "chanjoin_join_timeout");
-			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0);
+			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0, 0);
 		}
 		else
 		{
@@ -172,7 +172,7 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 	else if(chan->channel)
 	{
 		chan->state = CJ_JOINED;
-		timer_add(chan, "chanjoin_joined", now, (timer_f *)chanjoin_addchan_tmr, ref, 0);
+		timer_add(chan, "chanjoin_joined", now, (timer_f *)chanjoin_addchan_tmr, ref, 0, 0);
 	}
 }
 
@@ -308,7 +308,7 @@ static void perform_done()
 			chan->state = CJ_JOIN_PENDING;
 			irc_send("JOIN %s", chan->name);
 			timer_del_boundname(chan, "chanjoin_join_timeout");
-			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0);
+			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0, 0);
 		}
 	}
 }
@@ -353,7 +353,7 @@ static void channel_del_hook(struct irc_channel *irc_chan, const char *reason)
 	if(chan->tries < chanjoin_conf.max_tries)
 	{
 		debug("Trying to rejoin %s", chan->name);
-		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0);
+		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0, 0);
 		return;
 	}
 
@@ -382,7 +382,7 @@ IRC_HANDLER(num_channelisfull)
 	{
 		chan->state = CJ_INACTIVE;
 		irc_send(chanjoin_conf.invite_command, chan->name);
-		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0);
+		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0, 0);
 		return;
 	}
 
@@ -413,7 +413,7 @@ IRC_HANDLER(num_inviteonlychan)
 	{
 		chan->state = CJ_INACTIVE;
 		irc_send(chanjoin_conf.invite_command, chan->name);
-		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0);
+		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0, 0);
 		return;
 	}
 
@@ -444,7 +444,7 @@ IRC_HANDLER(num_bannedfromchan)
 	{
 		chan->state = CJ_INACTIVE;
 		irc_send(chanjoin_conf.unban_command, chan->name);
-		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0);
+		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0, 0);
 		return;
 	}
 
@@ -475,7 +475,7 @@ IRC_HANDLER(num_badchannelkey)
 	{
 		chan->state = CJ_INACTIVE;
 		irc_send(chanjoin_conf.invite_command, chan->name);
-		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0);
+		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0, 0);
 		return;
 	}
 

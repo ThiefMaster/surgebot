@@ -79,7 +79,7 @@ int irc_connect()
 
 	sock_set_readbuf(bot.server_sock, MAXLEN, "\r\n");
 
-	timer_add(&bot, "server_connect_timeout", now + 15, irc_connect_timeout, bot.server_sock, 0);
+	timer_add(&bot, "server_connect_timeout", now + 15, irc_connect_timeout, bot.server_sock, 0, 0);
 	return 0;
 }
 
@@ -107,20 +107,20 @@ static void irc_connected()
 
 	bot.last_msg = now;
 
-	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0);
-	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0);
+	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0, 1);
+	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0, 1);
 }
 
 void irc_watchdog_reset()
 {
 	timer_del_boundname(&bot, "server_stoned");
-	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0);
+	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0, 1);
 }
 
 static void irc_ping(void *bound, void *data)
 {
 	irc_send_fast("PING :%lu", now);
-	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0);
+	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0, 1);
 }
 
 static void irc_stoned(void *bound, void *data)
@@ -180,7 +180,7 @@ static void irc_schedule_reconnect(unsigned int wait)
 		return;
 	}
 
-	timer_add(&bot, "server_reconnect", now + wait, irc_reconnect, NULL, 0);
+	timer_add(&bot, "server_reconnect", now + wait, irc_reconnect, NULL, 0, 1);
 }
 
 static void irc_reconnect(void *bound, void *data)

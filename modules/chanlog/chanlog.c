@@ -246,7 +246,7 @@ static void chanlog_timer_add()
 	timeinfo->tm_mday++;
 
 	assert((timestamp = mktime(timeinfo)) > 0);
-	timer_add(NULL, "chanlog_timer", timestamp, chanlog_timer, NULL, 0);
+	timer_add(NULL, "chanlog_timer", timestamp, chanlog_timer, NULL, 0, 0);
 }
 
 static void chanlog_timer_del()

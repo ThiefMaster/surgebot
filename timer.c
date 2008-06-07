@@ -15,9 +15,8 @@ void timer_fini()
 	dict_free(timers);
 }
 
-void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data)
+void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char quiet)
 {
-	debug("Adding timer %s (%lu) - triggered in %lu secs", name ? name : "-noname-", next_timer_id, time - now);
 	struct timer *tmr = malloc(sizeof(struct timer));
 	tmr->id = next_timer_id;
 	tmr->name = strdup(name);
@@ -27,6 +26,9 @@ void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *
 	tmr->data = data;
 	tmr->free_data = free_data;
 	tmr->triggered = 0;
+	tmr->quiet = quiet;
+	
+	timer_debug(tmr, "Adding timer %s (%lu) - triggered in %lu secs", name ? name : "-noname-", next_timer_id, time - now);
 	dict_insert(timers, NULL, tmr);
 
 	next_timer_id++;
@@ -75,7 +77,7 @@ void timer_del(void *bound, const char *name, time_t time, timer_f *func, void *
 		   ((flags & TIMER_IGNORE_DATA) || tmr->data == data) &&
 		    !tmr->triggered)
 		{
-			debug("Deleting timer %s (%lu)", (tmr->name ? tmr->name : "-noname-"), tmr->id);
+			timer_debug(tmr, "Deleting timer %s (%lu)", (tmr->name ? tmr->name : "-noname-"), tmr->id);
 			if(tmr->free_data)
 				free(tmr->data);
 			free(tmr->name);
@@ -100,7 +102,7 @@ void timer_poll()
 		struct timer *tmr = node->data;
 		if(tmr->time <= now)
 		{
-			debug("Triggering timer %s (%lu)", (tmr->name ? tmr->name : "-noname-"), tmr->id);
+			timer_debug(tmr, "Triggering timer %s (%lu)", (tmr->name ? tmr->name : "-noname-"), tmr->id);
 			tmr->triggered = 1;
 			tmr->func(tmr->bound, tmr->data);
 			if(tmr->free_data)

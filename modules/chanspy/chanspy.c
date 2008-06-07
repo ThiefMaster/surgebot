@@ -358,7 +358,7 @@ static void chanspy_server_read(struct sock *sock, char *buf, size_t len)
 		sock_write_fmt(sock, "What are you trying to tell me? I don't understand you!\n");
 		client->dead = 1;
 		// We need a timer so our goodbye messages gets delivered.
-		timer_add(this, "drop_client", now + 2, (timer_f *)chanspy_server_drop_client_tmr, sock, 0);
+		timer_add(this, "drop_client", now + 2, (timer_f *)chanspy_server_drop_client_tmr, sock, 0, 0);
 		return;
 	}
 
@@ -413,7 +413,7 @@ static void chanspy_client_connect(struct chanspy *spy)
 	}
 
 	sock_set_readbuf(spy->sock, MAXLEN, "\r\n");
-	timer_add(this, "chanspy_connect_timeout", now + 15, (timer_f *)chanspy_client_timeout, spy, 0);
+	timer_add(this, "chanspy_connect_timeout", now + 15, (timer_f *)chanspy_client_timeout, spy, 0, 0);
 }
 
 static void chanspy_client_event(struct sock *sock, enum sock_event event, int err)
@@ -479,7 +479,7 @@ static void chanspy_client_schedule_reconnect(struct chanspy *spy, unsigned int 
 {
 	timer_del(this, "chanspy_reconnect", 0, NULL, spy, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 	timer_del(this, "chanspy_connect_timeout", 0, NULL, spy, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
-	timer_add(this, "chanspy_reconnect", now + wait, (timer_f *)chanspy_client_reconnect_tmr, spy, 0);
+	timer_add(this, "chanspy_reconnect", now + wait, (timer_f *)chanspy_client_reconnect_tmr, spy, 0, 0);
 }
 
 static void chanspy_client_reconnect_tmr(void *bound, struct chanspy *spy)

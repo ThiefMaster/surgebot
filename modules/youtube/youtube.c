@@ -106,11 +106,11 @@ next_iteration:
 		str += 8; // strlen("youtube.")
 		
 		// Find beginning of link (Space or beginning of line)
-		while((tmp > arg) && (*tmp != ' '))
+		while((tmp > arg) && (*(tmp - 1) != ' '))
 			tmp--;
 		
 		// Find end of link (Space or end of line)
-		if(!(end = strstr(str, " ")))
+		if(!(end = strchr(str, ' ')))
 			end = str + strlen(str); // Point to end of string (\0)
 		
 		// Remove http prefix
@@ -335,7 +335,7 @@ static void youtube_timer(void *bound, void *data)
 static inline void youtube_timer_add()
 {
 	youtube_timer_del();
-	timer_add(NULL, "youtube_check", now + 600, youtube_timer, NULL, 0);
+	timer_add(NULL, "youtube_check", now + 600, youtube_timer, NULL, 0, 0);
 }
 
 static inline void youtube_timer_del()

@@ -118,7 +118,7 @@ void database_set_write_interval(struct database *db, time_t interval)
 	snprintf(tmp, sizeof(tmp), "db_write_%s", db->name);
 	timer_del_boundname(db, tmp); // delete old write timers for this database if any exist
 	if(interval > 0) // interval==0 should disable the timed writing, so only set a new timer if it's >0
-		timer_add(db, tmp, now + interval, (timer_f*)database_timed_write, NULL, 0);
+		timer_add(db, tmp, now + interval, (timer_f*)database_timed_write, NULL, 0, 0);
 }
 
 struct db_node *database_fetch_path(struct dict *db_nodes, const char *node_path)

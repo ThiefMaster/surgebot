@@ -341,7 +341,7 @@ static int perform_exec(struct dict *record, struct irc_source *src, int argc, c
 		else
 		{
 			debug("Adding perform timer %s (%lu secs)", timername, time);
-			timer_add(perform, timername, now + time, (timer_f *)perform_timer, strdup(timername), 1);
+			timer_add(perform, timername, now + time, (timer_f *)perform_timer, strdup(timername), 1, 0);
 		}
 	}
 

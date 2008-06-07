@@ -613,7 +613,7 @@ void auth_policer_free(struct auth_policer *auth_policer)
 
 void auth_policer_add_timer(struct auth_policer *policer)
 {
-	timer_add(NULL, "auth_del_policer", now + (60 * 60), (timer_f*)auth_policer_timer_func, policer, 0);
+	timer_add(NULL, "auth_del_policer", now + (60 * 60), (timer_f*)auth_policer_timer_func, policer, 0, 0);
 }
 
 void auth_policer_timer_func(void *bound, struct auth_policer *policer)

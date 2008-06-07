@@ -46,7 +46,7 @@ struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read
 	struct sock *sock;
 	int fd, domain_type, proto_type, flags, param;
 
-	type &= ~(SOCK_LISTEN | SOCK_CONNECT | SOCK_ZOMBIE);
+	type &= ~(SOCK_LISTEN | SOCK_CONNECT | SOCK_ZOMBIE | SOCK_QUIET);
 
 	switch(type & (SOCK_IPV4|SOCK_IPV6|SOCK_UNIX|SOCK_NOSOCK))
 	{
@@ -136,7 +136,7 @@ struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read
 	}
 #endif
 
-	debug("Created new socket %p with fd=%d", sock, sock->fd);
+	sock_debug(sock, "Created new socket %p with fd=%d", sock, sock->fd);
 	return sock;
 }
 
@@ -373,7 +373,7 @@ void sock_set_fd(struct sock *sock, int fd)
 
 	sock->fd = fd;
 	sock_list_add(sock_list, sock);
-	debug("fd for sock %p set to %d", sock, fd);
+	sock_debug(sock, "fd for sock %p set to %d", sock, fd);
 }
 
 struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_f *read_func)
@@ -535,7 +535,7 @@ int sock_write(struct sock *sock, char *buf, size_t len)
 {
 	if(sock->send_queue == NULL)
 	{
-		//debug("New sock send_queue (%u bytes)", len);
+		//sock_debug(sock, "New sock send_queue (%u bytes)", len);
 		sock->send_queue = malloc(sizeof(char) * len);
 		memcpy(sock->send_queue, buf, len);
 		sock->send_queue_len = len;
@@ -544,7 +544,7 @@ int sock_write(struct sock *sock, char *buf, size_t len)
 	{
 		char *new_queue;
 
-		//debug("Extending old send_queue (%u bytes + %u bytes)", sock->send_queue_len, len);
+		//sock_debug(sock, "Extending old send_queue (%u bytes + %u bytes)", sock->send_queue_len, len);
 
 		new_queue = malloc(sizeof(char) * len + sock->send_queue_len);
 		memcpy(new_queue, sock->send_queue, sock->send_queue_len);
@@ -585,7 +585,7 @@ int sock_close(struct sock *sock)
 
 static void sock_destroy(struct sock *sock)
 {
-	debug("Destroying socket %p", sock);
+	sock_debug(sock, "Destroying socket %p", sock);
 	sock_close(sock);
 
 #ifdef HAVE_SSL
@@ -636,11 +636,11 @@ static int sock_enable_ssl(struct sock *sock, SSL_CTX *ctx)
 			return -2;
 		}
 
-		debug("Created new SSL context %p", ctx);
+		sock_debug(sock, "Created new SSL context %p", ctx);
 	}
 	else
 	{
-		debug("Re-using SSL context %p", ctx);
+		sock_debug(sock, "Re-using SSL context %p", ctx);
 	}
 
 	if(new_ctx)
@@ -671,7 +671,7 @@ int sock_poll()
 		struct sock *sock = sock_list->data[i];
 		if(sock->flags & SOCK_ZOMBIE)
 		{
-			debug("Deleting zombie socket %p", sock);
+			sock_debug(sock, "Deleting zombie socket %p", sock);
 			sock_destroy(sock);
 			i--; // sock_list entry will be replaced with last element so we need to check it again
 		}
@@ -907,7 +907,7 @@ int sock_poll()
 			{
 				ssize_t wres;
 
-				//debug("sock send_queue contains %u bytes, trying to write!", sock->send_queue_len);
+				//sock_debug(sock, "sock send_queue contains %u bytes, trying to write!", sock->send_queue_len);
 #ifdef HAVE_SSL
 				if(sock->flags & SOCK_SSL)
 					wres = SSL_write(sock->ssl_handle, sock->send_queue, sock->send_queue_len);
@@ -930,7 +930,7 @@ int sock_poll()
 				}
 				else if(wres == sock->send_queue_len) // everything was written to the socket
 				{
-					//debug("Wrote everything");
+					//sock_debug(sock, "Wrote everything");
 					free(sock->send_queue);
 					sock->send_queue = NULL;
 					sock->send_queue_len = 0;
@@ -939,7 +939,7 @@ int sock_poll()
 				{
 					char *new_queue;
 
-					//debug("Wrote %u bytes, %u remaining", wres, sock->send_queue_len - wres);
+					//sock_debug(sock, "Wrote %u bytes, %u remaining", wres, sock->send_queue_len - wres);
 
 					new_queue = malloc(sock->send_queue_len - wres);
 					memcpy(new_queue, sock->send_queue + wres, sock->send_queue_len - wres);
@@ -974,6 +974,6 @@ void sock_set_readbuf(struct sock *sock, size_t len, const char *buf_delimiter)
 	sock->read_buf_used = 0;
 	sock->read_buf_delimiter = strdup(buf_delimiter);
 
-	debug("Read buffer of %lu bytes set for socket with fd=%d", (unsigned long)len, sock->fd);
+	sock_debug(sock, "Read buffer of %lu bytes set for socket with fd=%d", (unsigned long)len, sock->fd);
 }
 

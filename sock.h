@@ -12,6 +12,10 @@
 #define SOCK_ZOMBIE	0x40
 #define SOCK_NOSOCK	0x80 // Not a socket but something else with a fd (file, pipe, etc.)
 
+#define SOCK_QUIET 0x100 // Do not show socket debug messages
+
+#define sock_debug(sock, text...) { if(!(sock->flags & SOCK_QUIET)) log_append(LOG_DEBUG, ## text); }
+
 DECLARE_LIST(sock_list, struct sock *)
 
 enum sock_event
