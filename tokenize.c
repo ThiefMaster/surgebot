@@ -34,7 +34,7 @@ int tokenize(char *str, char **vec, int vec_size, char token, unsigned char allo
 			if(allow_empty || *ch)
 				vec[count++] = ch;
 
-			if(((count + 1) >= vec_size) || (*ch == '\0'))
+			if((count >= vec_size) || (*ch == '\0'))
 				return count;
 		}
 

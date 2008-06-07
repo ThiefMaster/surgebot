@@ -1520,20 +1520,65 @@ COMMAND(move)
 	return 0;
 }
 
+// Validators
+
 int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value)
 {
 	return (true_string(value) || false_string(value));
 }
+
+int access_validator(struct chanreg *reg, struct irc_source *src, const char *value)
+{
+	const char *str = value;
+	int number;
+	
+	if(!aredigits(str))
+	{
+		reply("The access level has to be a positive integral value.");
+		return 0;
+	}
+	
+	while(*str == '0')
+		str++;
+	
+	if(!(number = strlen(str)))
+		return 1;
+	
+	if(number > 3 || ((number = atoi(str)) > 500))
+	{
+		reply("The access level must not exceed 500. To deactive, disable the channel module.");
+		return 0;
+	}
+	
+	return 1;
+}
+
+// Formatters
 
 const char *null_none(const char *value)
 {
 	return value ? value : "None";
 }
 
+// Encoders
+
 const char *asterisk_null(const char *old_value, const char *value)
 {
 	if(!strcmp(value, "*"))
 		return NULL;
 	return value;
+}
+
+const char *access_encoder(const char *old_Value, const char *value)
+{
+	const char *str = value;
+	
+	while(*str == '0')
+		str++;
+	
+	if(!strlen(str))
+		return "0";
+	
+	return str;
 }
 

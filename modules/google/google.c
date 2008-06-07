@@ -1,5 +1,6 @@
 #include "global.h"
 #include "module.h"
+#include "modules/chanreg/chanreg.h"
 #include "modules/commands/commands.h"
 #include "modules/tools/tools.h"
 #include "modules/http/http.h"
@@ -9,7 +10,7 @@
 #include "irc.h"
 #include "conf.h"
 
-MODULE_DEPENDS("tools", "commands", "http", NULL);
+MODULE_DEPENDS("tools", "commands", "http", "chanreg", NULL);
 
 static struct
 {
@@ -38,12 +39,16 @@ static void event_func(struct HTTPRequest *, enum HTTPRequest_event);
 static void google_readconf();
 
 static struct dict *objects;
+static struct chanreg_module *cmod;
 
 COMMAND(google);
 
 MODULE_INIT
 {
-	DEFINE_COMMAND(self, "google", google, 2, 0, "group(admins)");
+	cmod = chanreg_module_reg("Google", 0, NULL, NULL, NULL, NULL);
+	chanreg_module_setting_reg(cmod, "MinAccess", "1", access_validator, NULL, access_encoder);
+	
+	DEFINE_COMMAND(self, "google", google, 2, 0, "true");
 	
 	objects = dict_create();
 	dict_set_free_funcs(objects, free, (dict_free_f*)google_object_free);
@@ -61,6 +66,8 @@ MODULE_FINI
 	
 	if(google_conf.url)
 		free(google_conf.url);
+	
+	chanreg_module_unreg(cmod);
 }
 
 COMMAND(google)
@@ -68,10 +75,26 @@ COMMAND(google)
 	struct HTTPRequest *http;
 	struct google_object *obj = malloc(sizeof(struct google_object));
 	char *request_encoded, *request;
+	struct chanreg_user *creg_user;
+	int level;
 	
-	obj->channel = channel ? strdup(channel->name) : NULL;
+	if(channel)
+	{
+		CHANREG_MODULE_COMMAND
+		
+		if(((level = chanreg_setting_get_int(reg, cmod, "MinAccess")) > 0) &&  user->account && (creg_user = chanreg_user_find(reg, user->account->name)) && creg_user->level < level)
+		{
+			reply("You do not have enough access to run this command.");
+			return 0;
+		}
+		
+		obj->channel = strdup(channelname);
+	}
+	else
+		obj->channel = NULL;
+	
 	obj->nick = strdup(src->nick);
-	obj->request = untokenize(argc - 1, &argv[1], " ");
+	obj->request = untokenize(argc - 1, argv + 1, " ");
 	
 	request = malloc(strlen(obj->request) * 3 + strlen(google_conf.url) - 2 + 1);
 	request_encoded = urlencode(obj->request);
@@ -109,7 +132,6 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	 *
 	 * To be more precise, the opening <h2> has the exact form
 	 * <h2 class=r> hence why I'll be using its length = 12
-	 * Also, strlen("</h2>") = 5
 	 */
 	
 	const char *tmp;

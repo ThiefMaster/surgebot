@@ -137,11 +137,13 @@ unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *chan
 
 // Default validators for module settings
 int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value);
+int access_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 
 // Default formatters
 const char *null_none(const char *value);
 
 // Default encoders
 const char *asterisk_null(const char *old_value, const char *value);
+const char *access_encoder(const char *old_Value, const char *value);
 
 #endif

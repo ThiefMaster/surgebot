@@ -41,6 +41,7 @@ COMMAND(stats_timers)
 	struct dict *timers = timer_dict();
 	struct table *timer_table = table_create(4, dict_size(timers));
 	unsigned int i = 0;
+	const char *wildmask = (argc > 1 ? argv[1] : NULL);
 
 	table_set_header(timer_table, "Id", "Name", "Execute in", "Data");
 	dict_iter(node, timers)
@@ -48,6 +49,9 @@ COMMAND(stats_timers)
 		struct timer *tmr = node->data;
 
 		if(tmr->triggered || !tmr->name || tmr->time <= now)
+			continue;
+		
+		if(wildmask && match(wildmask, tmr->name))
 			continue;
 
 		timer_table->data[i][0] = strtab(tmr->id);
@@ -57,9 +61,16 @@ COMMAND(stats_timers)
 
 		i++;
 	}
-
-	table_send(timer_table, src->nick);
-	reply("There are $b%d$b active timers.", timers->count);
+	
+	timer_table->rows = i;
+	
+	if(i)
+		table_send(timer_table, src->nick);
+	
+	if(wildmask)
+		reply("There are $b%d$b active timers matching $b%s$b.", i, wildmask);
+	else
+		reply("There are $b%d$b active timers.", i);
 
 	table_free(timer_table);
 	return 1;

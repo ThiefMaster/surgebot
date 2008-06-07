@@ -3,39 +3,26 @@
 
 // Module header
 #include "tools.h"
+#include "htmlentities.h"
 
 MODULE_DEPENDS(NULL);
-
-static const struct
-{
-	char *entity;
-	char character;
-}
-entities[] =
-{
-	{ "auml",	'ä' },
-	{ "ouml",	'ö' },
-	{ "uuml",	'ü' },
-	{ "szlig",	'ß' },
-	{ "quot",	'"' },
-	{ "amp",	'&' },
-	{ "lt",		'<' },
-	{ "gt",		'>' }
-};
 
 MODULE_INIT {}
 MODULE_FINI {}
 
-#define MAX_ENTITY_LENGTH 10
 char *html_decode(char *str)
 {
 	int i;
-	char *tmp2, *tmp = str, entity[MAX_ENTITY_LENGTH + 1];
+	char *tmp2, *tmp = str, entity[11];
+	size_t len = strlen(str);
 	
-	while((tmp = strstr(tmp, "&")))
+	while((tmp = strchr(tmp, '&')))
 	{
 		// Entity if below 10 chars
-		if(!(tmp2 = strstr(tmp, ";")) || ((tmp2 - tmp) > MAX_ENTITY_LENGTH))
+		if(!(tmp2 = strchr(tmp, ';')))
+			continue;
+		
+		if((tmp2 - tmp) > 10)
 		{
 			tmp = tmp2 + 1;
 			continue;
@@ -43,7 +30,7 @@ char *html_decode(char *str)
 		
 		if(tmp[1] == '#') // Numeric entity
 		{
-			strlcpy(entity, tmp + 2, tmp2 - tmp + 2);
+			strlcpy(entity, tmp + 2, (tmp2 - tmp) - 1);
 			if((strspn(entity, "0123456789") < strlen(entity)) || !(i = atoi(entity)) || i < 32 || i > 255)
 			{
 				tmp = tmp2 + 1;
@@ -56,16 +43,19 @@ char *html_decode(char *str)
 		{
 			for(i = 0; i < ArraySize(entities); i++)
 			{
-				if(!strncasecmp(tmp2 + 1, entities[i].entity, min(tmp2 - tmp + 1, strlen(entities[i].entity))))
+				if(!strncasecmp(tmp + 1, entities[i].entity, (tmp2 - tmp) - 1))
 				{
 					tmp[0] = entities[i].character;
-					break;
+					goto loop_continue;
 				}
 			}
+			tmp++;
+			continue;
 		}
-		
-		tmp++;
-		memmove(tmp, tmp2 + 1, (strlen(str) - (tmp2 - tmp)));
+loop_continue:
+
+		tmp++, tmp2++;
+		memmove(tmp, tmp2, (len - (tmp2 - str) + 1));
 	}
 	
 	return str;

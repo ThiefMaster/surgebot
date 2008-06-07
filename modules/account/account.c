@@ -591,18 +591,13 @@ OPTION_FUNC(oset_loginmask)
 		return 0;
 	}
 	
-	if(account->login_mask)
+	if(account->login_mask && strcasecmp(account->login_mask, argv[0]))
 	{
-		if(!strcasecmp(account->login_mask, argv[0]))
-		{
-			reply("This loginmask is already set.");
-			return 0;
-		}
-		reply("Changed the loginmask from from %s to $b%s$b.", account->login_mask, argv[0]);
+		reply("$bLoginmask:$b %s -> $b%s$b.", account->login_mask, argv[0]);
 		free(account->login_mask);
 	}
 	else
-		reply("Your loginmask has been set to $b%s$b.", argv[0]);
+		reply("$bLoginmask:$b %s", argv[0]);
 
 	account->login_mask = strdup(argv[0]);
 	return 1;
