@@ -146,8 +146,8 @@ static void serverstats_conf_reload()
 
 	timer_del_boundname(this, "update_stats");
 	timer_del_boundname(this, "update_graphs");
-	timer_add(this, "update_stats", now + serverstats_conf.stats_update_freq, update_stats_tmr, NULL, 0);
-	timer_add(this, "update_graphs", now + serverstats_conf.graph_update_freq, update_graphs_tmr, NULL, 0);
+	timer_add(this, "update_stats", now + serverstats_conf.stats_update_freq, update_stats_tmr, NULL, 0, 0);
+	timer_add(this, "update_graphs", now + serverstats_conf.graph_update_freq, update_graphs_tmr, NULL, 0, 0);
 }
 
 static void update_stats_tmr(void *bound, void *data)
@@ -216,7 +216,7 @@ static void update_graphs_tmr(void *bound, void *data)
 	fclose(out2);
 
 
-	timer_add(this, "update_graphs", now + serverstats_conf.graph_update_freq, update_graphs_tmr, NULL, 0);
+	timer_add(this, "update_graphs", now + serverstats_conf.graph_update_freq, update_graphs_tmr, NULL, 0, 0);
 }
 
 static unsigned int rrd_exists(const char *name)
@@ -317,10 +317,10 @@ IRC_HANDLER(num_statsverbose)
 
 	server->name		= strdup(argv[2]);
 	server->uplink		= strdup(argv[3]);
-	server->is_burst 	= (argv[3][0] == 'B');
-	server->is_burst_ack	= (argv[3][1] == 'A');
-	server->is_hub		= (argv[3][2] == 'H');
-	server->is_service	= (argv[3][3] == 'S');
+	server->is_burst 	= (argv[4][0] == 'B');
+	server->is_burst_ack	= (argv[4][1] == 'A');
+	server->is_hub		= (argv[4][2] == 'H');
+	server->is_service	= (argv[4][3] == 'S');
 	server->hops		= atoi(argv[5]);
 	server->numeric		= strdup(argv[6]);
 	server->numeric_int	= atoi(argv[7]);
@@ -444,5 +444,5 @@ static void stats_collected()
 	}
 
 	stats_requested = 0;
-	timer_add(this, "update_stats", now + serverstats_conf.stats_update_freq, update_stats_tmr, NULL, 0);
+	timer_add(this, "update_stats", now + serverstats_conf.stats_update_freq, update_stats_tmr, NULL, 0, 0);
 }

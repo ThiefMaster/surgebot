@@ -60,7 +60,7 @@ struct sock
 
 void sock_init();
 void sock_fini();
-struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read_f *read_func);
+struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_read_f *read_func);
 int sock_bind(struct sock *sock, const char *addr, unsigned int port);
 int sock_connect(struct sock *sock, const char *addr, unsigned int port);
 int sock_listen(struct sock *sock, const char *ssl_pem);

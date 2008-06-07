@@ -41,7 +41,7 @@ void sock_fini()
 #endif
 }
 
-struct sock* sock_create(unsigned char type, sock_event_f *event_func, sock_read_f *read_func)
+struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_read_f *read_func)
 {
 	struct sock *sock;
 	int fd, domain_type, proto_type, flags, param;

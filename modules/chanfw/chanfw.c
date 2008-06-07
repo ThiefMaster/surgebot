@@ -99,7 +99,7 @@ static void chanfw_new_victim(struct chanreg *reg, const char *nick, unsigned in
 		user->nick = strdup(nick);
 		dict_insert(channel_users, user->nick, user);
 		debug("Adding chanfw user %s/%s", reg->channel, user->nick);
-		timer_add(this, TIMER_NAME, now + kick_delay, (timer_f *)remove_user, user, 0);
+		timer_add(this, TIMER_NAME, now + kick_delay, (timer_f *)remove_user, user, 0, 0);
 	}
 
 	if(joinmsg/* && kick_delay*/)
@@ -256,7 +256,7 @@ static void channel_complete_hook(struct irc_channel *channel)
 	// We must call it a second later so the channel_complete hook from the chanreg module got executed first
 	// Otherwise chanreg_module_active() would return 0
 	if(chanreg_find(channel->name))
-		timer_add(this, "channel_complete", now, (timer_f *)channel_complete_hook_tmr, channel, 0);
+		timer_add(this, "channel_complete", now, (timer_f *)channel_complete_hook_tmr, channel, 0, 0);
 }
 
 static int number_validate(struct chanreg *reg, struct irc_source *src, const char *value)
