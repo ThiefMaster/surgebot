@@ -328,7 +328,13 @@ static void chanreg_free(struct chanreg *reg)
 {
 	if(reg->active && !reloading_module)
 		chanjoin_delchan(reg->channel, this, NULL);
-
+	
+	dict_iter(node, chanreg_modules)
+	{
+		struct chanreg_module *module = node->data;
+		chanreg_list_del(module->channels, reg);
+	}
+	
 	for(int i = 0; i < reg->users->count; i++)
 		free(reg->users->data[i]);
 	chanreg_user_list_free(reg->users);
