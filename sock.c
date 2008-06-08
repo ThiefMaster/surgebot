@@ -46,7 +46,7 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 	struct sock *sock;
 	int fd, domain_type, proto_type, flags, param;
 
-	type &= ~(SOCK_LISTEN | SOCK_CONNECT | SOCK_ZOMBIE | SOCK_QUIET);
+	type &= ~(SOCK_LISTEN | SOCK_CONNECT | SOCK_ZOMBIE);
 
 	switch(type & (SOCK_IPV4|SOCK_IPV6|SOCK_UNIX|SOCK_NOSOCK))
 	{
