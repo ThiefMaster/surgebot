@@ -119,7 +119,6 @@ struct chanreg_module_setting
 extern unsigned int chanreg_staff_rule;
 #define IsStaff()	(chanreg_staff_rule && command_rule_exec(chanreg_staff_rule, src, user, channel, channelname) == CR_ALLOW)
 
-
 struct chanreg *chanreg_find(const char *channel);
 struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname);
 

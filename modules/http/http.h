@@ -53,5 +53,5 @@ void HTTPRequest_add_header(struct HTTPRequest *, const char *name, const char *
 void HTTPRequest_del_header(struct HTTPRequest *, const char *name);
 
 void HTTPRequest_connect(struct HTTPRequest *);
-
+void HTTPRequest_disconnect(struct HTTPRequest *);
 #endif // __HTTP_H__

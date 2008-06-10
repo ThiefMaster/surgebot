@@ -90,28 +90,21 @@ char *str_replace(const char *str, const char *search, const char *replace, unsi
 
 char *strip_html_tags(char *str)
 {
-	char *tmp, *tmp2, *ret = malloc(strlen(str) + 1);
-	ret[0] = 0;
+	char *tmp, *tmp2;
+	size_t len = strlen(str) + 1;
 	
-	tmp = str, tmp2 = str;
-	while((tmp2 = strstr(tmp2, "<")))
+	tmp = str;
+	while((tmp2 = strchr(tmp, '<')))
 	{
-		strncat(ret, tmp, tmp2 - tmp);
+		if(!(tmp = strchr(tmp2, '>')))
+			break;
 		
-		// Find end of tag
-		if(!(tmp2 = strstr(tmp2 + 1, ">")))
-		{
-			debug("Unexpected end of string (strip_html_tags: \"%s\")", str);
-			return NULL;
-		}
-		
-		tmp = ++tmp2;
+		tmp++;
+		memmove(tmp2, tmp, len - (tmp - str));
+		tmp = tmp2;
 	}
 	
-	// Add rest of string
-	strcat(ret, tmp);
-	
-	return ret;
+	return str;
 }
 
 int remdir(const char *path, unsigned char exists)
@@ -158,7 +151,21 @@ int remdir(const char *path, unsigned char exists)
 	return rmdir(path);
 }
 
-static unsigned char hexchars[] = "0123456789ABCDEF";
+char *trim(char * const str)
+{
+	int len = strlen(str);
+	char *tmp = str;
+
+	while(len > 0 && isspace(str[len - 1])) len--;
+		str[len] = '\0';
+	
+	len++;
+	tmp = str + strspn(str, " \n\r\t\v\f");
+	memmove(str, tmp, len - (tmp - str));
+	
+	return str;
+}
+
 
 char *urlencode(const char *s)
 {

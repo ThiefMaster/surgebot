@@ -174,7 +174,6 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			{
 				log_append(LOG_ERROR, "(Google Request %s) Could not find link for result %d.", obj->id, i);
 				google_error(obj, NULL);
-				free(result);
 				return;
 			}
 			
@@ -184,20 +183,16 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			{
 				log_append(LOG_ERROR, "(Google Request %s) Could not find end of link for result %d.", obj->id, i);
 				google_error(obj, NULL);
-				free(result);
 				return;
 			}
 			
 			link = strndup(tmp3, tmp4 - tmp3);
 			google_msg(obj, "%d: $b%s$b (%s)", i, html_decode(result), link);
 			free(link);
-			
-			free(result);
 		}
 		else // No link -> Google Calculator, print and return
 		{
 			google_msg(obj, "[$b%s$b] %s", obj->nick, html_decode(result));
-			free(result);
 			return;
 		}
 	}

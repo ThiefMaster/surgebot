@@ -460,7 +460,7 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 				else // only a single argument
 				{
 					ubound = lbound;
-					alias += (num_end - alias);
+					alias = num_end;
 				}
 
 				if(lbound < argc)

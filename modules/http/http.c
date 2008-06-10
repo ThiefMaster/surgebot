@@ -27,6 +27,8 @@ static struct HTTPRequest *http_find_sock(struct sock *);
 
 static struct HTTPHost *parse_host(const char *);
 
+static void HTTPRequest_set_host(struct HTTPRequest *, const char *);
+
 static unsigned int next_id = 0;
 
 MODULE_INIT
@@ -46,7 +48,7 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 	struct HTTPRequest *http;
 	char tmp[MAXLEN];
 	
-	debug("Creating new HTTP request to host \"%s\" width ID %d", host, next_id);
+	debug("Creating new HTTP request to host \"%s\" with ID %d", host, next_id);
 	sprintf(tmp, "%u", next_id++);
 
 	http = malloc(sizeof(struct HTTPRequest));
@@ -62,7 +64,7 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 	http->buf = stringbuffer_create();
 	
 	http->port = 80;
-	http->host = parse_host(host);
+	HTTPRequest_set_host(http, host);
 	
 	http->in_headers = 1;
 	http->id = strdup(tmp);
@@ -118,7 +120,7 @@ void HTTPRequest_add_header(struct HTTPRequest *http, const char *name, const ch
 		if(node->data)
 			free(node->data);
 		
-		node->data = strdup(name);
+		node->data = strdup(content);
 	}
 	else
 		dict_insert(http->request_headers, strdup(name), strdup(content));
@@ -133,9 +135,19 @@ void HTTPRequest_connect(struct HTTPRequest *http)
 {
 	assert(!http->sock);
 	
-	http->sock = sock_create(SOCK_IPV4, http_sock_event, http_sock_read);
+	http->sock = sock_create(SOCK_IPV4 | SOCK_QUIET, http_sock_event, http_sock_read);
 	debug("Connecting HTTP Request %s", http->id);
 	sock_connect(http->sock, http->host->host, http->port);
+}
+
+void HTTPRequest_disconnect(struct HTTPRequest *http)
+{
+	sock_close(http->sock);
+	http->sock = NULL;
+	
+	dict_clear(http->response_headers);
+	stringbuffer_flush(http->buf);
+	http->in_headers = 1;
 }
 
 static void http_sock_event(struct sock *sock, enum sock_event event, int err)
@@ -229,7 +241,18 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 		{
 			// Not the first line of headers, in the format "Name: Content"
 			str[tmp - str] = '\0';
-			HTTPRequest_add_header(http, str, str + (tmp - str) + 1);
+			tmp += 2;
+			// In case we got a Location-header, we need to redirect the query
+			if(!strcasecmp(str, "Location"))
+			{
+				debug("Redirecting HTTP Request %s to %s", http->id, tmp);
+				HTTPRequest_disconnect(http);
+				HTTPRequest_set_host(http, tmp);
+				HTTPRequest_connect(http);
+				free(str);
+				return;
+			}
+			dict_insert(http->response_headers, strdup(str), strdup(tmp));
 		}
 		
 		free(str);
@@ -259,11 +282,11 @@ static struct HTTPHost *parse_host(const char *host)
 	struct HTTPHost *hhost = malloc(sizeof(struct HTTPHost));
 	char *tmp;
 	
-	// Is there are slash introducing a possible path?
+	// Is there a slash introducing a possible path?
 	if((tmp = strstr(host, "/")))
 	{
 		hhost->host = strndup(host, tmp - host);
-		hhost->path = strdup(host + (tmp - host));
+		hhost->path = strdup(tmp + 1);
 	}
 	else
 	{
@@ -272,4 +295,24 @@ static struct HTTPHost *parse_host(const char *host)
 	}
 	
 	return hhost;
+}
+
+static void HTTPRequest_set_host(struct HTTPRequest *http, const char *new_host)
+{
+	if(http->host)
+	{
+		free(http->host->host);
+		free(http->host->path);
+		free(http->host);
+	}
+	
+	// Remove http part
+	if(!strncasecmp(new_host, "https://", 8))
+		new_host += 8;
+	else if(!strncasecmp(new_host, "http://", 7))
+		new_host += 7;
+	
+	http->host = parse_host(new_host);
+	
+	HTTPRequest_add_header(http, "Host", http->host->host);
 }
