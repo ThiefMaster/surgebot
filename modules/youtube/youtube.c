@@ -163,10 +163,6 @@ next_iteration:
 		if((i = strspn(tmp, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")) < 10 || (i > 50))
 			continue;
 		
-		// Point to end of ID, should be end of link
-		if((tmp + i) != end)
-			continue;
-		
 		id = strndup(tmp, i);
 		youtube_request_create(id, argv[1]);
 		free(id);
