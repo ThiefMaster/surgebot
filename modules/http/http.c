@@ -162,7 +162,7 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 			// Socket was closed by remote side = reached end of http content
 			// -> Dump read buffer to socket_read_functions
 			unsigned int i;
-			debug("Read %u chars for HTTP Request %s, passing to read funcs", http->buf->len, http->id);
+			
 			for(i = 0; i < http->read_funcs->count; i++)
 				((http_read_f*)http->read_funcs->data[i]->ptr)(http, http->buf->string, (unsigned int)http->buf->len);
 			

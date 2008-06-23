@@ -3,7 +3,6 @@
 
 // Module header
 #include "tools.h"
-#include "htmlentities.h"
 
 MODULE_DEPENDS(NULL);
 
@@ -62,6 +61,50 @@ loop_continue:
 }
 #undef MAX_ENTITY_LENGTH
 
+int remdir(const char *path, unsigned char exists)
+{
+	DIR *dir;
+	struct dirent *direntry;
+	char new_path[PATH_MAX];
+	struct stat attribut;
+	
+	if(!(dir = opendir(path)))
+	{
+		debug("Failed to open directory %s", path);
+		return exists;
+	}
+	
+	strncpy(new_path, path, sizeof(new_path));
+	int len = strlen(new_path);
+	if(new_path[len - 1] == '/') new_path[--len] = '\0';
+
+	while((direntry = readdir(dir)))
+	{
+		if(!strcmp(direntry->d_name, ".") || !strcmp(direntry->d_name, ".."))
+			continue;
+
+		snprintf(new_path + len, sizeof(new_path) - len, "/%s", direntry->d_name);
+		stat(new_path, &attribut);
+		if(attribut.st_mode & S_IFDIR)
+		{
+			if(!remdir((const char*)new_path, 1))
+			{
+				debug("Failed removing directory: %s", new_path);
+				return 2;
+			}
+		}
+
+		else if(unlink(new_path))
+		{
+			debug("Failed to unlink %s", new_path);
+			return 3;
+		}
+	}
+	closedir(dir);
+	
+	return rmdir(path);
+}
+
 char *str_replace(const char *str, const char *search, const char *replace, unsigned char case_sensitive)
 {
 	size_t replace_len = strlen(replace), search_len = strlen(search);
@@ -107,48 +150,58 @@ char *strip_html_tags(char *str)
 	return str;
 }
 
-int remdir(const char *path, unsigned char exists)
+char *strip_duplicate_whitespace(char *str)
 {
-	DIR *dir;
-	struct dirent *direntry;
-	char new_path[PATH_MAX];
-	struct stat attribut;
+	unsigned char white = 0;
+	char *tmp = str, *tmp2 = NULL, *end;
+	size_t len;
 	
-	if(!(dir = opendir(path)))
-	{
-		debug("Failed to open directory %s", path);
-		return exists;
-	}
+	trim(str);
 	
-	strncpy(new_path, path, sizeof(new_path));
-	int len = strlen(new_path);
-	if(new_path[len - 1] == '/') new_path[--len] = '\0';
-
-	while((direntry = readdir(dir)))
+	len = strlen(str);
+	end = str + len;
+	
+	while(tmp < end)
 	{
-		if(!strcmp(direntry->d_name, ".") || !strcmp(direntry->d_name, ".."))
+		if(isspace(*tmp))
+		{
+			if(white && !tmp2)
+				tmp2 = tmp;
+			
+			white = 1;
+			tmp++;
 			continue;
-
-		snprintf(new_path + len, sizeof(new_path) - len, "/%s", direntry->d_name);
-		stat(new_path, &attribut);
-		if(attribut.st_mode & S_IFDIR)
-		{
-			if(!remdir((const char*)new_path, 1))
-			{
-				debug("Failed removing directory: %s", new_path);
-				return 2;
-			}
 		}
-
-		else if(unlink(new_path))
+		else
 		{
-			debug("Failed to unlink %s", new_path);
-			return 3;
+			if(tmp2)
+			{
+				memmove(tmp2, tmp, len - (tmp - str));
+				end -= (tmp - tmp2);
+				
+				tmp = tmp2;
+				tmp2 = NULL;
+				continue;
+			}
+			white = 0;
+			tmp++;
 		}
 	}
-	closedir(dir);
 	
-	return rmdir(path);
+	*end = 0;
+	return str;
+}
+
+size_t substr_count(const char *haystack, const char *needle, unsigned char case_sensitive)
+{
+	size_t count;
+	const char *tmp = haystack;
+	char *(*strstr_func)(const char *haystack, const char *needle) = case_sensitive ? strcasestr : strstr;
+	
+	while((tmp = strstr_func(tmp, needle)))
+		tmp++, count++;
+	
+	return count + 1;
 }
 
 char *trim(char * const str)

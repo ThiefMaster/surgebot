@@ -45,8 +45,6 @@ static void event_func(struct HTTPRequest *, enum HTTPRequest_event);
 
 static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 
-static char *strip_whitespace(char *str);
-
 static void php_add_timer();
 static void php_timer_func(void *bound, void *data);
 static void php_del_timer();
@@ -55,10 +53,14 @@ static struct chanreg_module *cmod;
 static struct dict *php_requests;
 static struct dict *php_cache;
 
+static struct module *this;
+
 COMMAND(php);
 
 MODULE_INIT
 {
+	this = self;
+	
 	cmod = chanreg_module_reg("PHP", 0, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "Language", default_language, cmod_lang_validator, NULL, NULL);
 	DEFINE_COMMAND(self, "php", php, 2, 0, "group(admins)");
@@ -89,6 +91,7 @@ COMMAND(php)
 	const char *target;
 	struct chanreg *myreg = NULL;
 	const char *language;
+	size_t spn;
 	
 	if(channel)
 	{
@@ -99,18 +102,24 @@ COMMAND(php)
 	else
 		target = src->nick;
 	
-	// Find first space in long argument
-	if(!(tmp = strchr(argv[1], ' ')))
-		func_name = strdup(argv[1]);
-	else
-		func_name = strndup(argv[1], (tmp - argv[1]));
+	// Find function name
+	spn = strspn(argv[1], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890");
+	if(!spn)
+	{
+		reply("Please supply a correct function name.");
+		return 0;
+	}
 	
+	func_name = strndup(argv[1], spn);
+	
+	strip_codes(func_name);
+
 	// Did we already retrieve information for this function?
 	if((cache = php_cache_find(myreg, func_name)))
 	{
 		free(func_name);
 		php_report(cache, target);
-		return 1;
+		return 0;
 	}
 	
 	php = malloc(sizeof(struct php_request));
@@ -129,7 +138,7 @@ COMMAND(php)
 	HTTPRequest_connect(php->http);
 	
 	dict_insert(php_requests, php->func_name, php);
-	return 1;
+	return 0;
 }
 
 static void php_request_free(struct php_request *php)
@@ -260,7 +269,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			synopsis = str_replace(syn, "$", "$$", 1);
 			free(syn);
 			
-			synopsis = strip_whitespace(strip_html_tags(synopsis));
+			synopsis = strip_duplicate_whitespace(strip_html_tags(synopsis));
 			stringlist_add(cache->synopsis, synopsis);
 			
 			tmp2 += 6;
@@ -268,7 +277,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	}
 	
 	cache->func_name	= strdup(php->func_name);
-	cache->description	= strip_whitespace(strip_html_tags(description));
+	cache->description	= strip_duplicate_whitespace(strip_html_tags(description));
 	cache->added		= now;
 	
 	php_report(cache, php->target);
@@ -295,6 +304,7 @@ static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, cons
 	
 	old_value = chanreg_setting_get(reg, cmod, "Language");
 	
+	// In case no more channels need this old language, free function cache for this language
 	for(i = 0; i < cmod->channels->count; i++)
 	{
 		struct chanreg *reg = cmod->channels->data[i];
@@ -309,7 +319,7 @@ static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, cons
 static void php_add_timer()
 {
 	php_del_timer();
-	timer_add(NULL, "PHPCleanUp", now + 600, php_timer_func, NULL, 0, 1);
+	timer_add(this, "PHPCleanUp", now + 600, php_timer_func, NULL, 0, 1);
 }
 
 static void php_timer_func(void *bound, void *data)
@@ -333,47 +343,5 @@ static void php_timer_func(void *bound, void *data)
 
 static void php_del_timer()
 {
-	timer_del_boundname(NULL, "PHPCleanUp");
-}
-
-char *strip_whitespace(char *str)
-{
-	unsigned char white = 0;
-	char *tmp = str, *tmp2 = NULL, *end;
-	size_t len;
-	
-	trim(str);
-	
-	len = strlen(str);
-	end = str + len;
-	
-	while(tmp < end)
-	{
-		if(isspace(*tmp))
-		{
-			if(white && !tmp2)
-				tmp2 = tmp;
-			
-			white = 1;
-			tmp++;
-			continue;
-		}
-		else
-		{
-			if(tmp2)
-			{
-				memmove(tmp2, tmp, len - (tmp - str));
-				end -= (tmp - tmp2);
-				
-				tmp = tmp2;
-				tmp2 = NULL;
-				continue;
-			}
-			white = 0;
-			tmp++;
-		}
-	}
-	
-	*end = 0;
-	return str;
+	timer_del_boundname(this, "PHPCleanUp");
 }

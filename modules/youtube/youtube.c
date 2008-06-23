@@ -272,22 +272,19 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	struct youtube_request *req = youtube_request_find(http);
 	assert(req);
 	
-	// Find beginning of <meta> title-tag
-	if(!(tmp = strstr(buf, "<meta name=\"title\"")))
+	// Find beginning of <div>
+	if(!(tmp = strstr(buf, "<div id=\"watch-vid-title\">")))
 		return;
 	
-	tmp += 18; // strlen("<meta name=\"title\"")
-	// Find next pair of quotes
-	if(!(tmp = strchr(tmp, '"')))
-		return;
-	
-	tmp++;
-	// Find end of quotes
-	if(!(tmp2 = strchr(tmp, '"')))
+	tmp += 26; // strlen("<div id=\"watch-vid-title\">")
+	// Find end of <div>
+	if(!(tmp2 = strstr(tmp, "</div>")))
 		return;
 	
 	// Duplicate title string
-	req->response = html_decode(strndup(tmp, tmp2 - tmp));
+	tmp = strndup(tmp, tmp2 - tmp);
+	req->response = html_decode(strip_html_tags(strip_duplicate_whitespace(str_replace(tmp, "\n", "", 1))));
+	free(tmp);
 	
 	youtube_report(req);
 }

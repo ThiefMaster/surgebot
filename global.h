@@ -70,10 +70,11 @@ extern time_t now;
 #define ArraySize(ARRAY)		(sizeof((ARRAY)) / sizeof((ARRAY)[0]))
 
 #undef assert
-#define assert(CHECK)			do { if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); return; } } while(0)
+#define assert(CHECK)			{ if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); return; } }
 #define assert_return(CHECK, RET)	do { if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); return (RET); } } while(0)
 #define assert_break(CHECK)		{ if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); break; } }
 #define assert_continue(CHECK)		{ if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); continue; } }
+#define assert_goto(CHECK, LABEL)	{ if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); goto LABEL; } }
 
 #define safestrncpy(dest, src, len)	do { char *d = (dest); const char *s = (src); size_t l = strlen(s)+1;  if ((len) < l) l = (len); memmove(d, s, l); d[l-1] = 0; } while (0)
 

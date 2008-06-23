@@ -112,7 +112,7 @@ COMMAND(google)
 	
 	free(request_encoded);
 	free(request);
-	return 1;
+	return 0;
 }
 
 static void google_object_free(struct google_object *obj)
@@ -158,7 +158,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 		
 		// If there is a link within the h2, treat as "normal" result
 		strlcpy(static_buf, tmp, tmp2 - tmp + 1);
-		result = strip_html_tags(static_buf);
+		result = html_decode(strip_html_tags(static_buf));
 		if((tmp3 = strstr(tmp, "<a")) && (tmp3 < tmp2))
 		{
 			// First result
@@ -187,12 +187,12 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			}
 			
 			link = strndup(tmp3, tmp4 - tmp3);
-			google_msg(obj, "%d: $b%s$b (%s)", i, html_decode(result), link);
+			google_msg(obj, "%d: $b%s$b (%s)", i, result, link);
 			free(link);
 		}
 		else // No link -> Google Calculator, print and return
 		{
-			google_msg(obj, "[$b%s$b] %s", obj->nick, html_decode(result));
+			google_msg(obj, "[$b%s$b] %s", obj->nick, result);
 			return;
 		}
 	}
@@ -236,7 +236,7 @@ static void google_msg(struct google_object *obj, const char *format, ...)
 	if(obj->channel)
 		irc_send("PRIVMSG %s :%s", obj->channel, str);
 	else
-		irc_send("PRIVMSG %s :%s", obj->nick, str);
+		irc_send("NOTICE %s :%s", obj->nick, str);
 }
 
 static void google_error(struct google_object *obj, const char *format, ...)
