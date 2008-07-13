@@ -175,18 +175,16 @@ int IsChannelName(const char *name)
 
 unsigned int validate_string(const char *str, const char *allowed, char *c)
 {
-	unsigned int i;
-
-	for(i = 0; i < strlen(str); i++)
-	{
-		if(!strchr(allowed, str[i]))
-		{
-			*c = str[i];
-			return 0;
-		}
-	}
-
-	return 1;
+	const char *invalid = str + strspn(str, allowed);
+	
+	// Reached end of string
+	if(*invalid == '\0')
+		return 1;
+	
+	if(c)
+		*c = *invalid;
+	
+	return 0;
 }
 
 // from ircu 2.10.12

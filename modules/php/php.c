@@ -103,7 +103,7 @@ COMMAND(php)
 		target = src->nick;
 	
 	// Find function name
-	spn = strspn(argv[1], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890");
+	spn = strspn(argv[1], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-1234567890");
 	if(!spn)
 	{
 		reply("Please supply a correct function name.");
@@ -199,10 +199,11 @@ static struct php_request *php_request_find(struct HTTPRequest *http)
 static void php_report(struct php_cache *cache, const char *target)
 {
 	int i;
-	irc_send("PRIVMSG %s :$b%s$b - %s (http://www.php.net/%s)", target, cache->func_name, cache->description, cache->func_name);
+	char *method = (IsChannelName(target) ? "PRIVMSG" : "NOTICE");
+	irc_send("%s %s :$b%s$b - %s (http://www.php.net/%s)", method, target, cache->func_name, cache->description, cache->func_name);
 	
 	for(i = 0; i < cache->synopsis->count; i++)
-		irc_send("PRIVMSG %s :$uSynopsis$u: %s", target, cache->synopsis->data[i]);
+		irc_send("%s %s :$uSynopsis$u: %s", method, target, cache->synopsis->data[i]);
 }
 
 static void read_func(struct HTTPRequest *http, const char *buf, unsigned int len)

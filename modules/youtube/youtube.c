@@ -124,7 +124,7 @@ next_iteration:
 			continue;
 		
 		// Valid subdomain? 0 or more than 1 and not more than 3 chars (4 incl. dot)
-		if((i = (cur - tmp)) && (i < 2) && (i > 4) && (!i || (tmp[i] == '.')))
+		if((i = (cur - tmp)) && ((i < 2) || (i > 4) || (tmp[i] == '.')))
 			continue;
 		
 		if(i)
@@ -264,8 +264,7 @@ static void youtube_report(struct youtube_request *req)
 
 static void read_func(struct HTTPRequest *http, const char *buf, unsigned int len)
 {
-	// Youtube sends the movie's title in several ways, I'll use meta-tags
-	// <meta name="title" ...>
+	// Youtube sends the movie's title in several ways, I'll use the title-<div>
 	
 	char *tmp, *tmp2;
 	
