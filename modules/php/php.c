@@ -95,7 +95,7 @@ COMMAND(php)
 	
 	if(channel)
 	{
-		CHANREG_COMMAND;
+		CHANREG_MODULE_COMMAND;
 		target = channel->name;
 		myreg = reg;
 	}

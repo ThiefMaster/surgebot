@@ -272,10 +272,15 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	assert(req);
 	
 	// Find beginning of <div>
-	if(!(tmp = strstr(buf, "<div id=\"watch-vid-title\">")))
+	if(!(tmp = strstr(buf, "<div id=\"watch-vid-title\"")))
 		return;
 	
-	tmp += 26; // strlen("<div id=\"watch-vid-title\">")
+	// Find end of <div> tag
+	tmp += 25; // strlen("<div id=\"watch-vid-title\"")
+	if(!(tmp = strchr(tmp, '>')))
+		return;
+	
+	tmp++;
 	// Find end of <div>
 	if(!(tmp2 = strstr(tmp, "</div>")))
 		return;
