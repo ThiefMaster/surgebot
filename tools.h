@@ -19,6 +19,7 @@ unsigned int is_valid_string(const char *str);
 void strtolower(char *str);
 unsigned char check_date(int day, int month, int year);
 char *strip_codes(char *str);
+unsigned char file_exists(const char *file);
 
 inline long min(long a, long b);
 inline long max(long a, long b);

@@ -363,7 +363,7 @@ unsigned char check_date(int day, int month, int year)
 	// First check the month, since it's the easiest, and the day and year for positivity
 	if(month < 1 || month > 12 || day <= 0 || year < 1970)
 		return 0;
-	
+
 	memset(&timeinfo, 0, sizeof(struct tm));
 	timeinfo.tm_year = year - 1900;
 	timeinfo.tm_mon = month;
@@ -410,6 +410,12 @@ char *strip_codes(char *str)
 	return str;
 }
 
+unsigned char file_exists(const char *file)
+{
+	struct stat statbuf;
+	return (stat(file, &statbuf) == 0);
+}
+
 inline long min(long a, long b)
 {
 	return (a < b) ? a : b;
@@ -419,3 +425,4 @@ inline long max(long a, long b)
 {
 	return (a > b) ? a : b;
 }
+

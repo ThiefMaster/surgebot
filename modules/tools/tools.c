@@ -14,19 +14,19 @@ char *html_decode(char *str)
 	int i;
 	char *tmp2, *tmp = str, entity[11];
 	size_t len = strlen(str);
-	
+
 	while((tmp = strchr(tmp, '&')))
 	{
 		// Entity if below 10 chars
 		if(!(tmp2 = strchr(tmp, ';')))
 			continue;
-		
+
 		if((tmp2 - tmp) > 10)
 		{
 			tmp = tmp2 + 1;
 			continue;
 		}
-		
+
 		if(tmp[1] == '#') // Numeric entity
 		{
 			strlcpy(entity, tmp + 2, (tmp2 - tmp) - 1);
@@ -35,7 +35,7 @@ char *html_decode(char *str)
 				tmp = tmp2 + 1;
 				continue;
 			}
-			
+
 			tmp[0] = (char)i;
 		}
 		else // Non-numeric entity
@@ -56,7 +56,7 @@ loop_continue:
 		tmp++, tmp2++;
 		memmove(tmp, tmp2, (len - (tmp2 - str) + 1));
 	}
-	
+
 	return str;
 }
 #undef MAX_ENTITY_LENGTH
@@ -67,13 +67,13 @@ int remdir(const char *path, unsigned char exists)
 	struct dirent *direntry;
 	char new_path[PATH_MAX];
 	struct stat attribut;
-	
+
 	if(!(dir = opendir(path)))
 	{
 		debug("Failed to open directory %s", path);
 		return exists;
 	}
-	
+
 	strncpy(new_path, path, sizeof(new_path));
 	int len = strlen(new_path);
 	if(new_path[len - 1] == '/') new_path[--len] = '\0';
@@ -101,7 +101,7 @@ int remdir(const char *path, unsigned char exists)
 		}
 	}
 	closedir(dir);
-	
+
 	return rmdir(path);
 }
 
@@ -112,12 +112,12 @@ char *str_replace(const char *str, const char *search, const char *replace, unsi
 	const char *tmp;
 	char *tmp2, *ret;
 	int i = 0;
-	
+
 	for(tmp = str; (tmp = strstrfunc(tmp, search)); tmp += search_len, i++);
-	
+
 	ret = malloc(strlen(str) + (replace_len - search_len) * i + 1);
 	ret[0] = '\0';
-	
+
 	for(tmp = str; (tmp2 = strstrfunc(tmp, search)); tmp = (tmp2 + search_len))
 	{
 		// Append string up to found string
@@ -125,7 +125,7 @@ char *str_replace(const char *str, const char *search, const char *replace, unsi
 		// Append replace-string
 		strcat(ret, replace);
 	}
-	
+
 	// Append remaining string after last search occurence
 	strcat(ret, tmp);
 	return ret;
@@ -135,18 +135,18 @@ char *strip_html_tags(char *str)
 {
 	char *tmp, *tmp2;
 	size_t len = strlen(str) + 1;
-	
+
 	tmp = str;
 	while((tmp2 = strchr(tmp, '<')))
 	{
 		if(!(tmp = strchr(tmp2, '>')))
 			break;
-		
+
 		tmp++;
 		memmove(tmp2, tmp, len - (tmp - str));
 		tmp = tmp2;
 	}
-	
+
 	return str;
 }
 
@@ -155,19 +155,19 @@ char *strip_duplicate_whitespace(char *str)
 	unsigned char white = 0;
 	char *tmp = str, *tmp2 = NULL, *end;
 	size_t len;
-	
+
 	trim(str);
-	
+
 	len = strlen(str);
 	end = str + len;
-	
+
 	while(tmp < end)
 	{
 		if(isspace(*tmp))
 		{
 			if(white && !tmp2)
 				tmp2 = tmp;
-			
+
 			white = 1;
 			tmp++;
 			continue;
@@ -178,7 +178,7 @@ char *strip_duplicate_whitespace(char *str)
 			{
 				memmove(tmp2, tmp, len - (tmp - str));
 				end -= (tmp - tmp2);
-				
+
 				tmp = tmp2;
 				tmp2 = NULL;
 				continue;
@@ -187,7 +187,7 @@ char *strip_duplicate_whitespace(char *str)
 			tmp++;
 		}
 	}
-	
+
 	*end = 0;
 	return str;
 }
@@ -197,10 +197,10 @@ size_t substr_count(const char *haystack, const char *needle, unsigned char case
 	size_t count;
 	const char *tmp = haystack;
 	char *(*strstr_func)(const char *haystack, const char *needle) = case_sensitive ? strcasestr : strstr;
-	
+
 	while((tmp = strstr_func(tmp, needle)))
 		tmp++, count++;
-	
+
 	return count + 1;
 }
 
@@ -211,11 +211,11 @@ char *trim(char * const str)
 
 	while(len > 0 && isspace(str[len - 1])) len--;
 		str[len] = '\0';
-	
+
 	len++;
 	tmp = str + strspn(str, " \n\r\t\v\f");
 	memmove(str, tmp, len - (tmp - str));
-	
+
 	return str;
 }
 
@@ -225,7 +225,7 @@ char *urlencode(const char *s)
 	register int x, y;
 	int len = strlen(s);
 	char *str;
- 
+
 	str = malloc(3 * len + 1);
 	for (x = 0, y = 0; len--; x++, y++)
 	{
@@ -240,7 +240,7 @@ char *urlencode(const char *s)
 			str[y] = hexchars[(unsigned char) s[x] & 15];
 		}
 	}
-	
+
 	str[y] = '\0';
 	return str;
 }

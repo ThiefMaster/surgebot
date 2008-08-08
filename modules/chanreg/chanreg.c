@@ -1246,7 +1246,7 @@ COMMAND(cinfo)
 				stringlist_add(slist, strdup(cmod->name));
 		}
 
-		
+
 		if(slist->count)
 		{
 			stringlist_sort(slist);
@@ -1330,7 +1330,7 @@ COMMAND(cmod_info)
 		reply("A module named $b%s$b does not exist.", argv[1]);
 		return 0;
 	}
-	
+
 	if(!cmod->channels->count)
 		reply("The module $b%s$b is not activated in any channels.", argv[1]);
 	else
@@ -1429,7 +1429,7 @@ COMMAND(rejoin)
 {
 	struct chanreg *creg;
 	unsigned int count = 0;
-	
+
 	if(argc > 1)
 	{
 		if(!IsChannelName(argv[1]))
@@ -1477,7 +1477,7 @@ COMMAND(rejoin)
 				reply("Attempting to rejoin the following $b%d$b channels:", count);
 				for(i = 0; i < irclist->count; i++)
 					reply("  %s", irclist->data[i]);
-				
+
 				stringlist_free(irclist);
 			}
 		}
@@ -1486,7 +1486,7 @@ COMMAND(rejoin)
 
 		stringlist_free(slist);
 	}
-	
+
 	return count ? 1 : 0;
 }
 
@@ -1516,7 +1516,7 @@ COMMAND(move)
 		reply("Channel registration has been moved to $b%s$b.", creg->channel);
 		return 1;
 	}
-	
+
 	return 0;
 }
 
@@ -1531,25 +1531,25 @@ int access_validator(struct chanreg *reg, struct irc_source *src, const char *va
 {
 	const char *str = value;
 	int number;
-	
+
 	if(!aredigits(str))
 	{
 		reply("The access level has to be a positive integral value.");
 		return 0;
 	}
-	
+
 	while(*str == '0')
 		str++;
-	
+
 	if(!(number = strlen(str)))
 		return 1;
-	
+
 	if(number > 3 || ((number = atoi(str)) > 500))
 	{
 		reply("The access level must not exceed 500. To deactive, disable the channel module.");
 		return 0;
 	}
-	
+
 	return 1;
 }
 
@@ -1572,13 +1572,13 @@ const char *asterisk_null(const char *old_value, const char *value)
 const char *access_encoder(const char *old_Value, const char *value)
 {
 	const char *str = value;
-	
+
 	while(*str == '0')
 		str++;
-	
+
 	if(!strlen(str))
 		return "0";
-	
+
 	return str;
 }
 
