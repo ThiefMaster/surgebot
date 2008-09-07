@@ -5,7 +5,7 @@ void tools_init();
 void tools_fini();
 
 void split_mask(char *mask, char **nick, char **ident, char **host);
-unsigned int aredigits(const char *text);
+unsigned char aredigits(const char *text);
 char *duration2string(time_t time);
 char *time2string(time_t time);
 const char *chanmodes2string(int modes, unsigned int limit, const char *key);

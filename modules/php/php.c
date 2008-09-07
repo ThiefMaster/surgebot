@@ -16,10 +16,10 @@ static const char *default_language = "en";
 struct php_cache
 {
 	char *func_name;
-	
+
 	char *description;
 	struct stringlist *synopsis;
-	
+
 	time_t added;
 };
 
@@ -27,7 +27,7 @@ struct php_request
 {
 	char *target;
 	char *func_name;
-	
+
 	struct HTTPRequest *http;
 };
 
@@ -60,24 +60,24 @@ COMMAND(php);
 MODULE_INIT
 {
 	this = self;
-	
+
 	cmod = chanreg_module_reg("PHP", 0, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "Language", default_language, cmod_lang_validator, NULL, NULL);
 	DEFINE_COMMAND(self, "php", php, 2, 0, "group(admins)");
-	
+
 	php_requests = dict_create();
 	dict_set_free_funcs(php_requests, NULL, (dict_free_f*)php_request_free);
-	
+
 	php_cache = dict_create();
 	dict_set_free_funcs(php_cache, free, (dict_free_f*)dict_free);
-	
+
 	php_add_timer();
 }
 
 MODULE_FINI
 {
 	php_del_timer();
-	
+
 	chanreg_module_unreg(cmod);
 	dict_free(php_requests);
 	dict_free(php_cache);
@@ -92,7 +92,7 @@ COMMAND(php)
 	struct chanreg *myreg = NULL;
 	const char *language;
 	size_t spn;
-	
+
 	if(channel)
 	{
 		CHANREG_MODULE_COMMAND;
@@ -101,7 +101,7 @@ COMMAND(php)
 	}
 	else
 		target = src->nick;
-	
+
 	// Find function name
 	spn = strspn(argv[1], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-1234567890");
 	if(!spn)
@@ -109,9 +109,9 @@ COMMAND(php)
 		reply("Please supply a correct function name.");
 		return 0;
 	}
-	
+
 	func_name = strndup(argv[1], spn);
-	
+
 	strip_codes(func_name);
 
 	// Did we already retrieve information for this function?
@@ -121,22 +121,22 @@ COMMAND(php)
 		php_report(cache, target);
 		return 0;
 	}
-	
+
 	php = malloc(sizeof(struct php_request));
-	
+
 	php->target = strdup(target);
 	php->func_name = func_name;
-	
+
 	language = myreg ? chanreg_setting_get(myreg, cmod, "Language") : default_language;
-	
+
 	tmp = str_replace(php->func_name, "_", "-", 1);
 	snprintf(request, sizeof(request), "www.php.net/manual/%s/function.%s.php", language, tmp);
 	free(tmp);
 	php->http = HTTPRequest_create(request, event_func, read_func);
-	
+
 	HTTPRequest_add_header(php->http, "Content-language", default_language);
 	HTTPRequest_connect(php->http);
-	
+
 	dict_insert(php_requests, php->func_name, php);
 	return 0;
 }
@@ -151,15 +151,15 @@ static void php_request_free(struct php_request *php)
 static void php_cache_add(const char *language, struct php_cache *cache)
 {
 	struct dict *tmp;
-	
+
 	if(!(tmp = dict_find(php_cache, language)))
 	{
 		tmp = dict_create();
 		dict_set_free_funcs(tmp, NULL, (dict_free_f*)php_cache_free);
-		
+
 		dict_insert(php_cache, strdup(language), tmp);
 	}
-	
+
 	dict_insert(tmp, cache->func_name, cache);
 }
 
@@ -167,12 +167,12 @@ static struct php_cache *php_cache_find(struct chanreg *reg, const char *func_na
 {
 	const char *language;
 	struct dict *cache;
-	
+
 	language = (reg ? chanreg_setting_get(reg, cmod, "Language") : default_language);
-	
+
 	if(!(cache = dict_find(php_cache, language)))
 		return NULL;
-	
+
 	return dict_find(cache, func_name);
 }
 
@@ -192,7 +192,7 @@ static struct php_request *php_request_find(struct HTTPRequest *http)
 		if(php->http == http)
 			return php;
 	}
-	
+
 	return NULL;
 }
 
@@ -201,7 +201,7 @@ static void php_report(struct php_cache *cache, const char *target)
 	int i;
 	char *method = (IsChannelName(target) ? "PRIVMSG" : "NOTICE");
 	irc_send("%s %s :$b%s$b - %s (http://www.php.net/%s)", method, target, cache->func_name, cache->description, cache->func_name);
-	
+
 	for(i = 0; i < cache->synopsis->count; i++)
 		irc_send("%s %s :$uSynopsis$u: %s", method, target, cache->synopsis->data[i]);
 }
@@ -214,9 +214,9 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	struct dict_node *node;
 	struct chanreg *reg;
 	struct php_request *php;
-	
+
 	assert((php = php_request_find(http)));
-	
+
 	if(IsChannelName(php->target))
 	{
 		assert((reg = chanreg_find(php->target)));
@@ -224,44 +224,54 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	}
 	else
 		language = default_language;
-	
+
 	// There shouldn't be a cache entry for this function yet
 	// If there is, we will update it
 	if((node = dict_find_node(php_cache, php->func_name)))
 		dict_delete_node(php_cache, node);
-	
-	if(!(tmp = strstr(buf, "<p class=\"refpurpose dc-title\">")))
+
+	if(!(tmp = strstr(buf, "<p class=\"refpurpose")))
 	{
+		char *method = IsChannelName(php->target) ? "PRIVMSG" : "NOTICE";
 		tmp = str_replace(php->func_name, "$", "$$", 1);
 		tmp2 = str_replace(tmp, "_", "-", 1);
-		irc_send("PRIVMSG %s :$b[PHP]$b There is no function called $b%s$b. (http://www.php.net/manual-lookup.php?pattern=%s&lang=%s)", php->target, tmp, tmp2, language);
+		irc_send("%s %s :$b[PHP]$b There is no function called $b%s$b. (http://www.php.net/manual-lookup.php?pattern=%s&lang=%s)", method, php->target, tmp, tmp2, language);
 		free(tmp2);
 		free(tmp);
 		return;
 	}
-	
-	tmp += 31; // strlen("<p class=\"refpurpose dc-title\">")
-	
+
+	if(!(tmp = strchr(tmp, '>')))
+		return;
+
+	tmp++;
+
 	// Find dash to get to the start of the description
-	assert((tmp = strstr(tmp, "—"))); // Unicode representation for long dash
-	
-	tmp += 4;
-	
+	if((tmp2 = strstr(tmp, "&mdash;")))
+		tmp = tmp2 + 8;
+	else if((tmp2 = strstr(tmp, "â~@~T"))) // Unicode representation for long dash
+		tmp = tmp2 + 6;
+	else
+	{
+		log_append(LOG_ERROR, "The HTML code from php.net seems to have changed. Could not find separating dash.");
+		return;
+	}
+
 	assert((tmp2 = strstr(tmp, "</p>")));
-	
+
 	syn = strndup(tmp, tmp2 - tmp);
 	description = str_replace(syn, "\n", " ", 1);
 	free(syn);
-	
+
 	// Create php cache object
 	cache = malloc(sizeof(struct php_cache));
 	cache->synopsis = stringlist_create();
-	
+
 	// Now find the synopsis - there may be more than one...
 	while(tmp2 && (tmp = strstr(tmp2 + 4, "<div class=\"methodsynopsis dc-description\">")))
 	{
 		tmp += 43; // strlen("<div class=\"methodsynopsis dc-description\">")
-		
+
 		if((tmp2 = strstr(tmp, "</div>")))
 		{
 			synopsis = strndup(tmp, tmp2 - tmp);
@@ -269,18 +279,18 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			free(synopsis);
 			synopsis = str_replace(syn, "$", "$$", 1);
 			free(syn);
-			
+
 			synopsis = strip_duplicate_whitespace(strip_html_tags(synopsis));
 			stringlist_add(cache->synopsis, synopsis);
-			
+
 			tmp2 += 6;
 		}
 	}
-	
+
 	cache->func_name	= strdup(php->func_name);
 	cache->description	= strip_duplicate_whitespace(strip_html_tags(description));
 	cache->added		= now;
-	
+
 	php_report(cache, php->target);
 	php_cache_add(language, cache);
 }
@@ -289,7 +299,7 @@ static void event_func(struct HTTPRequest *http, enum HTTPRequest_event event)
 {
 	struct php_request *php = php_request_find(http);
 	assert(php);
-	
+
 	// The two possible events are timeout/hangup and error
 	// In both cases, the request needs to be freed
 	dict_delete(php_requests, php->func_name);
@@ -299,12 +309,12 @@ static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, cons
 {
 	const char *old_value;
 	int i;
-	
+
 	if(!strlen(value) || (strspn(value, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != strlen(value)))
 		return 0;
-	
+
 	old_value = chanreg_setting_get(reg, cmod, "Language");
-	
+
 	// In case no more channels need this old language, free function cache for this language
 	for(i = 0; i < cmod->channels->count; i++)
 	{
@@ -312,7 +322,7 @@ static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, cons
 		if(!strcasecmp(chanreg_setting_get(reg, cmod, "Language"), old_value))
 			return 1;
 	}
-	
+
 	dict_delete(php_cache, old_value);
 	return 1;
 }
@@ -338,7 +348,7 @@ static void php_timer_func(void *bound, void *data)
 		if(!cache->count)
 			dict_delete(php_cache, node->key);
 	}
-	
+
 	php_add_timer();
 }
 

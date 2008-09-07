@@ -47,15 +47,9 @@ void split_mask(char *mask, char **nick, char **ident, char **host)
 		*host = strdup(++mask);
 }
 
-unsigned int aredigits(const char *text)
+unsigned char aredigits(const char *text)
 {
-	unsigned int i;
-
-	for(i = 0; i < strlen(text); i++)
-		if(!isdigit(text[i]))
-			return 0;
-
-	return 1;
+	return *(text + strspn(text, "0123456789")) == '\0';
 }
 
 // from feigbot source
