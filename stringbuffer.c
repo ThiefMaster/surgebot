@@ -20,7 +20,7 @@ void stringbuffer_free(struct stringbuffer *sbuf)
 
 void stringbuffer_append_char(struct stringbuffer *sbuf, char c)
 {
-	if(sbuf->len == sbuf->size) // sbuf is full, we need to allocate more memory
+	if(sbuf->len >= sbuf->size - 1) // sbuf is full, we need to allocate more memory
 	{
 		sbuf->size <<= 1; // double size
 		sbuf->string = realloc(sbuf->string, sbuf->size + 1);
@@ -34,13 +34,13 @@ void stringbuffer_append_string_n(struct stringbuffer *sbuf, const char *str, si
 {
 	if(!len)
 		return;
-	
+
 	while(sbuf->len + len + 1 > sbuf->size)
 	{
 		sbuf->size <<= 1;
 		sbuf->string = realloc(sbuf->string, sbuf->size + 1);
 	}
-	
+
 	memcpy(sbuf->string + sbuf->len, str, len);
 	sbuf->len += len;
 	sbuf->string[sbuf->len] = 0;
@@ -55,7 +55,7 @@ char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned 
 {
 	char *tmp;
 	int delim_len = strlen(delim);
-	
+
 	// Delimiter substring?
 	if((tmp = strcasestr(sbuf->string, delim)))
 	{
@@ -73,7 +73,7 @@ char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned 
 		for(i = 0, tmp = sbuf->string + sbuf->len - 1; i < delim_len; i++, tmp--)
 			if(!strncasecmp(tmp, delim, i))
 				return NULL;
-		
+
 		// return whole string (even if empty) in case the token is not required
 		if(!require_token)
 		{
@@ -81,7 +81,7 @@ char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned 
 			stringbuffer_flush(sbuf);
 			return tmp;
 		}
-		
+
 		// No token but since it is required, we got nothing to return
 		return NULL;
 	}
@@ -91,23 +91,23 @@ char *stringbuffer_shiftspn(struct stringbuffer *sbuf, const char *delim_list, u
 {
 	int i = strcspn(sbuf->string, delim_list);
 	char *tmp;
-	
+
 	// Not found
 	if(i == sbuf->len)
 	{
 		if(require_token)
 			return NULL;
-			
+
 		tmp = strdup(sbuf->string);
 		stringbuffer_flush(sbuf);
 		return tmp;
 	}
-	
+
 	// Token was found
 	tmp = strndup(sbuf->string, i);
 	free(stringbuffer_flush_return(sbuf, i + strspn(sbuf->string + i, delim_list)));
 	return tmp;
-	
+
 	// todo: What to do if line ends with delimiters from the list? (The next input could start with delimiters too)
 }
 
@@ -123,14 +123,14 @@ void stringbuffer_flush(struct stringbuffer *sbuf)
 char *stringbuffer_flush_return(struct stringbuffer *sbuf, size_t len)
 {
 	char *buf;
-	
+
 	len = min(len, sbuf->len);
 	buf = malloc(len + 1);
-	
+
 	strncpy(buf, sbuf->string, len);
 	buf[len] = 0;
 	sbuf->len -= len;
 	memmove(sbuf->string, sbuf->string + len, sbuf->len + 1);
-	
+
 	return buf;
 }
