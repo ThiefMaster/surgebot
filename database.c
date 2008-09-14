@@ -401,7 +401,7 @@ static char database_valid_char(struct database *db)
 		if(c == EOF)
 			return EOF;
 
-		if(isspace(c)) // this function is always called outside strings, so we can simply skip spaces
+		if(ct_isspace(c)) // this function is always called outside strings, so we can simply skip spaces
 			continue;
 
 		if(c != '/') // if it's not '/', it cannot be the begin of a comment

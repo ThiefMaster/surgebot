@@ -29,5 +29,7 @@ char *strip_duplicate_whitespace(char *str);
 size_t substr_count(const char *haystack, const char *needle, unsigned char case_sensitive);
 char *trim(char * const str);
 char *urlencode(const char *s);
+char *urldecode(char *uri);
+char *html_encode(const char *str);
 
 #endif // __TOOLS_H__

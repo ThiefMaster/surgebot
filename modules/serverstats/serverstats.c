@@ -397,7 +397,7 @@ IRC_HANDLER(msg)
 		return;
 
 	// Looks like we have the right line from chanserv
-	for(c = argv[2]; (c && !isdigit(*c)); c++)
+	for(c = argv[2]; (c && !ct_isdigit(*c)); c++)
 		; // Empty body
 
 	if(*c != '\0')

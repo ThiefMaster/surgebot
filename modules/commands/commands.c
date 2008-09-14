@@ -426,7 +426,7 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 				buf_used += strlen(src->host);
 				alias += 4;
 			}
-			else if(isdigit(*alias))
+			else if(ct_isdigit(*alias))
 			{
 				lbound = strtoul(alias, &num_end, 10);
 				if(*num_end == '-') // possibly multiple arguments
@@ -434,7 +434,7 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 					lnumlen = num_end - alias;
 
 					num_end++;
-					if(isdigit(*num_end)) // end arg
+					if(ct_isdigit(*num_end)) // end arg
 					{
 						ubound = strtoul(num_end, &num_end_2, 10);
 						unumlen = num_end_2 - num_end;

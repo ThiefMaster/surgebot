@@ -1,9 +1,10 @@
 #ifndef TOOLS_H
 #define TOOLS_H
 
+#include "x_ctype.h"
+
 void tools_init();
 void tools_fini();
-
 void split_mask(char *mask, char **nick, char **ident, char **host);
 unsigned char aredigits(const char *text);
 char *duration2string(time_t time);

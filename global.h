@@ -6,8 +6,8 @@
 #endif
 
 #include <assert.h>
-#include <ctype.h>
 #include <dirent.h>
+#include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -68,6 +68,7 @@ extern time_t now;
 #include "structs.h"
 
 #define ArraySize(ARRAY)		(sizeof((ARRAY)) / sizeof((ARRAY)[0]))
+#define MyFree(PTR)			do { if(PTR) { free(PTR); (PTR) = NULL; } } while(0)
 
 #undef assert
 #define assert(CHECK)			{ if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); return; } }

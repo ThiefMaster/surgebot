@@ -145,7 +145,7 @@ struct parser_token_list *parser_tokenize(struct parser *parser, const char *str
 			{
 				if(func_token->arg->len)
 				{
-					while(isspace(func_token->arg->string[func_token->arg->len - 1]))
+					while(ct_isspace(func_token->arg->string[func_token->arg->len - 1]))
 						func_token->arg->string[--func_token->arg->len] = '\0';
 				}
 
@@ -168,7 +168,7 @@ struct parser_token_list *parser_tokenize(struct parser *parser, const char *str
 		}
 		else if(func_token && func_arg) // Inside function argument -> add whatever we get
 		{
-			if(func_token->arg->len || !isspace(*c)) // leading whitespace
+			if(func_token->arg->len || !ct_isspace(*c)) // leading whitespace
 				stringbuffer_append_char(func_token->arg, *c);
 			c++;
 		}
@@ -205,7 +205,7 @@ struct parser_token_list *parser_tokenize(struct parser *parser, const char *str
 			last_token = add_token(tokens, T_NOT, NULL);
 			c++;
 		}
-		else if(isspace(*c)) // Skip whitespace
+		else if(ct_isspace(*c)) // Skip whitespace
 		{
 			c++;
 		}

@@ -1,5 +1,6 @@
 #include "global.h"
 #include "module.h"
+#include "stringbuffer.h"
 
 // Module header
 #include "tools.h"
@@ -244,3 +245,68 @@ char *urlencode(const char *s)
 	str[y] = '\0';
 	return str;
 }
+
+char *urldecode(char *uri)
+{
+	char *start, *out;
+	int h, g;
+
+	/* Decode the URI in-place. */
+	for(out = start = uri; *uri; uri++)
+	{
+		if(*uri == '+')
+		{
+			*out++ = ' ';
+			continue;
+		}
+
+		if(*uri != '%')
+		{
+			*out++ = *uri;
+			continue;
+		}
+
+		/* The current character is a '%', expect two hex characters.
+		   Invalid escape sequences are passed through (non-RFC behavior). */
+		h = ct_get(ctype, *++uri);
+		if((h & CT_XDIGIT) == 0)
+		{
+			*out++ = '%';
+			uri -= 1;
+			continue;
+		}
+
+		g = ct_get(ctype, *++uri);
+		if((g & CT_XDIGIT) == 0)
+		{
+			*out++ = '%';
+			uri -= 2;
+			continue;
+		}
+
+		/* Write the resulting character out. */
+		*out++ = ((h & 15) << 4) + (g & 15);
+	}
+	*out = 0;
+
+	return start;
+}
+
+char *html_encode(const char *str)
+{
+	struct stringbuffer *buf = stringbuffer_create();
+	char *string;
+
+	for(const char *ptr = str; *ptr; ptr++)
+	{
+		if(ct_get(ctype, *ptr) & CT_HTML)
+			stringbuffer_append_printf(buf, "&#%d;", *ptr);
+		else
+			stringbuffer_append_char(buf, *ptr);
+	}
+
+	string = strdup(buf->string);
+	stringbuffer_free(buf);
+	return string;
+}
+

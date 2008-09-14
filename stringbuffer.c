@@ -51,6 +51,57 @@ void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str)
 	stringbuffer_append_string_n(sbuf, str, strlen(str));
 }
 
+void stringbuffer_append_vprintf(struct stringbuffer *sbuf, const char *fmt, va_list args)
+{
+	va_list working;
+	size_t len;
+	int ret;
+
+	va_copy(working, args);
+	len = strlen(fmt);
+	if(sbuf->size < sbuf->len + len)
+	{
+		sbuf->string = realloc(sbuf->string, sbuf->len + len);
+		sbuf->size = sbuf->len + len;
+	}
+
+	ret = vsnprintf(sbuf->string + sbuf->len, sbuf->size - sbuf->len, fmt, working);
+	va_end(working);
+	if(ret <= 0)
+	{
+		va_copy(working, args);
+		while((ret = vsnprintf(sbuf->string + sbuf->len, sbuf->size - sbuf->len, fmt, working)) <= 0)
+		{
+			sbuf->string = realloc(sbuf->string, sbuf->len + len);
+			sbuf->size = sbuf->len + len;
+			va_end(working);
+			va_copy(working, args);
+		}
+
+		sbuf->len += ret;
+	}
+	else if(sbuf->len + ret < sbuf->size)
+	{
+		sbuf->len += ret;
+	}
+	else
+	{
+		sbuf->string = realloc(sbuf->string, sbuf->len + ret + 1);
+		sbuf->size = sbuf->len + ret + 1;
+		va_copy(working, args);
+		sbuf->len += vsnprintf(sbuf->string + sbuf->len, sbuf->size - sbuf->len, fmt, working);
+	}
+}
+
+void stringbuffer_append_printf(struct stringbuffer *sbuf, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	stringbuffer_append_vprintf(sbuf, fmt, args);
+	va_end(args);
+}
+
 char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned char require_token)
 {
 	char *tmp;

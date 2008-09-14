@@ -3,14 +3,21 @@
 #include "global.h"
 #include "tools.h"
 #include "chanuser.h"
+#include "ctype.h"
+#include "mtrand.h"
 
 static char **str_tab;
 static unsigned int str_tab_size;
+struct ctype_map ctype;
+
+static void ctype_init();
 
 void tools_init()
 {
 	str_tab_size = 1001;
 	str_tab = calloc(str_tab_size, sizeof(char *));
+	ctype_init();
+	init_genrand((unsigned long)time(NULL));
 }
 
 void tools_fini()
@@ -22,6 +29,25 @@ void tools_fini()
 	}
 
 	free(str_tab);
+}
+
+static void ctype_init()
+{
+	ctype_mark_range(&ctype, CT_UPPER, 'A', 'Z');
+	ctype_mark_range(&ctype, CT_LOWER, 'a', 'z');
+	ctype_mark_string(&ctype, CT_PUNCT, "-._#");
+	ctype_mark_string(&ctype, CT_SPACE, "\t\r\n ");
+
+	ctype_mark_digit(&ctype, CT_ODIGIT, "01234567");
+	ctype_mark_digit(&ctype, CT_DIGIT,  "0123456789");
+	ctype_mark_digit(&ctype, CT_XDIGIT, "0123456789ABCDEF");
+	ctype_mark_digit(&ctype, CT_XDIGIT, "0123456789abcdef");
+
+	ct_set(&ctype, '<', CT_HTML);
+	ct_set(&ctype, '>', CT_HTML);
+	ct_set(&ctype, '\'', CT_HTML);
+	ct_set(&ctype, '"', CT_HTML);
+	ct_set(&ctype, '&', CT_HTML);
 }
 
 void split_mask(char *mask, char **nick, char **ident, char **host)
@@ -170,14 +196,14 @@ int IsChannelName(const char *name)
 unsigned int validate_string(const char *str, const char *allowed, char *c)
 {
 	const char *invalid = str + strspn(str, allowed);
-	
+
 	// Reached end of string
 	if(*invalid == '\0')
 		return 1;
-	
+
 	if(c)
 		*c = *invalid;
-	
+
 	return 0;
 }
 
