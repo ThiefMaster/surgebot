@@ -193,7 +193,7 @@ int main(int argc, char **argv)
 		return 1;
 
 	// start event loop
-	while(!quit_poll)
+	while(!quit_poll || quit_poll > now)
 	{
 		now = time(NULL);
 
