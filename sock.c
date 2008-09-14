@@ -1,5 +1,6 @@
 #include "global.h"
 #include "sock.h"
+#include "timer.h"
 
 IMPLEMENT_LIST(sock_list, struct sock *)
 
@@ -570,8 +571,19 @@ int sock_write_fmt(struct sock *sock, const char *format, ...)
 	return sock_write(sock, buf, len);
 }
 
+static void sock_close_tmr(void *bound, struct sock *sock)
+{
+	sock_close(sock);
+}
+
+void sock_close_timed(struct sock *sock, unsigned int delay)
+{
+	timer_add(NULL, "close_sock", now + delay, (timer_f*)sock_close_tmr, sock, 0, ((sock->flags & SOCK_QUIET) ? 1 : 0));
+}
+
 int sock_close(struct sock *sock)
 {
+	timer_del(NULL, "close_sock", 0, (timer_f*)sock_close_tmr, sock, TIMER_IGNORE_TIME);
 	if(sock->flags & SOCK_ZOMBIE)
 		return -1;
 
@@ -934,6 +946,7 @@ int sock_poll()
 					free(sock->send_queue);
 					sock->send_queue = NULL;
 					sock->send_queue_len = 0;
+					sock->event_func(sock, EV_WRITE, 0);
 				}
 				else if(wres < sock->send_queue_len) // we were not able to write out the whole buffer
 				{
@@ -946,6 +959,7 @@ int sock_poll()
 					free(sock->send_queue);
 					sock->send_queue = new_queue;
 					sock->send_queue_len -= wres;
+					sock->event_func(sock, EV_WRITE, 0);
 				}
 			}
 		}
