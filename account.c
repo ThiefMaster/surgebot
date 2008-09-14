@@ -118,6 +118,8 @@ struct user_account *account_find(const char *name)
 
 void account_del(struct user_account *account)
 {
+	CALL_HOOKS(account_del, (account));
+
 	dict_iter(node, account->users)
 	{
 		struct irc_user *user = node->data;
