@@ -51,8 +51,8 @@ MODULE_INIT
 	reg_module_load_func(NULL, module_unloaded);
 	reg_disconnected_func(irc_disconnected);
 	perform_func_reg("chanjoin_join_channels", perform_done);
-	chanuser_reg_channel_del_hook(channel_del_hook);
-	chanuser_reg_channel_complete_hook(channel_complete_hook);
+	reg_channel_del_hook(channel_del_hook);
+	reg_channel_complete_hook(channel_complete_hook);
 	reg_irc_handler("JOIN", join);
 	reg_irc_handler("471", num_channelisfull);
 	reg_irc_handler("473", num_inviteonlychan);
@@ -72,8 +72,8 @@ MODULE_FINI
 	unreg_irc_handler("473", num_inviteonlychan);
 	unreg_irc_handler("474", num_bannedfromchan);
 	unreg_irc_handler("475", num_badchannelkey);
-	chanuser_unreg_channel_complete_hook(channel_complete_hook);
-	chanuser_unreg_channel_del_hook(channel_del_hook);
+	unreg_channel_complete_hook(channel_complete_hook);
+	unreg_channel_del_hook(channel_del_hook);
 	perform_func_unreg("chanjoin_join_channels");
 	unreg_disconnected_func(irc_disconnected);
 	unreg_module_load_func(NULL, module_unloaded);

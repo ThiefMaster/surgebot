@@ -15,7 +15,7 @@ void timer_fini()
 	dict_free(timers);
 }
 
-void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char quiet)
+void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char debug)
 {
 	struct timer *tmr = malloc(sizeof(struct timer));
 	tmr->id = next_timer_id;
@@ -26,8 +26,8 @@ void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *
 	tmr->data = data;
 	tmr->free_data = free_data;
 	tmr->triggered = 0;
-	tmr->quiet = quiet;
-	
+	tmr->debug = debug;
+
 	timer_debug(tmr, "Adding timer %s (%lu) - triggered in %lu secs", name ? name : "-noname-", next_timer_id, time - now);
 	dict_insert(timers, NULL, tmr);
 

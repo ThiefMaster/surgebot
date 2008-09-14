@@ -3,48 +3,13 @@
 #include "account.h"
 #include "stringlist.h"
 
-#define CHANUSER_IMPLEMENT_HOOKABLE(NAME) \
-	static NAME##_f *NAME##_hooks; \
-	static unsigned int NAME##_hooks_used = 0, NAME##_hooks_size = 0; \
-	void chanuser_reg_##NAME##_hook(NAME##_f func) { \
-		if (NAME##_hooks_used == NAME##_hooks_size) { \
-			if (!NAME##_hooks_size) { \
-				NAME##_hooks_size = 4; \
-				NAME##_hooks = malloc(NAME##_hooks_size * sizeof(NAME##_hooks[0])); \
-			} else { \
-				NAME##_hooks_size <<= 1; \
-				NAME##_hooks = realloc(NAME##_hooks, NAME##_hooks_size * sizeof(NAME##_hooks[0])); \
-			} \
-		} \
-		NAME##_hooks[NAME##_hooks_used++] = func; \
-	} \
-	void chanuser_unreg_##NAME##_hook(NAME##_f func) { \
-		for (unsigned int i = 0; i < NAME##_hooks_used; i++) { \
-			if (NAME##_hooks[i] == func) { \
-				memmove(NAME##_hooks+i, NAME##_hooks+i+1, (NAME##_hooks_size-i-1)*sizeof(NAME##_hooks[0])); \
-				NAME##_hooks_used--; \
-				break; \
-			} \
-		} \
-	} \
-	static void chanuser_clear_##NAME##_hooks() { \
-		if (NAME##_hooks) free(NAME##_hooks); \
-		NAME##_hooks = NULL; \
-		NAME##_hooks_used = 0; \
-		NAME##_hooks_size = 0; \
-	}
-
-#define CHANUSER_CALL_HOOKS(NAME, ARGS) \
-	for (unsigned int ii = 0; ii < NAME##_hooks_used; ii++) \
-		NAME##_hooks[ii] ARGS
-
 static struct dict *channels;
 static struct dict *users;
 
-CHANUSER_IMPLEMENT_HOOKABLE(channel_del);
-CHANUSER_IMPLEMENT_HOOKABLE(channel_complete);
-CHANUSER_IMPLEMENT_HOOKABLE(user_del);
-CHANUSER_IMPLEMENT_HOOKABLE(chanuser_del);
+IMPLEMENT_HOOKABLE(channel_del);
+IMPLEMENT_HOOKABLE(channel_complete);
+IMPLEMENT_HOOKABLE(user_del);
+IMPLEMENT_HOOKABLE(chanuser_del);
 
 void chanuser_init()
 {
@@ -54,10 +19,10 @@ void chanuser_init()
 
 void chanuser_fini()
 {
-	chanuser_clear_channel_del_hooks();
-	chanuser_clear_channel_complete_hooks();
-	chanuser_clear_user_del_hooks();
-	chanuser_clear_chanuser_del_hooks();
+	clear_channel_del_hooks();
+	clear_channel_complete_hooks();
+	clear_user_del_hooks();
+	clear_chanuser_del_hooks();
 
 	chanuser_flush();
 	dict_free(users);
@@ -111,7 +76,7 @@ struct irc_channel* channel_add(const char *name, int do_burst)
 // Called when all information about a channel is available (i.e. burst finished)
 void channel_complete(struct irc_channel *channel)
 {
-	CHANUSER_CALL_HOOKS(channel_complete, (channel));
+	CALL_HOOKS(channel_complete, (channel));
 }
 
 struct irc_channel* channel_find(const char *name)
@@ -121,7 +86,7 @@ struct irc_channel* channel_find(const char *name)
 
 void channel_del(struct irc_channel *channel, unsigned int del_type, const char *reason)
 {
-	CHANUSER_CALL_HOOKS(channel_del, (channel, reason));
+	CALL_HOOKS(channel_del, (channel, reason));
 
 	dict_iter(node, channel->users)
 	{
@@ -236,7 +201,7 @@ struct irc_user* user_find(const char *nick)
 
 void user_del(struct irc_user *user, unsigned int del_type, const char *reason)
 {
-	CHANUSER_CALL_HOOKS(user_del, (user, del_type, reason));
+	CALL_HOOKS(user_del, (user, del_type, reason));
 
 	dict_iter(node, user->channels)
 	{
@@ -318,7 +283,7 @@ int channel_user_del(struct irc_channel *channel, struct irc_user *user, unsigne
 	struct irc_chanuser *chanuser = channel_user_find(channel, user);
 	assert_return(chanuser, 0);
 
-	CHANUSER_CALL_HOOKS(chanuser_del, (chanuser, del_type, reason));
+	CALL_HOOKS(chanuser_del, (chanuser, del_type, reason));
 
 	dict_delete(channel->users, user->nick);
 	dict_delete(user->channels, channel->name);
@@ -380,7 +345,7 @@ char *get_mode_char(struct irc_chanuser *cuser)
 		if(cuser->flags & MODE_VOICE)
 			return "+";
 	}
-	
+
 	return ""; // No modechar
 }
 

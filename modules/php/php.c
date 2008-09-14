@@ -330,7 +330,7 @@ static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, cons
 static void php_add_timer()
 {
 	php_del_timer();
-	timer_add(this, "PHPCleanUp", now + 600, php_timer_func, NULL, 0, 1);
+	timer_add(this, "PHPCleanUp", now + 600, php_timer_func, NULL, 0, 0);
 }
 
 static void php_timer_func(void *bound, void *data)

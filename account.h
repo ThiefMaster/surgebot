@@ -1,6 +1,8 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
+#include "hook.h"
+
 #define VALID_ACCOUNT_CHARS	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-[]{}|^`"
 
 void account_init();
@@ -16,6 +18,8 @@ struct user_account *account_find_smart(struct irc_source *src, const char *name
 
 void account_user_add(struct user_account *account, struct irc_user *user);
 void account_user_del(struct user_account *account, struct irc_user *user);
+
+DECLARE_HOOKABLE(account_del, (struct user_account *account));
 
 #endif
 

@@ -9,7 +9,7 @@
 
 #define TIMER_IGNORE_ALL	0x1F
 
-#define timer_debug(timer, text...) { if(!timer->quiet) log_append(LOG_DEBUG, ## text); }
+#define timer_debug(timer, text...) { if(timer->debug) log_append(LOG_DEBUG, ## text); }
 
 typedef void (timer_f)(void *bound, void *data);
 
@@ -23,8 +23,8 @@ struct timer
 	void		*data;
 	unsigned int	free_data : 1;
 	unsigned int	triggered : 1;
-	
-	unsigned char quiet;
+
+	unsigned char debug;
 };
 
 void timer_init();
@@ -32,7 +32,7 @@ void timer_fini();
 
 struct dict *timer_dict();
 
-void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char quiet);
+void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char debug);
 unsigned int timer_exists(void *bound, const char *name, time_t time, timer_f *func, void *data, long flags);
 void timer_del(void *bound, const char *name, time_t time, timer_f *func, void *data, long flags);
 void timer_poll();

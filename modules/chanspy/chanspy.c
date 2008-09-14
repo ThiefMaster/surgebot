@@ -94,7 +94,7 @@ MODULE_INIT
 	reg_irc_handler("JOIN", join);
 	reg_irc_handler("PART", part);
 	reg_irc_handler("KICK", kick);
-	chanuser_reg_user_del_hook(user_del_hook);
+	reg_user_del_hook(user_del_hook);
 	reg_irc_handler("NICK", nick);
 	reg_irc_handler("TOPIC", topic);
 
@@ -140,7 +140,7 @@ MODULE_FINI
 	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("PART", part);
 	unreg_irc_handler("KICK", kick);
-	chanuser_unreg_user_del_hook(user_del_hook);
+	unreg_user_del_hook(user_del_hook);
 	unreg_irc_handler("NICK", nick);
 	unreg_irc_handler("TOPIC", topic);
 

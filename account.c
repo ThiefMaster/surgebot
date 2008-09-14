@@ -6,13 +6,14 @@
 #include "chanuser.h"
 #include "irc.h"
 
+IMPLEMENT_HOOKABLE(account_del);
+
 static struct dict *account_list;
 static struct database *account_db;
 
 static struct user_account *account_add(const char *name, const char *pass, time_t regtime);
 static void account_db_read(struct database *db);
 static int account_db_write(struct database *db);
-
 
 void account_init()
 {
@@ -32,6 +33,7 @@ void account_fini()
 		account_del(dict_first_data(account_list));
 
 	dict_free(account_list);
+	clear_account_del_hooks();
 }
 
 static void account_db_read(struct database *db)

@@ -184,16 +184,16 @@ COMMAND(pass)
 			reply("$bPassword:$b [Encrypted]");
 		else
 			reply("You have no password set. You can only be automatically authed based on your loginmask.");
-		
+
 		return 0;
 	}
-	
+
 	if(argc <= 2)
 	{
 		reply("Not enough arguments.");
 		return 0;
 	}
-	
+
 	if(strcmp(sha1(argv[1]), user->account->pass)) // Invalid old password
 	{
 		reply("Invalid password for account $b%s$b.", user->account->name);
@@ -294,7 +294,7 @@ COMMAND(loginmask)
 {
 	if(argc > 1)
 		return  oset_loginmask(src, user->account, argc - 1, argv + 1);
-	
+
 	if(user->account->login_mask)
 		reply("Your loginmask is $b%s$b.", user->account->login_mask);
 	else
@@ -505,22 +505,22 @@ COMMAND(oset)
 {
 	struct user_account *acc;
 	option_func *opfunc;
-	
+
 	if(!(acc = account_find_smart(src, argv[1])))
 		return 0;
-	
+
 	if(!strcasecmp(argv[2], "password") || !strcasecmp(argv[2], "pass"))
 		opfunc = oset_password;
-	
+
 	else if(!strcasecmp(argv[2], "loginmask"))
 		opfunc = oset_loginmask;
-	
+
 	else
 	{
 		reply("There is no such setting.");
 		return 0;
 	}
-	
+
 	return opfunc(src, acc, argc - 3, argv + 3);
 }
 
@@ -547,7 +547,7 @@ OPTION_FUNC(oset_password)
 	}
 	else
 		reply("You need to specify a new password as well.");
-	
+
 	return 0;
 }
 
@@ -559,10 +559,10 @@ OPTION_FUNC(oset_loginmask)
 			reply("$bLoginmask:$b %s", account->login_mask);
 		else
 			reply("$b%s$b has no loginmask set.", account->name);
-		
+
 		return 0;
 	}
-	
+
 	if(!strcmp("*", argv[0]))
 	{
 		if(!strcmp(account->pass, "*"))
@@ -570,13 +570,13 @@ OPTION_FUNC(oset_loginmask)
 			reply("This account has no password set. You may not delete its loginmask.");
 			return 0;
 		}
-		
+
 		if(account->login_mask)
 		{
 			free(account->login_mask);
 			account->login_mask = NULL;
 		}
-		
+
 		reply("$bLoginmask:$b None");
 		return 1;
 	}
@@ -590,7 +590,7 @@ OPTION_FUNC(oset_loginmask)
 		reply("The provided hostmask does not match *@*, please choose another one.");
 		return 0;
 	}
-	
+
 	if(account->login_mask && strcasecmp(account->login_mask, argv[0]))
 	{
 		reply("$bLoginmask:$b %s -> $b%s$b.", account->login_mask, argv[0]);

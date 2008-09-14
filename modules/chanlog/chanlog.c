@@ -69,7 +69,7 @@ MODULE_INIT
 	reg_irc_handler("PRIVMSG", privmsg);
 	reg_irc_handler("TOPIC", topic);
 	reg_conf_reload_func(chanlog_readconf);
-	chanuser_reg_chanuser_del_hook(chanuser_del_hook);
+	reg_chanuser_del_hook(chanuser_del_hook);
 	chanlogs = dict_create();
 	dict_set_free_funcs(chanlogs, NULL, (dict_free_f*)chanlog_free);
 
@@ -89,7 +89,7 @@ MODULE_FINI
 	unreg_irc_handler("PRIVMSG", privmsg);
 	unreg_irc_handler("TOPIC", topic);
 	unreg_conf_reload_func(chanlog_readconf);
-	chanuser_unreg_chanuser_del_hook(chanuser_del_hook);
+	unreg_chanuser_del_hook(chanuser_del_hook);
 	chanlog_timer_del();
 
 	chanreg_module_unreg(cmod);
@@ -239,7 +239,7 @@ static void chanlog_timer_add()
 
 	struct tm *timeinfo = localtime(&now);
 	time_t timestamp;
-	
+
 	timeinfo->tm_hour = 0;
 	timeinfo->tm_min = 0;
 	timeinfo->tm_sec = 0;
@@ -391,7 +391,7 @@ static int cmod_disabled(struct chanreg *creg, unsigned int delete_data, enum cm
 		strtolower(dir);
 		ret = remdir(dir, 1);
 	}
-	
+
 	return ret;
 }
 
@@ -426,10 +426,10 @@ const char *cset_purgeafter_formatter(const char *value)
 	int iValue = atoi(value);
 	if(value[0] == '0' && value[1] == '\0')
 		return "0 - Never purge logs";
-		
+
 	else if(iValue == 0)
 		return value;
-	
+
 	else
 	{
 		snprintf(str, sizeof(str), "%d day%s", iValue, (iValue != 1 ? "s" : ""));

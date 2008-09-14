@@ -1,6 +1,8 @@
 #ifndef HAVE_CHANUSER_H
 #define HAVE_CHANUSER_H
 
+#include "hook.h"
+
 #define MODE_VOICE		0x00001 /* +v */
 #define MODE_OP			0x00002 /* +o */
 
@@ -61,14 +63,9 @@ void channel_ban_del(struct irc_channel *channel, const char *mask);
 
 char *get_mode_char(struct irc_chanuser *cuser);
 
-#define CHANUSER_DECLARE_HOOKABLE(NAME, ARGS) \
-	typedef void (*NAME##_f) ARGS; \
-	void chanuser_reg_##NAME##_hook(NAME##_f func); \
-	void chanuser_unreg_##NAME##_hook(NAME##_f func)
-
-CHANUSER_DECLARE_HOOKABLE(channel_del, (struct irc_channel *channel, const char *reason));
-CHANUSER_DECLARE_HOOKABLE(channel_complete, (struct irc_channel *channel));
-CHANUSER_DECLARE_HOOKABLE(user_del, (struct irc_user *user, unsigned int quit, const char *reason));
-CHANUSER_DECLARE_HOOKABLE(chanuser_del, (struct irc_chanuser *user, unsigned int del_type, const char *reason));
+DECLARE_HOOKABLE(channel_del, (struct irc_channel *channel, const char *reason));
+DECLARE_HOOKABLE(channel_complete, (struct irc_channel *channel));
+DECLARE_HOOKABLE(user_del, (struct irc_user *user, unsigned int quit, const char *reason));
+DECLARE_HOOKABLE(chanuser_del, (struct irc_chanuser *user, unsigned int del_type, const char *reason));
 
 #endif
