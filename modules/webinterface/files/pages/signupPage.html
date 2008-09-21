@@ -1,0 +1,89 @@
+<div id="signupFormContainer">
+  <form action="/ajax/signup" method="post" id="signupForm">
+    <input type="text" name="username" id="signup_username" value="" /><br />
+    <input type="password" name="password" id="signup_password" value="" />
+    <input type="password" name="password2" value="" />
+    <input type="submit" name="send" value="Signup" />
+  </form>
+</div>
+
+<script type="text/javascript">
+/* <![CDATA[ */
+  function signup_init()
+  {
+      $("#signupPage #signupForm").validate({
+          rules: {
+              username: 'required',
+              password: {
+                  required: true,
+                  minlength: 5
+              },
+              password2: {
+                  equalTo: '#signup_password'
+              }
+          },
+
+          messages: {
+              username:  'Please enter a username.',
+              password:  'Please enter a password (min. 5 chars).',
+              password2: 'Please confirm your password.'
+          },
+
+          submitHandler: function(form) {
+              $(form).ajaxSubmit({
+                  success: signup_response,
+                  dataType: 'json'
+              });
+          }
+      });
+  }
+
+  function signup_show()
+  {
+      $('#pageTitle').html('Signup');
+
+      if(loggedIn)
+      {
+          setPage('index');
+          return false;
+      }
+      else
+      {
+          $('#signupFormContainer').show();
+          return true;
+      }
+  }
+
+  function signup_response(data)
+  {
+      if(data.success == true)
+      {
+          loggedIn = true;
+          sessionID = data.sid;
+          sessionUserName = data.userName;
+
+          $('#signupFormContainer').hide();
+          clearErrors(true);
+          clearInfos();
+          addInfo('Signup successful; session id: '+data.sid, true, true);
+          redirectTimeout = window.setTimeout('setPage("index")', 2000);
+          updateLoginState();
+      }
+      else
+      {
+          var msg;
+          if(data.error == 'dataMissing')
+              msg = 'Required fields missing.';
+          else if(data.error == 'userExists')
+          {
+              msg = 'Username is already in use.';
+              $('#signup_username').addClass('error').focus();
+          }
+          else
+              msg = 'Unknown: ' + data.error;
+
+          addError(msg, true, true);
+      }
+  }
+/* ]]> */
+</script>

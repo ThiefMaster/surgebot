@@ -1,0 +1,38 @@
+Welcome to the SurgeBot web interface, <b id="indexUserName"></b>.<br />
+<br />
+<b>Bot information:</b><br />
+<ul>
+  <li>Uptime: <span id="indexUptime"></span></li>
+  <li>Linked: <span id="indexLinked"></span></li>
+  <li>Server: <span id="indexServer"></span></li>
+  <li>Lines received: <span id="indexLinesReceived"></span></li>
+  <li>Lines sent: <span id="indexLinesSent"></span></li>
+  <li>Channels: <span id="indexChannels"></span></li>
+  <li>Users: <span id="indexUsers"></span></li>
+</ul>
+
+<script type="text/javascript">
+/* <![CDATA[ */
+  function index_response(data)
+  {
+      if(!checkSuccess(data, 'Index'))
+          return;
+          
+      $('#indexUptime').html(data.uptime);
+      $('#indexLinked').html(data.linked);
+      $('#indexServer').html(data.server);
+      $('#indexLinesReceived').html(data.linesReceived);
+      $('#indexLinesSent').html(data.linesSent);
+      $('#indexChannels').html(data.channels);
+      $('#indexUsers').html(data.users);
+  }
+
+  function index_show()
+  {
+      $.getJSON('/ajax/index/' + sessionID, null, index_response)
+      $('#pageTitle').html('Index');
+      $('#indexUserName').html(sessionUserName);
+      return true;
+  }
+/* ]]> */
+</script>

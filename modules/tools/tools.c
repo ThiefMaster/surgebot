@@ -5,6 +5,28 @@
 // Module header
 #include "tools.h"
 
+const struct
+{
+	char *entity;
+	char character;
+}
+entities[] =
+{
+	// "Default" entities
+	{ "auml",	'ä' },
+	{ "ouml",	'ö' },
+	{ "uuml",	'ü' },
+	{ "szlig",	'ß' },
+	{ "quot",	'"' },
+	{ "amp",	'&' },
+	{ "lt",		'<' },
+	{ "gt",		'>' }
+};
+
+unsigned char hexchars[] = "0123456789ABCDEF";
+
+
+
 MODULE_DEPENDS(NULL);
 
 MODULE_INIT {}

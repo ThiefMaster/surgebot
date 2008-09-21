@@ -1,25 +1,5 @@
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
-
-const struct
-{
-	char *entity;
-	char character;
-}
-entities[] =
-{
-	// "Default" entities
-	{ "auml",	'ä' },
-	{ "ouml",	'ö' },
-	{ "uuml",	'ü' },
-	{ "szlig",	'ß' },
-	{ "quot",	'"' },
-	{ "amp",	'&' },
-	{ "lt",		'<' },
-	{ "gt",		'>' }
-};
-
-unsigned char hexchars[] = "0123456789ABCDEF";
+#ifndef TOOLS_MODULE_H
+#define TOOLS_MODULE_H
 
 char *html_decode(char *str);
 int remdir(const char *path, unsigned char exists);
@@ -32,4 +12,4 @@ char *urlencode(const char *s);
 char *urldecode(char *uri);
 char *html_encode(const char *str);
 
-#endif // __TOOLS_H__
+#endif

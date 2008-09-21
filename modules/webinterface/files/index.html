@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" dir="ltr" lang="de" xml:lang="de">
+<head>
+  <!-- möp, this page is utf8! -->
+  <title>Test Application</title>
+  <link rel="stylesheet" type="text/css" href="/static/style.css" />
+  <script type="text/javascript" src="/static/jquery.js"></script>
+  <script type="text/javascript" src="/static/jquery.form.js"></script>
+  <script type="text/javascript" src="/static/jquery.validate.js"></script>
+  <script type="text/javascript" src="/static/json2005.js"></script>
+  <script type="text/javascript" src="/static/rsh.js"></script>
+</head>
+<body>
+  <script type="text/javascript">
+  /* <![CDATA[ */
+    var DISABLE_PAGE_CACHE = false;
+  
+    var currentPage = '';
+    var loggedIn = false;
+    var sessionID = '';
+    var sessionUserName = '';
+    var initCalled = false;
+    var callingInit = false;
+    var redirectTimeout = null;
+
+    window.dhtmlHistory.create({toJSON: function(o) { return JSON.stringify(o); }, fromJSON: function(s) { return JSON.parse(s); }});
+
+    $(function() {
+        dhtmlHistory.initialize();
+        dhtmlHistory.addListener(historyChanged);
+
+        //updateLoginState();
+
+        $('<div id="loading"><img src="/static/loading.gif" alt="" /> Loading...</div>').ajaxStart(function() {
+            $(this).show();
+        }).ajaxStop(function() {
+            $(this).hide();
+        }).appendTo('body');
+
+        $.validator.setDefaults({
+            showErrors: function(errorMap, errorList) {
+                if(this.numberOfInvalids() == 0)
+                {
+                    clearErrors(true);
+                    this.defaultShowErrors();
+                    return;
+                }
+
+                clearErrors();
+                this.defaultShowErrors();
+                showErrors();
+            },
+
+            wrapper: 'li',
+            errorLabelContainer: $('#errorList'),
+
+            onfocusout: false,
+            onkeyup: false,
+            onclick: false
+        });
+
+        if(!initCalled)
+        {
+            if(!callingInit)
+            {
+                callingInit = true;
+                init_submit();
+            }
+            return;
+        }
+    });
+
+    function historyChanged(newLocation, historyData)
+    {
+        if(!newLocation || !initCalled)
+        {
+            if(!callingInit)
+            {
+                callingInit = true;
+                init_submit();
+            }
+            return;
+        }
+
+        newLocation = newLocation.replace(/^page:/, '');
+        setPage(newLocation);
+    }
+
+    function setPage(page, loadDone)
+    {
+        clearErrors(true);
+        clearInfos(true);
+        $('input.error').removeClass('error');
+
+        if(redirectTimeout)
+            window.clearTimeout(redirectTimeout);
+        redirectTimeout = null;
+
+        if(!loadDone && DISABLE_PAGE_CACHE && page != 'logout')
+            $('#' + page + 'Page').remove();
+
+        if($('#' + page + 'Page').length == 0 && page != 'logout')
+        {
+            $('#content').append('<div class="page" id="' + page + 'Page"></div>');
+            $('#' + page + 'Page').load('/page/' + page, null, function() {
+                if(typeof window[page + '_init'] == 'function')
+                    window[page + '_init']();
+                setPage(page, true);
+            });
+            return;
+        }
+
+        eval('var func = (typeof ' + page + '_show == "function") ? ' + page + '_show : null;');
+        if(typeof window[page + '_show'] == 'function' && !window[page + '_show']())
+            return;
+
+        $('#menu > li').removeClass('selected');
+        $('#menu_' + page).addClass('selected');
+        $('.page').hide();
+        $('#' + page + 'Page').show();
+        currentPage = page;
+        dhtmlHistory.add('page:' + page, null);
+
+        if(!func)
+            $('#pageTitle').html(page);
+
+        if(page == 'logout')
+            logout_submit();
+    }
+
+    function addError(msg, clear, show)
+    {
+        if(clear)
+            clearErrors(false);
+        $('#errorList').append('<li>' + msg + '</li>');
+        if(show)
+            showErrors();
+    }
+
+    function showErrors()
+    {
+        $('#errorList').show();
+        $('#errorFrame').slideDown();
+    }
+
+    function clearErrors(hideFrame)
+    {
+        if(hideFrame)
+            $('#errorFrame').hide();
+        $('#errorList').children().remove();
+    }
+
+    function addInfo(msg, clear, show)
+    {
+        if(clear)
+            clearInfos(false);
+        $('#infoList').append('<li>' + msg + '</li>');
+        if(show)
+            showInfos();
+    }
+
+    function showInfos()
+    {
+        $('#infoList').show();
+        $('#infoFrame').slideDown();
+    }
+
+    function clearInfos(hideFrame)
+    {
+        if(hideFrame)
+            $('#infoFrame').hide();
+        $('#infoList').children().remove();
+    }
+
+    function checkSuccess(data, action)
+    {
+        if(data.success)
+            return true;
+
+        if(data.error == '404')
+        {
+            addError(action + ' failed: Invalid action or not logged in.', true, true);
+            redirectTimeout = window.setTimeout('location.replace("/index.html");', 2000);
+        }
+        else
+            addError(action + ' failed: ' + data.error, true, true);
+        return false;
+    }
+
+    function updateLoginState()
+    {
+        $('#menu > li').not('#menuLoading').remove();
+        $('#menu > li#menuLoading').show();
+        $.getJSON('/ajax/menu/' + sessionID, null, menu_response)
+    }
+
+    function menu_response(data)
+    {
+        if(!checkSuccess(data, 'MenuInit'))
+        {
+            window.setTimeout('init_submit()', 1000);
+            return;
+        }
+
+        $('#menu > li#menuLoading').hide();
+        for(var key in data.items)
+        {
+            var title = data.items[key];
+            $('#menu').append('<li id="menu_' + key + '">' + title + '</li>');
+        }
+        
+        $('#menu > li').not('li#menuLoading').click(function() {
+            setPage(this.id.substr(5));
+        });
+        
+        $('#menu > li').removeClass('selected');
+        $('#menu_' + currentPage).addClass('selected');
+    }
+
+    // init 'page'
+    function init_submit()
+    {
+        $('#pageTitle').html('Initializing');
+        $.getJSON('/ajax/init', null, init_response);
+    }
+
+    function init_response(data)
+    {
+        if(!checkSuccess(data, 'Init'))
+            return;
+
+        loggedIn = data.loggedIn;
+        sessionID = data.sid ? data.sid : '';
+        sessionUserName = data.userName ? data.userName : '';
+        updateLoginState();
+        initCalled = true;
+
+        if(loggedIn)
+        {
+            var loc = dhtmlHistory.getCurrentLocation();
+            if(!loc || loc == 'page:signup' || loc == 'page:login')
+                setPage('index');
+            else
+                setPage(loc.replace(/^page:/, ''));
+        }
+        else if(dhtmlHistory.getCurrentLocation() == 'page:signup')
+            setPage('signup');
+        else
+            setPage('login');
+    }
+
+    // logout page
+    function logout_show()
+    {
+        $('#pageTitle').html('Logout');
+        return true;
+    }
+
+    function logout_submit()
+    {
+        $.getJSON('/ajax/logout/' + sessionID, null, logout_response);
+    }
+
+    function logout_response(data)
+    {
+        if(!checkSuccess(data, 'Logout'))
+            return;
+
+        loggedIn = false;
+        sessionID = '';
+        sessionUserName = '';
+        updateLoginState();
+        addInfo('Logout successful', true, true);
+    }
+  /* ]]> */
+  </script>
+
+  <ul id="menu">
+    <li id="menuLoading"><img src="/static/loadingMenu.gif" alt="Loading..." /></li>
+  </ul>
+
+  <div id="content">
+    <h2 id="pageTitle"></h2>
+
+    <div id="errorFrame">
+      <b>Errors:</b>
+      <ul id="errorList">
+        <li>dummy</li>
+      </ul>
+    </div>
+    
+    <div id="infoFrame">
+      <b>Information:</b>
+      <ul id="infoList">
+        <li>dummy</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

@@ -38,5 +38,6 @@ void dict_clear(struct dict *dict);
 #define dict_first_data(DICT)	((DICT) && (DICT)->head ? (DICT)->head->data : NULL)
 
 #define dict_iter(ENTRY, DICT)	for(struct dict_node* ENTRY = (DICT)->head; ENTRY; ENTRY = (ENTRY)->next)
+#define dict_iter_rev(ENTRY, DICT)	for(struct dict_node* ENTRY = (DICT)->tail; ENTRY; ENTRY = (ENTRY)->prev)
 
 #endif

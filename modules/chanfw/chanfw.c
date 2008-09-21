@@ -50,7 +50,7 @@ MODULE_INIT
 	reg_irc_handler("KICK", kick);
 	reg_irc_handler("QUIT", quit);
 	reg_irc_handler("NICK", nick);
-	chanuser_reg_channel_complete_hook(channel_complete_hook);
+	reg_channel_complete_hook(channel_complete_hook);
 
 	cmod = chanreg_module_reg("ChanForward", 0, NULL, NULL, cmod_enabled, cmod_disabled);
 	chanreg_module_setting_reg(cmod, "KickMsg", NULL, NULL, null_none, asterisk_null);
@@ -72,7 +72,7 @@ MODULE_FINI
 	unreg_irc_handler("NICK", nick);
 	timer_del_boundname(this, TIMER_NAME);
 	timer_del_boundname(this, "channel_complete");
-	chanuser_unreg_channel_complete_hook(channel_complete_hook);
+	unreg_channel_complete_hook(channel_complete_hook);
 	chanreg_module_unreg(cmod);
 	dict_free(users);
 }

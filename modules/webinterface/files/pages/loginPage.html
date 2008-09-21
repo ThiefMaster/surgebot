@@ -1,0 +1,93 @@
+<div id="loginFormContainer">
+  <form action="/ajax/login" method="post" id="loginForm">
+    <input type="text" name="username" id="login_username" value="" />
+    <input type="password" name="password" id="login_password" value="" />
+    <input type="submit" name="send" value="Login" />
+  </form>
+</div>
+
+<script type="text/javascript">
+/* <![CDATA[ */
+  function login_init()
+  {
+      $("#loginPage #loginForm").validate({
+          rules: {
+              username: 'required',
+              password: {
+                  required: true,
+                  minlength: 5
+              }
+          },
+
+          messages: {
+              username: 'Please enter your username.',
+              password: 'Please enter your password (min. 5 chars).'
+          },
+
+          submitHandler: function(form) {
+              $(form).ajaxSubmit({
+                  success: login_response,
+                  dataType: 'json'
+              });
+          }
+      });
+  }
+
+  function login_show()
+  {
+      $('#pageTitle').html('Login');
+
+      if(loggedIn)
+      {
+          setPage('index');
+          return false;
+      }
+      else
+      {
+          $('#loginFormContainer').show();
+          return true;
+      }
+  }
+
+  function login_response(data)
+  {
+      if(data.success == true)
+      {
+          loggedIn = true;
+          sessionID = data.sid;
+          sessionUserName = data.userName;
+
+          $('#loginFormContainer').hide();
+          clearErrors(true);
+          clearInfos();
+          addInfo('Login successful; session id: '+data.sid, true, true);
+          redirectTimeout = window.setTimeout('setPage("index")', 2000);
+          updateLoginState();
+      }
+      else
+      {
+          var msg;
+          if(data.error == 'dataMissing')
+          {
+              msg = 'Required fields missing.';
+          }
+          else if(data.error == 'invalidUser')
+          {
+              msg = 'Incorrect username.';
+              $('#login_username').addClass('error').focus();
+          }
+          else if(data.error == 'invalidPass')
+          {
+              msg = 'Incorrect password.';
+              $('#login_password').addClass('error').focus();
+          }
+          else
+          {
+              msg = 'Unknown: ' + data.error;
+          }
+
+          addError(msg, true, true);
+      }
+  }
+/* ]]> */
+</script>

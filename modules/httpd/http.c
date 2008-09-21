@@ -149,7 +149,7 @@ static void http_conf_reload()
 	http_conf.listen_pem	= ((str = conf_get("httpd/listen_pem", DB_STRING)) ? str : NULL);
 
 	if(!http_conf.listen_port)
-		log_append(LOG_ERROR, "/http/listen_port must be set");
+		log_append(LOG_ERROR, "/httpd/listen_port must be set");
 
 	const char *old_pem = old_port ? conf_get_old("http/listen_pem", DB_STRING) : NULL;
 	if(old_port && // no old port = first call = don't mess with the listener here
@@ -485,7 +485,7 @@ static int http_parse_header(struct http_client *client, const char *line, unsig
 	char tmp1[128], tmp2[256];
 	strlcpy(tmp1, field->key, min(field->klen + 1, 128));
 	strlcpy(tmp2, field->value, min(field->vlen + 1, 256));
-	debug("Header: %s: %s", tmp1, tmp2);
+	//debug("Header: %s: %s", tmp1, tmp2);
 	header_list_add(client->headers, field);
 
 	/* Extract the values of some key headers for internal use. */
@@ -581,6 +581,8 @@ static int http_parse(struct http_client *client)
 		{
 			/* Parse the first non-blank line as the Request-Line. */
 			code = http_parse_request_line(client, header + start, size);
+			if(!code)
+				log_append(LOG_INFO, "Requested URI: %s", client->uri);
 		}
 		else
 		{

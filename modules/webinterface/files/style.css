@@ -1,0 +1,112 @@
+* {
+    margin: 0px;
+    padding: 0px;
+}
+
+img {
+    border: none;
+}
+
+body {
+    background-color: #DDDDFF;
+    color: #000000;
+    font-size: 12px;
+    text-decoration: none;
+    font-family: verdana, arial, helvetica, sans-serif;
+}
+
+h2 {
+    margin: 0px 0px 5px 0px;
+}
+
+
+#content {
+    position: absolute;
+    left: 0px;
+    right: 15px;
+    margin: 15px 25px 50px 220px;
+    padding: 5px;
+    border: 1px dashed #999999;
+    background-color: #EEEEEE;
+}
+
+#menu {
+    position: absolute;
+    top: 15px;
+    left: 21px;
+    padding: 0px;
+    margin: 0px;
+    width:172px;
+    background-color: #EEEEEE;
+    border: 1px dashed #999999;
+    line-height: 17px;
+    cursor: pointer;
+    display: block;
+    color: #0099CC;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+#menu li {
+    list-style-type: none;
+    padding-left: 5px;
+}
+
+#menu li#menuLoading {
+    cursor: wait;
+}
+
+#menu .selected {
+    background-color: #C1CDCD;
+}
+
+.page {
+    display: none;
+}
+
+#loading {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    border: 1px ridge #CCCCCC;
+    background-color: #E95555;
+    color: #EEEEEE;
+    padding: 3px;
+    display: none;
+    vertical-align: middle;
+}
+
+#menuLoading {
+    padding-top: 3px;
+}
+
+#errorFrame {
+    width: 100%;
+    margin-bottom: 7px;
+    border: 1px dashed #FF0000;
+    display: none;
+}
+
+#infoFrame {
+    width: 100%;
+    margin-bottom: 7px;
+    border: 1px dashed #00AA00;
+    display: none;
+}
+
+#errorFrame li, #infoFrame li {
+    margin-left: 20px;
+}
+
+input {
+    margin-bottom: 2px;
+    border: 1px dotted #000000;
+}
+
+input.error {
+    border: 1px dotted #FF0000;
+}
+
+#content li {
+    margin-left: 20px;
+}

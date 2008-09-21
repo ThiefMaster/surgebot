@@ -1,0 +1,59 @@
+<div id="rawFormContainer">
+  <form action="/ajax/raw" method="post" id="rawForm">
+    <input type="text" name="command" id="raw_command" style="width:400px;" value="" />
+    <input type="submit" name="send" value="Send" />
+  </form>
+</div>
+
+<script type="text/javascript">
+/* <![CDATA[ */
+  function raw_init()
+  {
+      $("#rawPage #rawForm").validate({
+          rules: {
+              command: 'required',
+          },
+
+          messages: {
+              command: 'Please enter an IRC command.',
+          },
+
+          submitHandler: function(form) {
+              $(form).ajaxSubmit({
+                  success: raw_response,
+                  url: form.action + '/' + sessionID,
+                  dataType: 'json'
+              });
+          }
+      });
+  }
+
+  function raw_show()
+  {
+      $('#pageTitle').html('Raw commands');
+      return true;
+  }
+
+  function raw_response(data)
+  {
+      if(data.success == true)
+      {
+          addInfo('Raw command sent: ' + data.command, false, true);
+      }
+      else
+      {
+          var msg;
+          if(data.error == 'dataMissing')
+          {
+              msg = 'Required fields missing.';
+          }
+          else
+          {
+              msg = 'Unknown: ' + data.error;
+          }
+
+          addError(msg, true, true);
+      }
+  }
+/* ]]> */
+</script>
