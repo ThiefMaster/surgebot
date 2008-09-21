@@ -194,7 +194,7 @@ COMMAND(pass)
 		return 0;
 	}
 
-	if(strcmp(sha1(argv[1]), user->account->pass)) // Invalid old password
+	if(strcmp(user->account->pass, "*") && strcmp(sha1(argv[1]), user->account->pass)) // Invalid old password
 	{
 		reply("Invalid password for account $b%s$b.", user->account->name);
 		argv[1] = "BADPASS";
