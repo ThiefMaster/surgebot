@@ -3,6 +3,7 @@
 #include "modules/tools/tools.h"
 #include "account.h"
 #include "session.h"
+#include "rules.h"
 #include "sha1.h"
 #include "chanuser.h"
 #include "irc.h"
@@ -10,7 +11,7 @@
 #include <json/json.h>
 
 #define REQUIRE_SESSION 	struct session *session; \
-				if(!(session = session_find(client, uri, argc, argv))) {\
+				if(!(session = session_find(client, uri, argc, argv))) { \
 					struct json_object *nosession_response = json_object_new_object(); \
 					json_object_object_add(nosession_response, "success", json_object_new_boolean(0)); \
 					json_object_object_add(nosession_response, "error", json_object_new_string("sessionInvalid")); \
@@ -23,7 +24,7 @@
 
 // require session only if a sid was sent
 #define REQUIRE_SESSION_IF_SID 	struct session *session = NULL; \
-				if(argc > 2 && !(session = session_find(client, uri, argc, argv))) {\
+				if(argc > 2 && !(session = session_find(client, uri, argc, argv))) { \
 					struct json_object *nosession_response = json_object_new_object(); \
 					json_object_object_add(nosession_response, "success", json_object_new_boolean(0)); \
 					json_object_object_add(nosession_response, "error", json_object_new_string("sessionInvalid")); \
@@ -34,12 +35,26 @@
 					return; \
 				}
 
+#define CHECK_RULE(RULE)	enum rule_result _rule_res = rule_exec((RULE), session); \
+				if(_rule_res != R_ALLOW) { \
+					struct json_object *rulefailed_response = json_object_new_object(); \
+					json_object_object_add(rulefailed_response, "success", json_object_new_boolean(0)); \
+					if(_rule_res == R_DENY) \
+						json_object_object_add(rulefailed_response, "error", json_object_new_string("accessDenied")); \
+					else /* R_ERROR */ \
+						json_object_object_add(rulefailed_response, "error", json_object_new_string("ruleExecFailed")); \
+					http_reply_header("Content-Type", "text/javascript"); \
+					http_reply("%s", json_object_to_json_string(rulefailed_response)); \
+					json_object_put(rulefailed_response); \
+					return; \
+				}
+
 
 struct menu
 {
 	char *id;
 	char *title;
-	unsigned int guest : 1;
+	unsigned int rule;
 };
 
 HTTP_HANDLER(ajax_index_handler);
@@ -69,6 +84,7 @@ static struct http_handler handlers[] = {
 };
 
 static struct dict *menu_items;
+static unsigned int raw_rule = 0;
 
 void ajaxapp_init()
 {
@@ -78,12 +94,12 @@ void ajaxapp_init()
 	http_handler_add_list(handlers);
 
 	// guest menu
-	menu_add("login", "Login", 1);
-	menu_add("signup", "Signup", 1);
-	// user Menu
-	menu_add("index", "Index", 0);
-	menu_add("raw", "Raw commands", 0);
-	menu_add("logout", "Logout", 0);
+	menu_add("login", "Login", "!loggedin()");
+	menu_add("signup", "Signup", "!loggedin()");
+	// user menu
+	menu_add("index", "Index", "loggedin()");
+	raw_rule = menu_add("raw", "Raw commands", "group(admins)");
+	menu_add("logout", "Logout", "loggedin()");
 }
 
 void ajaxapp_fini()
@@ -100,8 +116,8 @@ void ajaxapp_fini()
 
 HTTP_HANDLER(ajax_index_handler)
 {
-	struct json_object *response;
 	REQUIRE_SESSION
+	struct json_object *response;
 
 	response = json_object_new_object();
 	json_object_object_add(response, "success", json_object_new_boolean(1));
@@ -120,6 +136,8 @@ HTTP_HANDLER(ajax_index_handler)
 
 HTTP_HANDLER(ajax_raw_handler)
 {
+	REQUIRE_SESSION
+	CHECK_RULE(raw_rule)
 	struct json_object *response;
 	char *command;
 	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
@@ -162,18 +180,25 @@ HTTP_HANDLER(ajax_menu_handler)
 	REQUIRE_SESSION_IF_SID
 
 	response = json_object_new_object();
-	json_object_object_add(response, "success", json_object_new_boolean(1));
 	items = json_object_new_object();
 
 	dict_iter_rev(node, menu_items)
 	{
 		struct menu *menu = node->data;
-		if((session && menu->guest) || (!session && !menu->guest))
-			continue;
-		json_object_object_add(items, menu->id, json_object_new_string(menu->title));
+		enum rule_result res = rule_exec(menu->rule, session);
+		if(res == R_ALLOW)
+			json_object_object_add(items, menu->id, json_object_new_string(menu->title));
+		else if(res == R_ERROR)
+		{
+			json_object_put(items);
+			json_object_object_add(response, "success", json_object_new_boolean(0));
+			json_object_object_add(response, "error", json_object_new_string("ruleExecFailed"));
+			return;
+		}
 	}
 
 	json_object_object_add(response, "items", items);
+	json_object_object_add(response, "success", json_object_new_boolean(1));
 	http_reply_header("Content-Type", "text/javascript");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);
@@ -353,14 +378,15 @@ HTTP_HANDLER(page_handler)
 	fclose(fd);
 }
 
-void menu_add(const char *id, const char *title, unsigned int guest)
+unsigned int menu_add(const char *id, const char *title, const char *rule)
 {
 	struct menu *menu = malloc(sizeof(struct menu));
 	memset(menu, 0, sizeof(struct menu));
 	menu->id = strdup(id);
 	menu->title = strdup(title);
-	menu->guest = guest;
+	menu->rule = rule_compile(rule);
 	dict_insert(menu_items, menu->id, menu);
+	return menu->rule;
 }
 
 void menu_del(const char *id)
@@ -372,5 +398,6 @@ static void menu_free(struct menu *menu)
 {
 	free(menu->id);
 	free(menu->title);
+	rule_free(menu->rule);
 	free(menu);
 }

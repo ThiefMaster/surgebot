@@ -13,11 +13,19 @@ Welcome to the SurgeBot web interface, <b id="indexUserName"></b>.<br />
 
 <script type="text/javascript">
 /* <![CDATA[ */
+  function index_show()
+  {
+      $.getJSON('/ajax/index/' + sessionID, null, index_response)
+      $('#pageTitle').html('Index');
+      $('#indexUserName').html(sessionUserName);
+      return true;
+  }
+  
   function index_response(data)
   {
       if(!checkSuccess(data, 'Index'))
           return;
-          
+
       $('#indexUptime').html(data.uptime);
       $('#indexLinked').html(data.linked);
       $('#indexServer').html(data.server);
@@ -25,14 +33,6 @@ Welcome to the SurgeBot web interface, <b id="indexUserName"></b>.<br />
       $('#indexLinesSent').html(data.linesSent);
       $('#indexChannels').html(data.channels);
       $('#indexUsers').html(data.users);
-  }
-
-  function index_show()
-  {
-      $.getJSON('/ajax/index/' + sessionID, null, index_response)
-      $('#pageTitle').html('Index');
-      $('#indexUserName').html(sessionUserName);
-      return true;
   }
 /* ]]> */
 </script>

@@ -173,7 +173,7 @@
         $('#infoList').children().remove();
     }
 
-    function checkSuccess(data, action)
+    function checkSuccess(data, action, acceptUnknownErrors)
     {
         if(data.success)
             return true;
@@ -181,10 +181,26 @@
         if(data.error == '404')
         {
             addError(action + ' failed: Invalid action or not logged in.', true, true);
-            redirectTimeout = window.setTimeout('location.replace("/index.html");', 2000);
+            redirectTimeout = window.setTimeout('location.replace("/");', 2000);
+        }
+        else if(data.error == 'accessDenied')
+        {
+            addError(action + ' failed: Access denied.', true, true);
+        }
+        else if(data.error == 'sessionInvalid')
+        {
+            addError(action + ' failed: Session invalid.', true, true);
+            redirectTimeout = window.setTimeout('location.replace("/#page:login");', 2000);
+        }
+        else if(!acceptUnknownErrors)
+        {
+            addError(action + ' failed: ' + data.error, true, true);
         }
         else
-            addError(action + ' failed: ' + data.error, true, true);
+        {
+            // accept unknown errors
+            return true;
+        }
         return false;
     }
 
@@ -266,6 +282,8 @@
     {
         if(!checkSuccess(data, 'Logout'))
             return;
+
+        $('input[type=text], input[type=password]').val('');
 
         loggedIn = false;
         sessionID = '';

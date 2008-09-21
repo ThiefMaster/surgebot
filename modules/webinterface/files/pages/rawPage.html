@@ -11,11 +11,11 @@
   {
       $("#rawPage #rawForm").validate({
           rules: {
-              command: 'required',
+              command: 'required'
           },
 
           messages: {
-              command: 'Please enter an IRC command.',
+              command: 'Please enter an IRC command.'
           },
 
           submitHandler: function(form) {
@@ -36,6 +36,9 @@
 
   function raw_response(data)
   {
+      if(!checkSuccess(data, 'Raw', true))
+          return;
+  
       if(data.success == true)
       {
           addInfo('Raw command sent: ' + data.command, false, true);
