@@ -59,6 +59,8 @@ struct menu
 
 HTTP_HANDLER(ajax_index_handler);
 HTTP_HANDLER(ajax_raw_handler);
+HTTP_HANDLER(ajax_channels_handler);
+HTTP_HANDLER(ajax_channel_handler);
 HTTP_HANDLER(ajax_404_handler);
 HTTP_HANDLER(ajax_menu_handler);
 HTTP_HANDLER(ajax_init_handler);
@@ -72,6 +74,8 @@ static void menu_free(struct menu *menu);
 static struct http_handler handlers[] = {
 	{ "/ajax/index/*", ajax_index_handler },
 	{ "/ajax/raw/*", ajax_raw_handler },
+	{ "/ajax/channels/*", ajax_channels_handler },
+	{ "/ajax/channel/*", ajax_channel_handler },
 	// core handlers
 	{ "/ajax/*", ajax_404_handler },
 	{ "/ajax/init", ajax_init_handler },
@@ -85,6 +89,7 @@ static struct http_handler handlers[] = {
 
 static struct dict *menu_items;
 static unsigned int raw_rule = 0;
+static unsigned int channels_rule = 0;
 
 void ajaxapp_init()
 {
@@ -99,6 +104,7 @@ void ajaxapp_init()
 	// user menu
 	menu_add("index", "Index", "loggedin()");
 	raw_rule = menu_add("raw", "Raw commands", "group(admins)");
+	channels_rule = menu_add("channels", "Channels", "group(helpers)");
 	menu_add("logout", "Logout", "loggedin()");
 }
 
@@ -106,6 +112,7 @@ void ajaxapp_fini()
 {
 	menu_del("index");
 	menu_del("raw");
+	menu_del("channels");
 	menu_del("logout");
 	menu_del("login");
 	menu_del("signup");
@@ -155,6 +162,81 @@ HTTP_HANDLER(ajax_raw_handler)
 		irc_send("%s", command);
 		json_object_object_add(response, "success", json_object_new_boolean(1));
 		json_object_object_add(response, "command", json_object_new_string(command));
+	}
+
+	http_reply_header("Content-Type", "text/javascript");
+	http_reply("%s", json_object_to_json_string(response));
+	json_object_put(response);
+	dict_free(post_vars);
+}
+
+HTTP_HANDLER(ajax_channels_handler)
+{
+	REQUIRE_SESSION
+	CHECK_RULE(channels_rule)
+	struct json_object *response, *list;
+	char *channelname;
+	struct dict *channels = channel_dict();
+	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
+
+	channelname = dict_find(post_vars, "channel");
+
+	response = json_object_new_object();
+	json_object_object_add(response, "success", json_object_new_boolean(1));
+	list = json_object_new_array();
+	dict_iter(node, channels)
+		json_object_array_add(list, json_object_new_string(node->key));
+	json_object_object_add(response, "channels", list);
+
+	http_reply_header("Content-Type", "text/javascript");
+	http_reply("%s", json_object_to_json_string(response));
+	json_object_put(response);
+	dict_free(post_vars);
+}
+
+HTTP_HANDLER(ajax_channel_handler)
+{
+	REQUIRE_SESSION
+	CHECK_RULE(channels_rule)
+	struct json_object *response, *users, *ops, *voices, *regulars;
+	char *channelname;
+	struct irc_channel *channel;
+	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
+
+	channelname = dict_find(post_vars, "channel");
+	channel = channelname ? channel_find(channelname) : NULL;
+
+	response = json_object_new_object();
+	if(channel)
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(1));
+		json_object_object_add(response, "channel", json_object_new_string(channel->name));
+		json_object_object_add(response, "topic", channel->topic ? json_object_new_string(channel->topic) : NULL);
+		json_object_object_add(response, "modes", json_object_new_string((char*)chanmodes2string(channel->modes, channel->limit, channel->key)));
+		users = json_object_new_object();
+		ops = json_object_new_array();
+		voices = json_object_new_array();
+		regulars = json_object_new_array();
+		dict_iter(node, channel->users)
+		{
+			struct irc_chanuser *chanuser = node->data;
+			if(chanuser->flags & MODE_OP)
+				json_object_array_add(ops, json_object_new_string(chanuser->user->nick));
+			else if(chanuser->flags & MODE_VOICE)
+				json_object_array_add(voices, json_object_new_string(chanuser->user->nick));
+			else
+				json_object_array_add(regulars, json_object_new_string(chanuser->user->nick));
+		}
+
+		json_object_object_add(users, "ops", ops);
+		json_object_object_add(users, "voices", voices);
+		json_object_object_add(users, "regulars", regulars);
+		json_object_object_add(response, "users", users);
+	}
+	else
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "error", json_object_new_string("invalidChannel"));
 	}
 
 	http_reply_header("Content-Type", "text/javascript");

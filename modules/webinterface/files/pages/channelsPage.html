@@ -1,0 +1,80 @@
+<b>Channels:</b><br />
+<ul id="channelsList">
+  <li>Loading...</li>
+</ul>
+
+<div id="channelsChannel" style="display:none;">
+  <br />
+  <br />
+  Information about <b id="channelsChannelName"></b>:<br />
+  <ul>
+    <li><b>Topic:</b> <span id="channelsChannelTopic"></span></li>
+    <li><b>Modes:</b> <span id="channelsChannelModes"></span></li>
+    <li>
+      <b>Users:</b>
+      <ul id="channelsChannelUsers">
+        <li>dummy</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<script type="text/javascript">
+/* <![CDATA[ */
+  var channelsList = [];
+
+  function channels_show()
+  {
+      $('#pageTitle').html('Channels');
+      $('#channelsChannel').hide();
+      $.getJSON('/ajax/channels/' + sessionID, null, channels_response)
+      if(pageArg)
+          $.post('/ajax/channel/' + sessionID, {'channel': pageArg}, channels_channel_response, 'json');
+      return true;
+  }
+
+  function channels_response(data)
+  {
+      if(!checkSuccess(data, 'Channels'))
+          return;
+
+      channelsList = data.channels;
+      $('#channelsList').children().remove();
+      for(var i = 0; i < channelsList.length; i++)
+          $('#channelsList').append('<li><span id="channelsChannel' + i + '">' + channelsList[i].toHtml() + '</span></li>');
+
+      $('#channelsList > li > span').addClass('link').click(function() {
+          var channelID = this.id.substr(15);
+          if(channelsList[channelID] == undefined)
+              return;
+          $('#channelsChannel').hide();
+          setPageArg(channelsList[channelID]);
+          $.post('/ajax/channel/' + sessionID, {'channel': pageArg}, channels_channel_response, 'json');
+      });
+  }
+  
+  function channels_channel_response(data)
+  {
+      if(!checkSuccess(data, 'Channels/Channel'))
+      {
+          $('#channelsChannel').hide();
+          return;
+      }
+          
+      $('#channelsChannelName').html(data.channel);
+      $('#channelsChannelTopic').html(data.topic);
+      $('#channelsChannelModes').html(data.modes ? '+' + data.modes : '');
+      $('#channelsChannelUsers').children().remove();
+      channels_channel_showUsers(data.users.ops, '@');
+      channels_channel_showUsers(data.users.voices, '+');
+      channels_channel_showUsers(data.users.regulars, '');
+      $('#channelsChannel').show();
+  }
+  
+  function channels_channel_showUsers(list, prefix)
+  {
+      for(var i = 0; i < list.length; i++)
+          $('#channelsChannelUsers').append('<li>' + prefix + list[i] + '</li>');
+  }
+/* ]]> */
+</script>

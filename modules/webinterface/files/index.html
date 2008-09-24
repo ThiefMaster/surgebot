@@ -23,6 +23,7 @@
     var initCalled = false;
     var callingInit = false;
     var redirectTimeout = null;
+    var pageArg = null;
 
     window.dhtmlHistory.create({toJSON: function(o) { return JSON.stringify(o); }, fromJSON: function(s) { return JSON.parse(s); }});
 
@@ -97,6 +98,14 @@
             window.clearTimeout(redirectTimeout);
         redirectTimeout = null;
 
+        var pos;
+        pageArg = null;
+        if((pos = page.indexOf(':')) != -1)
+        {
+            pageArg  = page.substr(pos + 1);
+            page     = page.substr(0, pos);
+        }
+
         if(!loadDone && DISABLE_PAGE_CACHE && page != 'logout')
             $('#' + page + 'Page').remove();
 
@@ -106,7 +115,7 @@
             $('#' + page + 'Page').load('/page/' + page, null, function() {
                 if(typeof window[page + '_init'] == 'function')
                     window[page + '_init']();
-                setPage(page, true);
+                setPage(page + (pageArg ? ':' + pageArg : ''), true);
             });
             return;
         }
@@ -120,13 +129,19 @@
         $('.page').hide();
         $('#' + page + 'Page').show();
         currentPage = page;
-        dhtmlHistory.add('page:' + page, null);
+        dhtmlHistory.add('page:' + page + (pageArg ? ':' + pageArg : ''), null);
 
         if(!func)
             $('#pageTitle').html(page);
 
         if(page == 'logout')
             logout_submit();
+    }
+
+    function setPageArg(arg)
+    {
+        pageArg = arg;
+        dhtmlHistory.add('page:' + currentPage + ':' + pageArg, null);
     }
 
     function addError(msg, clear, show)
@@ -190,6 +205,10 @@
         else if(data.error == 'sessionInvalid')
         {
             addError(action + ' failed: Session invalid.', true, true);
+            loggedIn = false;
+            sessionID = '';
+            sessionUserName = '';
+            updateLoginState();
             redirectTimeout = window.setTimeout('location.replace("/#page:login");', 2000);
         }
         else if(!acceptUnknownErrors)
@@ -233,6 +252,14 @@
         $('#menu > li').removeClass('selected');
         $('#menu_' + currentPage).addClass('selected');
     }
+
+    String.prototype.toHtml = function() {
+        var str = this.replace(/&/g, '&amp;');
+        str = str.replace(/"/g, '&quot;');
+        str = str.replace(/</g, '&lt;');
+        str = str.replace(/>/g, '&gt;');
+        return str;
+    };
 
     // init 'page'
     function init_submit()
