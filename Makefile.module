@@ -32,7 +32,7 @@ $(OBJ_mod) : .tmp/modules/$(MODULE)/%.o : modules/$(MODULE)/%.c
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
 
 # rule for creating dependency files
-$(DEP_mod) : .tmp/modules/$(MODULE)/%.d : modules/$(MODULE)/%.c
+$(DEP_mod) : .tmp/modules/$(MODULE)/%.d : modules/$(MODULE)/%.c module-config.h
 	@mkdir -p .tmp/modules/$(MODULE)
 	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.d))"
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MM -MT $(@:.d=.o) $< > $@
@@ -43,7 +43,7 @@ $(OBJX_mod) : .tmp/modules/$(MODULE)/%.oo : modules/$(MODULE)/%.cc
 	@$(CXX) $(CXXFLAGS_mod) -MMD -MF .tmp/$(<:.cc=.dd) -MT $@ -o $@ -c $<
 
 # rule for creating dependency files (c++)
-$(DEPX_mod) : .tmp/modules/$(MODULE)/%.dd : modules/$(MODULE)/%.cc
+$(DEPX_mod) : .tmp/modules/$(MODULE)/%.dd : modules/$(MODULE)/%.cc module-config.h
 	@mkdir -p .tmp/modules/$(MODULE)
 	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.cc=.dd))"
 	@$(CXX) $(CXXFLAGS_mod) -MM -MT $(@:.dd=.o) $< > $@
