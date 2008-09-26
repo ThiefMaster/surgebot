@@ -84,7 +84,9 @@ HTTP_HANDLER(static_handler)
 {
 	struct static_file *file = NULL;
 	char *filename;
-	char buf[4096];
+	char buf[4096], nowbuf[64], modbuf[64];
+	time_t mod;
+	struct stat sbuf;
 	FILE *fd;
 
 	filename = argc > 0 ? argv[argc - 1] : "$INDEX$";
@@ -118,7 +120,35 @@ HTTP_HANDLER(static_handler)
 		return;
 	}
 
+	if(stat(file->file, &sbuf) != 0)
+	{
+		fclose(fd);
+		http_write_header_status(client, 404);
+		http_reply_header("Content-Type", "text/html");
+		filename = html_encode(filename);
+		http_reply("File '%s' could not be stat()'d: %s (%d)", file->file, strerror(errno), errno);
+		free(filename);
+		return;
+	}
+
+	mod = sbuf.st_mtime ? sbuf.st_mtime : now;
+	strftime(nowbuf, sizeof(nowbuf), RFC1123FMT, gmtime(&now));
+	strftime(modbuf, sizeof(modbuf), RFC1123FMT, gmtime(&mod));
+	mod = mktime(gmtime(&mod));
+
+	http_reply_header("Date", nowbuf);
+	http_reply_header("Last-Modified", modbuf);
 	http_reply_header("Content-Type", file->content_type);
+	http_reply_header("Cache-Control", "must-revalidate");
+
+	if(mod <= client->if_modified_since) // same as cached version -> send 304 instead of file
+	{
+		debug("Sending 304 for %s", client->uri);
+		http_write_header_status(client, 304);
+		fclose(fd);
+		return;
+	}
+
 	while(!feof(fd))
 	{
 		size_t len = fread(buf, 1, sizeof(buf), fd);

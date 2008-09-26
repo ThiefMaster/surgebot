@@ -6,6 +6,8 @@
 
 #define REQUEST_MAX_SIZE 8192
 
+#define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
+
 struct http_client;
 struct header_list;
 
@@ -41,6 +43,7 @@ struct http_client
 	const char *content;
 	int state;
 	unsigned char version_minor;
+	time_t if_modified_since;
 
 	http_handler_f *handler;
 };

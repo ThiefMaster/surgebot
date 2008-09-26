@@ -39,6 +39,7 @@ struct http_response_code
 	{ 200, "OK" },
 	{ 300, "Multiple Choices" },
 	{ 302, "Found" },
+	{ 304, "Not Modified" },
 	{ 400, "Bad Request" },
 	{ 401, "Unauthorized" },
 	{ 403, "Forbidden" },
@@ -46,6 +47,7 @@ struct http_response_code
 	{ 405, "Method Not Allowed" },
 	{ 408, "Request Timeout" },
 	{ 411, "Length Required" },
+	{ 412, "Precondition Failed" },
 	{ 413, "Request Entity Too Large" },
 	{ 500, "Internal Server Error" },
 	{ 501, "Not Implemented" },
@@ -511,6 +513,33 @@ static int http_parse_header(struct http_client *client, const char *line, unsig
 		if(strncasecmp("identity", field->value, field->vlen))
 			return 501;
 	}
+	else if(!strncasecmp("If-Modified-Since", field->key, field->klen))
+	{
+		size_t used_len;
+		char *semicolon;
+		struct tm tm;
+		char buf[sizeof("DAY, DD MMM YYYY HH:MM:SS GMT")];
+
+		if(!(semicolon = strchr(field->value, ';')) || (semicolon - field->value) > field->vlen)
+			used_len = field->vlen;
+		else
+			used_len = semicolon - field->value;
+
+		/* check if we can safely copy the string */
+		if(used_len >= sizeof(buf))
+		{
+			log_append(LOG_WARNING, "If-Modified-Since contained an invalid date (too long)");
+			return 412;
+		}
+
+		strncpy(buf, field->value, used_len);
+		buf[used_len] = '\0';
+
+		memset(&tm, 0, sizeof(tm));
+		if(!strptime(buf, "%a, %d %b %Y %H:%M:%S GMT", &tm))
+			return 412;
+		client->if_modified_since = mktime(&tm);
+	}
 
 	return 0;
 }
@@ -659,9 +688,10 @@ static void http_request_complete(struct http_client *client)
 	client->ppos = client->content_start = client->content_length = 0;
 	client->state = HTTP_CONNECTION_SERVED;
 	client->method = HTTP_NONE;
+	client->if_modified_since = 0;
 
 	timer_del(this, "http_client_timeout", 0, NULL, client, TIMER_IGNORE_TIME|TIMER_IGNORE_FUNC);
-	timer_add(this, "http_client_timeout", now + REQUEST_TIMEOUT, (timer_f*)http_request_timeout, client, 0, 1);
+	timer_add(this, "http_client_timeout", now + REQUEST_TIMEOUT, (timer_f*)http_request_timeout, client, 0, 0);
 
 	if(client->rbuf->len)
 		http_process_request(client);
@@ -812,7 +842,7 @@ struct http_client *http_client_accept(struct sock *listener)
 	client->wbuf = stringbuffer_create();
 	client->headers = header_list_create();
 	client_list_add(clients, client);
-	timer_add(this, "http_client_timeout", now + REQUEST_TIMEOUT, (timer_f*)http_request_timeout, client, 0, 1);
+	timer_add(this, "http_client_timeout", now + REQUEST_TIMEOUT, (timer_f*)http_request_timeout, client, 0, 0);
 	return client;
 }
 
