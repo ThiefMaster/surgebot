@@ -239,6 +239,7 @@
         }
 
         $('#menu > li#menuLoading').hide();
+        $('#menu > li').not('#menuLoading').remove();
         for(var key in data.items)
         {
             var title = data.items[key];
