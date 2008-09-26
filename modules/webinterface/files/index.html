@@ -10,6 +10,7 @@
   <script type="text/javascript" src="/static/jquery.validate.js"></script>
   <script type="text/javascript" src="/static/json2005.js"></script>
   <script type="text/javascript" src="/static/rsh.js"></script>
+  <script type="text/javascript" src="/static/tools.js"></script>
 </head>
 <body>
   <script type="text/javascript">
@@ -260,6 +261,34 @@
         str = str.replace(/</g, '&lt;');
         str = str.replace(/>/g, '&gt;');
         return str;
+    };
+    
+    Number.prototype.toDuration = function(showDays) {
+        var seconds = this, days, hours, minutes;
+
+        days = seconds >= 86400 ? Math.floor(seconds / 86400) : 0;
+        seconds -= days * 86400;
+        
+        hours = seconds >= 3600 ? Math.floor(seconds / 3600) : 0;
+        seconds -= hours * 3600;
+        
+        minutes = seconds >= 60 ? Math.floor(seconds / 60) : 0;
+        seconds -= minutes * 60;
+        
+        seconds = seconds >= 60 ? seconds % 60  : seconds;
+
+        if(!showDays)
+            hours += days * 24;
+
+        var formatted = '';
+        if(showDays && days)
+            formatted += days + ':';
+
+        if(hours || (showDays && days))
+            formatted += (hours < 10 ? '0' + hours : hours) + ':';
+
+        formatted += (minutes < 10 ? '0' + minutes : minutes) + ':' + (seconds < 10 ? '0' + seconds : seconds);
+        return formatted;
     };
 
     // init 'page'
