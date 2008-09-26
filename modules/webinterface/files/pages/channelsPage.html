@@ -39,6 +39,7 @@
           return;
 
       channelsList = data.channels;
+      channelsList.sort(channels_sort_ci);
       $('#channelsList').children().remove();
       for(var i = 0; i < channelsList.length; i++)
           $('#channelsList').append('<li><span id="channelsChannel' + i + '">' + channelsList[i].toHtml() + '</span></li>');
@@ -51,6 +52,17 @@
           setPageArg(channelsList[channelID]);
           $.post('/ajax/channel/' + sessionID, {'channel': pageArg}, channels_channel_response, 'json');
       });
+  }
+  
+  function channels_sort_ci(a, b)
+  {
+      var a = a.toUpperCase();
+      var b = b.toUpperCase();
+      if(a > b)
+          return 1;
+      else if(a < b)
+          return -1;
+      return 0;
   }
   
   function channels_channel_response(data)
@@ -73,6 +85,7 @@
   
   function channels_channel_showUsers(list, prefix)
   {
+      list.sort(channels_sort_ci);
       for(var i = 0; i < list.length; i++)
           $('#channelsChannelUsers').append('<li>' + prefix + list[i] + '</li>');
   }
