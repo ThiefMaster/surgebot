@@ -1,6 +1,8 @@
 #ifndef HTTP_H
 #define HTTP_H
 
+// #define HTTP_THREADS
+
 #include "sock.h"
 #include "stringbuffer.h"
 
@@ -12,6 +14,7 @@ struct http_client;
 struct header_list;
 
 typedef void (http_handler_f)(struct http_client *client, char *uri, int argc, char **argv);
+typedef void* (http_thread_f)(struct http_client *client);
 
 struct http_handler
 {
@@ -46,6 +49,11 @@ struct http_client
 	time_t if_modified_since;
 
 	http_handler_f *handler;
+
+	unsigned char delay;
+#ifdef HTTP_THREADS
+	pthread_t thread;
+#endif
 };
 
 #define HTTP_CONNECTION_CLOSE	0x01
@@ -70,10 +78,21 @@ void http_send_error(struct http_client *client, int code);
 const char *http_header_get(struct http_client *client, const char *key);
 struct dict *http_parse_vars(struct http_client *client, enum http_method type);
 struct dict *http_parse_cookies(struct http_client *client);
+#ifdef HTTP_THREADS
+void http_request_detach(struct http_client *client, http_thread_f *func);
+void http_request_finish_int(struct http_client *client);
+#endif
 
 #define HTTP_HANDLER(X) static void X(struct http_client *client, char *uri, int argc, char **argv)
 #define http_reply_redir(FMT, ...)		http_write_header_redirect(client, FMT, ##__VA_ARGS__)
 #define http_reply_header(NAME, FMT, ...)	http_write_header(client, NAME, FMT, ##__VA_ARGS__)
 #define http_reply(FMT, ...)			http_write(client, FMT, ##__VA_ARGS__)
+
+#ifdef HTTP_THREADS
+#define http_request_finish(CLIENT)	do { 	\
+					http_request_finish_int((CLIENT)); \
+					pthread_exit(NULL); \
+					} while(0)
+#endif
 
 #endif

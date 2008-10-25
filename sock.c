@@ -152,6 +152,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		if(!(hp = gethostbyname2(addr, AF_INET)))
 		{
 			log_append(LOG_WARNING, "Could not resolve %s (IPv4)", addr);
+			free(sock);
 			return -1;
 		}
 
@@ -166,6 +167,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		{
 			log_append(LOG_WARNING, "Could not bind to %s/%u (IPv4): %s (%d)", addr, port, strerror(errno), errno);
 			free(sin);
+			free(sock);
 			return -2;
 		}
 
@@ -179,6 +181,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		if(!(hp = gethostbyname2(addr, AF_INET6)))
 		{
 			log_append(LOG_WARNING, "Could not resolve %s (IPv6)", addr);
+			free(sock);
 			return -1;
 		}
 
@@ -193,6 +196,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		{
 			log_append(LOG_WARNING, "Could not bind to %s/%u (IPv6): %s (%d)", addr, port, strerror(errno), errno);
 			free(sin);
+			free(sock);
 			return -2;
 		}
 
@@ -213,6 +217,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		{
 			log_append(LOG_WARNING, "Could not bind to %s (Unix): %s (%d)", addr, strerror(errno), errno);
 			free(sun);
+			free(sock);
 			return -2;
 		}
 
