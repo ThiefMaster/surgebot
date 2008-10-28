@@ -3,6 +3,7 @@
 #include "session.h"
 #include "ajax-app.h"
 #include "static.h"
+#include "usercount.h"
 #include "rules.h"
 #include "module.h"
 #include "app-core.h"
@@ -15,10 +16,12 @@ MODULE_INIT
 	session_init();
 	static_init();
 	ajaxapp_init();
+	usercount_init();
 }
 
 MODULE_FINI
 {
+	usercount_fini();
 	ajaxapp_fini();
 	static_fini();
 	session_fini();
