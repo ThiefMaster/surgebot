@@ -3,11 +3,7 @@
 #include "tokenize.h"
 #include "sock.h"
 #include "conf.h"
-#ifdef SURGEBOT_MODULE
-#include "surgebot.h"
-#else
 #include "main.h"
-#endif
 #include "http.h"
 #ifdef HTTP_THREADS
 #include <pthread.h>
@@ -87,6 +83,7 @@ struct http_header
 static struct {
 	char *listen_ip;
 	unsigned int listen_port;
+	unsigned int listen_port_ssl;
 	char *listen_pem;
 } http_conf;
 
@@ -111,7 +108,7 @@ static void http_request_finalize(struct http_client *client);
 static void http_request_complete(struct http_client *client);
 static void http_request_timeout(void *bound, struct http_client *client);
 static void http_writesock(struct http_client *client);
-static struct http_client *http_client_accept(struct sock *listener);
+static struct http_client *http_client_accept(struct sock *listen_sock);
 static void http_client_del(struct http_client *client, unsigned char close_sock);
 static struct http_client *http_client_bysock(struct sock *sock);
 static http_handler_f *http_handler_find(const char *uri);
@@ -122,7 +119,7 @@ static struct client_list *clients;
 static struct client_list *detached_clients;
 #endif
 static struct handler_list *handlers;
-static struct sock *listener;
+static struct sock *listener, *listener_ssl;
 #ifdef HTTP_THREADS
 static pthread_mutex_t http_detached_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -154,6 +151,8 @@ MODULE_FINI
 #endif
 	if(listener)
 		sock_close(listener);
+	if(listener_ssl)
+		sock_close(listener_ssl);
 	timer_del(this, "http_client_timeout", 0, NULL, NULL, TIMER_IGNORE_ALL & ~(TIMER_IGNORE_NAME|TIMER_IGNORE_BOUND));
 	while(clients->count)
 		http_client_del(clients->data[clients->count - 1], 1);
@@ -177,20 +176,25 @@ static void http_conf_reload()
 	char *str;
 
 	unsigned int old_port = http_conf.listen_port;
-	http_conf.listen_ip	= ((str = conf_get("httpd/listen_ip", DB_STRING)) ? str : "0.0.0.0");
-	http_conf.listen_port	= ((str = conf_get("httpd/listen_port", DB_STRING)) ? atoi(str) : 8000);
-	http_conf.listen_pem	= ((str = conf_get("httpd/listen_pem", DB_STRING)) ? str : NULL);
+	unsigned int old_port_ssl = http_conf.listen_port_ssl;
+	http_conf.listen_ip		= ((str = conf_get("httpd/listen_ip", DB_STRING)) ? str : "0.0.0.0");
+	http_conf.listen_port		= ((str = conf_get("httpd/listen_port", DB_STRING)) ? atoi(str) : 8000);
+	http_conf.listen_port_ssl	= ((str = conf_get("httpd/listen_port_ssl", DB_STRING)) ? atoi(str) : 0);
+	http_conf.listen_pem		= ((str = conf_get("httpd/listen_pem", DB_STRING)) ? str : NULL);
 
-	if(!http_conf.listen_port)
-		log_append(LOG_ERROR, "/httpd/listen_port must be set");
+	if(!http_conf.listen_pem)
+		http_conf.listen_port_ssl = 0;
+
+	if(!http_conf.listen_port && !http_conf.listen_port_ssl)
+		log_append(LOG_ERROR, "/httpd/listen_port or both /httpd/listen_port_ssl and /http/listen_pem must be set");
 
 	const char *old_pem = old_port ? conf_get_old("http/listen_pem", DB_STRING) : NULL;
 	if(old_port && // no old port = first call = don't mess with the listener here
-	   ((http_conf.listen_port != old_port) || // port changed
+	   ((http_conf.listen_port != old_port) || (http_conf.listen_port_ssl != old_port_ssl) || // port changed
 	    (old_pem && !http_conf.listen_pem) || (!old_pem && http_conf.listen_pem) || // ssl enabled/disabled
 	    (old_pem && http_conf.listen_pem && strcasecmp(old_pem, http_conf.listen_pem)))) // new certificate
 	{
-		debug("Changing listen port from %d to %d and/or ssl cert from %s to %s", old_port, http_conf.listen_port, old_pem, http_conf.listen_pem);
+		debug("Changing listen port from %d to %d and/or ssl port/cert from %d to %d and %s to %s", old_port, http_conf.listen_port, old_port_ssl, http_conf.listen_port_ssl, old_pem, http_conf.listen_pem);
 		listener_start();
 	}
 }
@@ -224,19 +228,46 @@ static void listener_start()
 {
 	if(listener)
 		sock_close(listener);
-	log_append(LOG_INFO, "Creating listener on %s:%d with%s SSL", http_conf.listen_ip, http_conf.listen_port, (http_conf.listen_pem ? "" : "out"));
-	listener = sock_create(SOCK_IPV4|(http_conf.listen_pem ? SOCK_SSL : 0), listener_event, NULL);
-	if(sock_bind(listener, http_conf.listen_ip, http_conf.listen_port))
+	if(listener_ssl)
+		sock_close(listener_ssl);
+
+	if(http_conf.listen_port)
 	{
-		log_append(LOG_ERROR, "[httpd] sock_bind() on %s:%d failed", http_conf.listen_ip, http_conf.listen_port);
-		listener = NULL;
-		return;
+		log_append(LOG_INFO, "Creating listener on %s:%d", http_conf.listen_ip, http_conf.listen_port);
+		listener = sock_create(SOCK_IPV4, listener_event, NULL);
+		if(sock_bind(listener, http_conf.listen_ip, http_conf.listen_port))
+		{
+			log_append(LOG_ERROR, "[httpd] sock_bind() on %s:%d failed", http_conf.listen_ip, http_conf.listen_port);
+			listener = NULL;
+			goto listener_done;
+		}
+
+		if(sock_listen(listener, http_conf.listen_pem))
+		{
+			log_append(LOG_ERROR, "[httpd] sock_listen() failed");
+			listener = NULL;
+			goto listener_done;
+		}
 	}
 
-	if(sock_listen(listener, http_conf.listen_pem))
+listener_done:
+	if(http_conf.listen_port_ssl)
 	{
-		log_append(LOG_ERROR, "[httpd] sock_listen() failed");
-		listener = NULL;
+		log_append(LOG_INFO, "Creating SSL listener on %s:%d", http_conf.listen_ip, http_conf.listen_port_ssl);
+		listener_ssl = sock_create(SOCK_IPV4|SOCK_SSL, listener_event, NULL);
+		if(sock_bind(listener_ssl, http_conf.listen_ip, http_conf.listen_port_ssl))
+		{
+			log_append(LOG_ERROR, "[httpd] sock_bind() on %s:%d (ssl) failed", http_conf.listen_ip, http_conf.listen_port_ssl);
+			listener_ssl = NULL;
+			return;
+		}
+
+		if(sock_listen(listener_ssl, http_conf.listen_pem))
+		{
+			log_append(LOG_ERROR, "[httpd] sock_listen() failed");
+			listener_ssl = NULL;
+			return;
+		}
 	}
 }
 
@@ -931,10 +962,10 @@ static void http_writesock(struct http_client *client)
 	}
 }
 
-struct http_client *http_client_accept(struct sock *listener)
+struct http_client *http_client_accept(struct sock *listen_sock)
 {
 	struct http_client *client;
-	struct sock *sock = sock_accept(listener, http_client_event, http_client_read);
+	struct sock *sock = sock_accept(listen_sock, http_client_event, http_client_read);
 	if(!sock)
 		return NULL;
 
