@@ -419,8 +419,6 @@ static struct pgsql_async *pgsql_get_async(struct db_table *table)
 		db->async = async;
 	}
 
-	async->table = table;
-
 	/* Start the connection. */
 	async->conn = PQconnectStart(db_conf.connect_string);
 	if(!async->conn)
@@ -1443,6 +1441,8 @@ static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, d
 		free(values);
 		return 1;
 	}
+
+	async->table = table;
 	async->cb = cb;
 	async->ctx = ctx;
 	async->free_ctx_func = free_ctx_func;
