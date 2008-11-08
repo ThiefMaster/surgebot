@@ -22,7 +22,7 @@ DECLARE_LIST(sock_list, struct sock *)
 enum sock_event
 {
 	// EV_READ is only used if there is no read_func
-	// EV_WRITE is used AFTER something was written
+	// EV_WRITE is used AFTER something was written (or if socket with config_poll+want_write is writable)
 	EV_READ = 1,
 	EV_WRITE,
 	EV_ERROR,
@@ -57,6 +57,12 @@ struct sock
 
 	char		*send_queue;
 	size_t		send_queue_len;
+
+	unsigned int	config_poll : 1;
+	unsigned int	want_read : 1;
+	unsigned int	want_write : 1;
+
+	void		*ctx;
 };
 
 void sock_init();

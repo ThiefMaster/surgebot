@@ -44,7 +44,7 @@ struct database
 	struct dict *nodes;
 };
 
-enum db_type
+enum database_type
 {
 	DB_EMPTY,
 	DB_OBJECT,
@@ -54,7 +54,7 @@ enum db_type
 
 struct db_node
 {
-	enum db_type type;
+	enum database_type type;
 	union
 	{
 		void *ptr; // since data is an union, ptr always points to the appropiate data storage
@@ -106,7 +106,7 @@ void database_delete(struct database *db); // unregister and free database
 void database_set_write_interval(struct database *db, time_t interval);
 
 struct db_node *database_fetch_path(struct dict *db_nodes, const char *node_path);
-void *database_fetch(struct dict *db_nodes, const char *path, enum db_type type);
+void *database_fetch(struct dict *db_nodes, const char *path, enum database_type type);
 
 int database_read(struct database *db, unsigned int free_nodes_after_read);
 int database_write(struct database *db);

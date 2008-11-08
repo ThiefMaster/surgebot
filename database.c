@@ -168,7 +168,7 @@ struct db_node *database_fetch_path(struct dict *db_nodes, const char *node_path
 }
 
 // get a database node by path and type
-void *database_fetch(struct dict *db_nodes, const char *path, enum db_type type)
+void *database_fetch(struct dict *db_nodes, const char *path, enum database_type type)
 {
 	struct db_node *node = database_fetch_path(db_nodes, path);
 	return ((node && node->type == type) ? node->data.ptr : NULL);

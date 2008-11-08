@@ -720,9 +720,16 @@ int sock_poll()
 		struct sock *sock = sock_list->data[i];
 
 		pollfds[i].fd = sock->fd;
-		pollfds[i].events = POLLIN;
+		pollfds[i].events = sock->config_poll ? 0 : POLLIN;
 		pollfds[i].revents = 0;
 
+		if(sock->config_poll)
+		{
+			if(sock->want_write)
+				pollfds[i].events |= POLLOUT;
+			if(sock->want_read)
+				pollfds[i].events |= POLLIN;
+		}
 
 		if(sock->flags & SOCK_CONNECT)
 		{
@@ -920,7 +927,9 @@ int sock_poll()
 				}
 			}
 
-			if(ev_write && sock->send_queue_len && !(sock->flags & SOCK_ZOMBIE))
+			if(ev_write && sock->config_poll && !(sock->flags & SOCK_ZOMBIE))
+				sock->event_func(sock, EV_WRITE, 0);
+			else if(ev_write && sock->send_queue_len && !(sock->flags & SOCK_ZOMBIE))
 			{
 				ssize_t wres;
 

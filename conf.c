@@ -71,13 +71,13 @@ struct dict *conf_root()
 	return cfg;
 }
 
-void *conf_get(const char *path, enum db_type type)
+void *conf_get(const char *path, enum database_type type)
 {
 	assert_return(cfg, NULL);
 	return database_fetch(cfg, path, type);
 }
 
-void *conf_get_old(const char *path, enum db_type type)
+void *conf_get_old(const char *path, enum database_type type)
 {
 	assert_return(old_cfg, NULL);
 	return database_fetch(old_cfg, path, type);
