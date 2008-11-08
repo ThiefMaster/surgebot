@@ -21,6 +21,7 @@ void reg_disconnected_func(disconnected_f *func);
 void unreg_disconnected_func(disconnected_f *func);
 
 #define reply(FMT, ...)		irc_send_msg(src->nick, "NOTICE", FMT, ##__VA_ARGS__)
+#define reply_nick(NICK, FMT, ...)	irc_send_msg((NICK), "NOTICE", FMT, ##__VA_ARGS__)
 
 DECLARE_LIST(disconnected_func_list, disconnected_f *)
 

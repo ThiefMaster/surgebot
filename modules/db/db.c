@@ -35,6 +35,7 @@ struct pgsql_async
 	} state;
 	db_select_cb *cb;
 	void *ctx;
+	db_free_ctx_f *free_ctx_func;
 	struct db_nv_list *values;
 	struct db_nv_list *filter;
 };
@@ -77,8 +78,8 @@ static int do_row_insert(struct db_table *table, struct db_nv_list *values);
 static int do_row_update(struct db_table *table, struct db_nv_list *filter, struct db_nv_list *updates);
 static int do_row_drop(struct db_table *table, struct db_nv_list *filter);
 static int do_row_get(struct db_table *table, struct db_nv_list *filter, struct db_nv_list *values);
-static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, struct db_nv_list *filter, struct db_nv_list *values);
-static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, struct db_nv_list *filter, struct db_nv_list *values);
+static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values);
+static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values);
 #ifdef DB_TEST
 static void run_test();
 struct db_table *test_table;
@@ -340,6 +341,8 @@ static void pgsql_async_event(struct sock *sock, enum sock_event event, int err)
 						free(async->values);
 						async->values = NULL;
 					}
+					if(async->free_ctx_func)
+						async->free_ctx_func(async->ctx);
 					async->cb = NULL;
 					async->state = PGSQL_ASYNC_IDLE;
 					debug("state is now %d", async->state);
@@ -1038,7 +1041,7 @@ int db_row_get(struct db_table *table, ...)
 	return res;
 }
 
-int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, va_list *args)
+int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, va_list *args)
 {
 	struct db_nv_list filter, values;
 	int res;
@@ -1055,24 +1058,24 @@ int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, va_list 
 		db_nv_list_clear(&filter);
 		return res;
 	}
-	res = do_sync_select(table, cb, ctx, &filter, &values);
+	res = do_sync_select(table, cb, ctx, free_ctx_func, &filter, &values);
 	db_nv_list_clear(&filter);
 	db_nv_list_clear(&values);
 	return res;
 }
 
-int db_sync_select(struct db_table *table, db_select_cb cb, void *ctx, ...)
+int db_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, ...)
 {
 	va_list args;
 	int res;
 
-	va_start(args, ctx);
-	res = db_vsync_select(table, cb, ctx, &args);
+	va_start(args, free_ctx_func);
+	res = db_vsync_select(table, cb, ctx, free_ctx_func, &args);
 	va_end(args);
 	return res;
 }
 
-int db_vasync_select(struct db_table *table, db_select_cb cb, void *ctx, va_list *args)
+int db_vasync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, va_list *args)
 {
 	struct db_nv_list *filter, *values;
 	int res;
@@ -1088,17 +1091,17 @@ int db_vasync_select(struct db_table *table, db_select_cb cb, void *ctx, va_list
 	res = db_vget_names(table, args, values);
 	if(res)
 		return res;
-	res = do_async_select(table, cb, ctx, filter, values);
+	res = do_async_select(table, cb, ctx, free_ctx_func, filter, values);
 	return res;
 }
 
-int db_async_select(struct db_table *table, db_select_cb cb, void *ctx, ...)
+int db_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, ...)
 {
 	va_list args;
 	int res;
 
-	va_start(args, ctx);
-	res = db_vasync_select(table, cb, ctx, &args);
+	va_start(args, free_ctx_func);
+	res = db_vasync_select(table, cb, ctx, free_ctx_func, &args);
 	va_end(args);
 	return res;
 }
@@ -1374,7 +1377,7 @@ out:
 	return rval;
 }
 
-static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, struct db_nv_list *filter, struct db_nv_list *values)
+static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values)
 {
 	struct stringbuffer *query;
 	struct stringlist *params;
@@ -1421,12 +1424,14 @@ static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, st
 		debug("   $%u = %s", ii+1, params->data[ii]);
 	rval = 0;
 out:
+	if(free_ctx_func)
+		free_ctx_func(ctx);
 	stringbuffer_free(query);
 	stringlist_free(params);
 	return rval;
 }
 
-static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, struct db_nv_list *filter, struct db_nv_list *values)
+static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values)
 {
 	struct pgsql_async *async;
 
@@ -1440,6 +1445,7 @@ static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, s
 	}
 	async->cb = cb;
 	async->ctx = ctx;
+	async->free_ctx_func = free_ctx_func;
 	async->filter = filter;
 	if(async->values)
 		log_append(LOG_WARNING, "MEMLEAK: async struct still had values != 0!");
@@ -1480,7 +1486,7 @@ DB_SELECT_CB(test_cb)
 void second_query(void *bound, void *data)
 {
 	debug("sync select 2");
-	db_sync_select((struct db_table *)data, test_cb, (void*)0, NULL, "id", "chartest", "datetest", NULL);
+	db_sync_select((struct db_table *)data, test_cb, (void*)0, NULL, NULL, "id", "chartest", "datetest", NULL);
 	timer_add(this, "2nd_query", now + 10, second_query, test_table, 0, 1);
 }
 
@@ -1504,10 +1510,10 @@ static void run_test()
 	free(str);
 
 	debug("sync select");
-	db_sync_select(test_table, test_cb, (void*)1, "id", serial, NULL, "id", "chartest", "datetest", NULL);
+	db_sync_select(test_table, test_cb, (void*)1, NULL, "id", serial, NULL, "id", "chartest", "datetest", NULL);
 
 	debug("async select");
-	db_async_select(test_table, test_cb, (void*)0, NULL, "id", "chartest", "datetest", NULL);
+	db_async_select(test_table, test_cb, (void*)0, NULL, NULL, "id", "chartest", "datetest", NULL);
 
 	timer_add(this, "2nd_query", now + 5, second_query, test_table, 0, 1);
 

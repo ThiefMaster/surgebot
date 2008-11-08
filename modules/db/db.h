@@ -4,6 +4,7 @@
 #include "simplelist.h"
 
 typedef int db_serial_t;
+typedef void (db_free_ctx_f)(void *);
 
 enum db_type {
 	DBTYPE_INTEGER,  /* int */
@@ -49,9 +50,9 @@ int db_row_insert(struct db_table *table, ...);
 int db_row_update(struct db_table *table, ...);
 int db_row_drop(struct db_table *table, ...);
 int db_row_get(struct db_table *table, ...);
-int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, va_list *args);
-int db_sync_select(struct db_table *table, db_select_cb cb, void *ctx, ...);
-int db_vasync_select(struct db_table *table, db_select_cb cb, void *ctx, va_list *args);
-int db_async_select(struct db_table *table, db_select_cb cb, void *ctx, ...);
+int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, va_list *args);
+int db_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, ...);
+int db_vasync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, va_list *args);
+int db_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, ...);
 
 #endif
