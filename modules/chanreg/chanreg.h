@@ -108,11 +108,11 @@ struct chanreg_module_setting
 	}
 
 // Chanreg module commands also need to check if the module is enabled for the channel.
-#define CHANREG_MODULE_COMMAND								\
+#define CHANREG_MODULE_COMMAND(CMOD)							\
 	CHANREG_COMMAND									\
-	else if(stringlist_find(reg->active_modules, cmod->name) == -1)			\
+	else if(stringlist_find(reg->active_modules, (CMOD)->name) == -1)		\
 	{										\
-		reply("Module $b%s$b is not enabled for this channel.", cmod->name);	\
+		reply("Module $b%s$b is not enabled for this channel.", (CMOD)->name);	\
 		return 0;								\
 	}
 

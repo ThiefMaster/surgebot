@@ -328,7 +328,7 @@ static void chanreg_free(struct chanreg *reg)
 {
 	if(reg->active && !reloading_module)
 		chanjoin_delchan(reg->channel, this, NULL);
-	
+
 	for(int i = 0; i < reg->users->count; i++)
 		free(reg->users->data[i]);
 	chanreg_user_list_free(reg->users);
@@ -515,12 +515,15 @@ static int chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmo
 	assert_return(stringlist_find(reg->modules, cmod->name) == -1, -1);
 	assert_return(stringlist_find(reg->active_modules, cmod->name) == -1, -1);
 
+	if(cmod->enable_func && cmod->enable_func(reg, reason))
+		return 1;
+
 	stringlist_add(reg->modules, strdup(cmod->name));
 	stringlist_add(reg->active_modules, strdup(cmod->name));
 
 	chanreg_list_add(cmod->channels, reg);
 
-	return cmod->enable_func ? cmod->enable_func(reg, reason) : 0;
+	return 0;
 }
 
 static int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason)

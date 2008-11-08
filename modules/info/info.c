@@ -50,7 +50,7 @@ COMMAND(stats_timers)
 
 		if(tmr->triggered || !tmr->name || tmr->time <= now)
 			continue;
-		
+
 		if(wildmask && match(wildmask, tmr->name))
 			continue;
 
@@ -61,12 +61,12 @@ COMMAND(stats_timers)
 
 		i++;
 	}
-	
+
 	timer_table->rows = i;
-	
+
 	if(i)
 		table_send(timer_table, src->nick);
-	
+
 	if(wildmask)
 		reply("There are $b%d$b active timers matching $b%s$b.", i, wildmask);
 	else
@@ -125,10 +125,12 @@ COMMAND(command)
 
 COMMAND(stats_bot)
 {
+	time_t linked = now - bot.linked;
+
 	reply("$bUptime:      $b %s",  duration2string(now - bot.start));
-	reply("$bLinked:      $b %s",  duration2string(now - bot.linked));
+	reply("$bLinked:      $b %s",  duration2string(linked));
 	reply("$bServer:      $b %s",  bot.server_name);
-	reply("$bLines (rcvd):$b %lu", bot.lines_received);
+	reply("$bLines (rcvd):$b %lu (%.2f lines/min)", bot.lines_received, (float)bot.lines_received / ((float)linked / 60.0));
 	reply("$bLines (sent):$b %lu", bot.lines_sent);
 	reply("$bChannels:    $b %d",  dict_size(channel_dict()));
 	reply("$bUsers:       $b %d",  dict_size(user_dict()));
@@ -169,7 +171,7 @@ COMMAND(stats_commands)
 		table->data[i][4] = command->rule;
 		i++;
 	}
-	
+
 	table->rows = i;
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_commands);
 
@@ -181,7 +183,7 @@ COMMAND(stats_commands)
 	}
 	else if(module)
 		reply("Module $b%s$b does not seem to implement any commands.", module->name);
-		
+
 	return 1;
 }
 
