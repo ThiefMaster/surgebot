@@ -19,6 +19,11 @@ static const char *db_type_names[] = {
 	NULL
 };
 
+enum {
+	ORDER_ASC,
+	ORDER_DESC
+};
+
 struct pgsql_async
 {
 	struct db_table *table;
@@ -38,6 +43,7 @@ struct pgsql_async
 	db_free_ctx_f *free_ctx_func;
 	struct db_nv_list *values;
 	struct db_nv_list *filter;
+	struct db_nv_list *order;
 };
 
 
@@ -68,7 +74,9 @@ static struct pgsql_async *pgsql_get_async(struct db_table *table);
 static void db_table_free(struct db_table *table);
 static int db_vget_values(struct db_table *table, va_list *args, struct db_nv_list *values, db_serial_t **pserial, int *pserial_idx);
 static int db_vget_names(struct db_table *table, va_list *args, struct db_nv_list *values);
+static int db_vget_order(struct db_table *table, va_list *args, struct db_nv_list *values);
 static int db_get_values(struct db_table *table, struct stringbuffer *cv, struct stringlist *values, struct db_nv_list *nvv, const char *sep, int reject_write_only);
+static int db_get_order(struct db_table *table, struct stringbuffer *cv, struct db_nv_list *nvv);
 static int db_put_values(struct db_table *table, PGresult *res, int row, struct db_nv_list *values, int dup);
 static int db_vput_values_in(struct db_table *table, va_list *args, struct db_nv_list *values);
 static int db_vput_values_out(struct db_table *table, va_list *args, struct db_nv_list *values);
@@ -78,8 +86,8 @@ static int do_row_insert(struct db_table *table, struct db_nv_list *values);
 static int do_row_update(struct db_table *table, struct db_nv_list *filter, struct db_nv_list *updates);
 static int do_row_drop(struct db_table *table, struct db_nv_list *filter);
 static int do_row_get(struct db_table *table, struct db_nv_list *filter, struct db_nv_list *values);
-static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values);
-static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values);
+static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values, struct db_nv_list *order);
+static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values, struct db_nv_list *order);
 #ifdef DB_TEST
 static void run_test();
 struct db_table *test_table;
@@ -191,6 +199,14 @@ static int pgsql_send_query(struct pgsql_async *async)
 			goto out;
 	}
 
+	if(async->order->count)
+	{
+		stringbuffer_append_string(query, " ORDER BY ");
+		rval = db_get_order(async->table, query, async->order);
+		if(rval)
+			goto out;
+	}
+
 	if(!PQsendQueryParams(async->conn, query->string, params->count, NULL, (const char*const*)params->data, NULL, NULL, 0))
 	{
 		debug("PQsendQueryParams failed: %s", PQerrorMessage(async->conn));
@@ -223,6 +239,9 @@ out:
 	db_nv_list_clear(async->filter);
 	free(async->filter);
 	async->filter = NULL;
+	db_nv_list_clear(async->order);
+	free(async->order);
+	async->order = NULL;
 	if(rval != 0)
 	{
 		db_nv_list_clear(async->values);
@@ -683,6 +702,53 @@ static int db_vget_names(struct db_table *table, va_list *args, struct db_nv_lis
 	return 0;
 }
 
+static int db_vget_order(struct db_table *table, va_list *args, struct db_nv_list *values)
+{
+	struct column_desc *cd;
+	struct db_named_value dvv;
+	const char *name;
+
+	values->count = 0;
+	while((name = va_arg(*args, const char*)) != NULL)
+	{
+		if(!strcmp(name, "$LIMIT")) // limit
+		{
+			dvv.name = "$LIMIT";
+			dvv.u.integer = va_arg(*args, int);
+			db_nv_list_add(values, dvv);
+			continue;
+		}
+		else if(!strcmp(name, "$OFFSET")) // offset
+		{
+			dvv.name = "$OFFSET";
+			dvv.u.integer = -va_arg(*args, int);
+			db_nv_list_add(values, dvv);
+			continue;
+		}
+
+		if(*name != '+' && *name != '-')
+		{
+			log_append(LOG_WARNING, "Attempt to use column name %s without order direction prefix; assuming ASC.", name);
+			dvv.name = name;
+		}
+		else
+			dvv.name = name + 1;
+
+		if(!(cd = dict_find(table->columns, dvv.name)))
+		{
+			log_append(LOG_ERROR, "Attempt to use non-existent column %s in table %s.", dvv.name, table->name);
+			db_nv_list_clear(values);
+			return 1;
+		}
+
+		dvv.name = cd->name; /* use canonical version of name */
+		dvv.u.integer = (*name == '-') ? ORDER_DESC : ORDER_ASC;
+		db_nv_list_add(values, dvv);
+	}
+
+	return 0;
+}
+
 static int db_get_values(struct db_table *table, struct stringbuffer *cv, struct stringlist *values, struct db_nv_list *nvv, const char *sep, int reject_write_only)
 {
 	struct column_desc *desc;
@@ -761,6 +827,35 @@ static int db_get_values(struct db_table *table, struct stringbuffer *cv, struct
 
 out:
 	return rval;
+}
+
+static int db_get_order(struct db_table *table, struct stringbuffer *cv, struct db_nv_list *nvv)
+{
+	int limit, offset;
+
+	limit = offset = 0;
+	for(unsigned int ii = 0; ii < nvv->count; ++ii)
+	{
+		const struct db_named_value *dnv = &nvv->data[ii];
+
+		if(!strcmp(dnv->name, "$LIMIT"))
+			limit = dnv->u.integer;
+		else if(!strcmp(dnv->name, "$OFFSET"))
+			offset = -dnv->u.integer;
+		else
+		{
+			/* Append element to query string */
+			if(ii)
+				stringbuffer_append_string(cv, ", ");
+			stringbuffer_append_printf(cv, "\"%s\" %s", dnv->name, (dnv->u.integer == ORDER_DESC ? "DESC" : "ASC"));
+		}
+	}
+
+	if(limit)
+		stringbuffer_append_printf(cv, " LIMIT %u", limit);
+	if(offset)
+		stringbuffer_append_printf(cv, " OFFSET %u", offset);
+	return 0;
 }
 
 static int db_put_values(struct db_table *table, PGresult *res, int row, struct db_nv_list *values, int dup)
@@ -1041,11 +1136,12 @@ int db_row_get(struct db_table *table, ...)
 
 int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, va_list *args)
 {
-	struct db_nv_list filter, values;
+	struct db_nv_list filter, values, order;
 	int res;
 
 	memset(&filter, 0, sizeof(filter));
 	memset(&values, 0, sizeof(values));
+	memset(&order, 0, sizeof(order));
 	res = db_vget_values(table, args, &filter, NULL, NULL);
 	if(res)
 		return res;
@@ -1056,9 +1152,18 @@ int db_vsync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_
 		db_nv_list_clear(&filter);
 		return res;
 	}
-	res = do_sync_select(table, cb, ctx, free_ctx_func, &filter, &values);
+	res = db_vget_order(table, args, &order);
+	if(res)
+	{
+		db_nv_list_clear(&filter);
+		db_nv_list_clear(&values);
+		return res;
+	}
+
+	res = do_sync_select(table, cb, ctx, free_ctx_func, &filter, &values, &order);
 	db_nv_list_clear(&filter);
 	db_nv_list_clear(&values);
+	db_nv_list_clear(&order);
 	return res;
 }
 
@@ -1075,21 +1180,45 @@ int db_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_c
 
 int db_vasync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, va_list *args)
 {
-	struct db_nv_list *filter, *values;
+	struct db_nv_list *filter, *values, *order;
 	int res;
 
 	filter = malloc(sizeof(struct db_nv_list));
 	values = malloc(sizeof(struct db_nv_list));
+	order  = malloc(sizeof(struct db_nv_list));
 	memset(filter, 0, sizeof(struct db_nv_list));
 	memset(values, 0, sizeof(struct db_nv_list));
+	memset(order, 0, sizeof(struct db_nv_list));
 
 	res = db_vget_values(table, args, filter, NULL, NULL);
 	if(res)
+	{
+		free(filter);
+		free(values);
+		free(order);
 		return res;
+	}
 	res = db_vget_names(table, args, values);
 	if(res)
+	{
+		db_nv_list_clear(filter);
+		free(filter);
+		free(values);
+		free(order);
 		return res;
-	res = do_async_select(table, cb, ctx, free_ctx_func, filter, values);
+	}
+	res = db_vget_order(table, args, order);
+	if(res)
+	{
+		db_nv_list_clear(filter);
+		db_nv_list_clear(values);
+		free(filter);
+		free(values);
+		free(order);
+		return res;
+	}
+
+	res = do_async_select(table, cb, ctx, free_ctx_func, filter, values, order);
 	return res;
 }
 
@@ -1375,7 +1504,7 @@ out:
 	return rval;
 }
 
-static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values)
+static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values, struct db_nv_list *order)
 {
 	struct stringbuffer *query;
 	struct stringlist *params;
@@ -1389,6 +1518,14 @@ static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db
 	{
 		stringbuffer_append_string(query, "WHERE ");
 		rval = db_get_values(table, query, params, filter, " AND ", 0);
+		if(rval)
+			goto out;
+	}
+
+	if(order->count)
+	{
+		stringbuffer_append_string(query, " ORDER BY ");
+		rval = db_get_order(table, query, order);
 		if(rval)
 			goto out;
 	}
@@ -1429,7 +1566,7 @@ out:
 	return rval;
 }
 
-static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values)
+static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, db_free_ctx_f *free_ctx_func, struct db_nv_list *filter, struct db_nv_list *values, struct db_nv_list *order)
 {
 	struct pgsql_async *async;
 
@@ -1437,8 +1574,10 @@ static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, d
 	{
 		db_nv_list_clear(filter);
 		db_nv_list_clear(values);
+		db_nv_list_clear(order);
 		free(filter);
 		free(values);
+		free(order);
 		return 1;
 	}
 
@@ -1447,6 +1586,7 @@ static int do_async_select(struct db_table *table, db_select_cb cb, void *ctx, d
 	async->ctx = ctx;
 	async->free_ctx_func = free_ctx_func;
 	async->filter = filter;
+	async->order = order;
 	if(async->values)
 		log_append(LOG_WARNING, "MEMLEAK: async struct still had values != 0!");
 	async->values = values;
@@ -1486,7 +1626,7 @@ DB_SELECT_CB(test_cb)
 void second_query(void *bound, void *data)
 {
 	debug("sync select 2");
-	db_sync_select((struct db_table *)data, test_cb, (void*)0, NULL, NULL, "id", "chartest", "datetest", NULL);
+	db_sync_select((struct db_table *)data, test_cb, (void*)0, NULL, NULL, "id", "chartest", "datetest", NULL, NULL);
 	timer_add(this, "2nd_query", now + 10, second_query, test_table, 0, 1);
 }
 
@@ -1510,10 +1650,10 @@ static void run_test()
 	free(str);
 
 	debug("sync select");
-	db_sync_select(test_table, test_cb, (void*)1, NULL, "id", serial, NULL, "id", "chartest", "datetest", NULL);
+	db_sync_select(test_table, test_cb, (void*)1, NULL, "id", serial, NULL, "id", "chartest", "datetest", NULL, NULL);
 
 	debug("async select");
-	db_async_select(test_table, test_cb, (void*)0, NULL, NULL, "id", "chartest", "datetest", NULL);
+	db_async_select(test_table, test_cb, (void*)0, NULL, NULL, "id", "chartest", "datetest", NULL, "-id", "$LIMIT", 10, "$OFFSET", 1, NULL);
 
 	timer_add(this, "2nd_query", now + 5, second_query, test_table, 0, 1);
 
