@@ -228,7 +228,7 @@ out:
 		db_nv_list_clear(async->values);
 		free(async->values);
 		async->values = NULL;
-		async->cb(async->ctx, NULL, 1);
+		async->cb(async->ctx, NULL, 0, 0, 1);
 		if(rval == 1)
 		{
 			PQfinish(async->conn);
@@ -278,7 +278,7 @@ static void pgsql_async_event(struct sock *sock, enum sock_event event, int err)
 
 				case PGRES_POLLING_FAILED:
 					if(async->cb)
-						async->cb(async->ctx, NULL, 1);
+						async->cb(async->ctx, NULL, 0, 0, 1);
 					if(async->values)
 					{
 						db_nv_list_clear(async->values);
@@ -356,7 +356,7 @@ static void pgsql_async_event(struct sock *sock, enum sock_event event, int err)
 					if(db_put_values(async->table, res, ii, async->values, 0))
 						continue;
 					/* Make callback, maybe asking to stop. */
-					if((async->state == PGSQL_ASYNC_BUSY) && async->cb(async->ctx, async->values, 0))
+					if((async->state == PGSQL_ASYNC_BUSY) && async->cb(async->ctx, async->values, ii + 1, count, 0))
 					{
 						async->state = PGSQL_ASYNC_ABORTING;
 						PQrequestCancel(async->conn);
@@ -1411,7 +1411,7 @@ static int do_sync_select(struct db_table *table, db_select_cb cb, void *ctx, db
 			goto out;
 		}
 
-		if(cb(ctx, values, 0))
+		if(cb(ctx, values, ii + 1, count, 0))
 			break;
 	}
 
@@ -1476,7 +1476,7 @@ DB_SELECT_CB(test_cb)
 		return 0;
 	}
 
-	debug("%d columns in resultset [ctx arg: %d]:", values->count, ctx_num);
+	debug("%d columns in resultset [ctx arg: %d]; row %d/%d:", values->count, ctx_num, rownum, rowcount);
 	debug("  * %d", values->data[0].u.serial);
 	debug("  * %s (@%p)", values->data[1].u.string, values->data[1].u.string);
 	debug("  * %lu", values->data[2].u.datetime);
