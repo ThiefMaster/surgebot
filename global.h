@@ -38,6 +38,7 @@
 #undef HAVE_IPV6
 #define HAVE_MMAP
 #define HAVE_SSL
+#define HTTP_THREADS
 //#define IRC_HANDLER_DEBUG
 
 #ifdef HAVE_SSL

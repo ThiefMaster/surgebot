@@ -1,6 +1,14 @@
 #include "global.h"
+#include "module-config.h"
 #include "modules/httpd/http.h"
 #include "modules/tools/tools.h"
+
+#ifdef WITH_MODULE_chanserv
+#include "modules/db/db.h"
+#include "modules/chanreg/chanreg.h"
+#include "modules/chanserv/chanserv.h"
+#endif
+
 #include "account.h"
 #include "session.h"
 #include "rules.h"
@@ -58,6 +66,9 @@ struct menu
 };
 
 HTTP_HANDLER(ajax_index_handler);
+#ifdef WITH_MODULE_chanserv
+HTTP_HANDLER(ajax_events_handler);
+#endif
 HTTP_HANDLER(ajax_raw_handler);
 HTTP_HANDLER(ajax_channels_handler);
 HTTP_HANDLER(ajax_channel_handler);
@@ -73,6 +84,9 @@ static void menu_free(struct menu *menu);
 
 static struct http_handler handlers[] = {
 	{ "/ajax/index/*", ajax_index_handler },
+#ifdef WITH_MODULE_chanserv
+	{ "/ajax/events/*", ajax_events_handler },
+#endif
 	{ "/ajax/raw/*", ajax_raw_handler },
 	{ "/ajax/channels/*", ajax_channels_handler },
 	{ "/ajax/channel/*", ajax_channel_handler },
@@ -88,8 +102,13 @@ static struct http_handler handlers[] = {
 };
 
 static struct dict *menu_items;
+static unsigned int events_rule = 0;
 static unsigned int raw_rule = 0;
 static unsigned int channels_rule = 0;
+
+#ifdef WITH_MODULE_chanserv
+static struct db_table *event_table = NULL;
+#endif
 
 void ajaxapp_init()
 {
@@ -103,14 +122,27 @@ void ajaxapp_init()
 	menu_add("signup", "Signup", "!loggedin()");
 	// user menu
 	menu_add("index", "Index", "loggedin()");
+	events_rule = menu_add("events", "ChanServ Events", "loggedin()");
 	raw_rule = menu_add("raw", "Raw commands", "group(admins)");
 	channels_rule = menu_add("channels", "Channels", "group(helpers)");
 	menu_add("logout", "Logout", "loggedin()");
+
+#ifdef WITH_MODULE_chanserv
+	event_table = db_table_open("chanserv_events", chanserv_event_table_cols());
+	if(!event_table)
+		log_append(LOG_ERROR, "Could not open eventlog table.");
+#endif
 }
 
 void ajaxapp_fini()
 {
+#ifdef WITH_MODULE_chanserv
+	if(event_table)
+		db_table_close(event_table);
+#endif
+
 	menu_del("index");
+	menu_del("events");
 	menu_del("raw");
 	menu_del("channels");
 	menu_del("logout");
@@ -139,6 +171,128 @@ HTTP_HANDLER(ajax_index_handler)
 	http_reply_header("Content-Type", "text/javascript");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);
+}
+
+DB_SELECT_CB(events_cb)
+{
+	struct json_object *response;
+	struct http_client *client = ctx;
+
+	if(error)
+		goto finish;
+
+	if(rownum <= 1) // rownum 0 if there were no rows at all
+		client->custom2 = json_object_new_array();
+
+	if(rowcount == 0)
+		goto finish;
+
+	// "time", "channel", "nick", "ident", "host", "account", "command"
+	time_t time 	= values->data[0].u.datetime;
+	//char *channel	= values->data[1].u.string;
+	char *nick	= values->data[2].u.string;
+	char *ident	= values->data[3].u.string;
+	char *host	= values->data[4].u.string;
+	char *account	= values->data[5].u.string;
+	char *command	= values->data[6].u.string;
+
+	struct json_object *row = json_object_new_object();
+	json_object_object_add(row, "nick", json_object_new_string(nick));
+	json_object_object_add(row, "ident", json_object_new_string(ident));
+	json_object_object_add(row, "host", json_object_new_string(host));
+	json_object_object_add(row, "account", json_object_new_string(account));
+	json_object_object_add(row, "command", json_object_new_string(command));
+	json_object_object_add(row, "time", json_object_new_int(time));
+	json_object_array_add(client->custom2, row);
+
+finish:
+	if(error || rownum == rowcount || !rowcount) // !rowcount -> rownum == rowcount, but in this way it's more clear
+	{
+		response = json_object_new_object();
+		if(error)
+		{
+			json_object_object_add(response, "success", json_object_new_boolean(0));
+			json_object_object_add(response, "error", json_object_new_string("queryFailed"));
+		}
+		else
+		{
+			json_object_object_add(response, "success", json_object_new_boolean(1));
+			json_object_object_add(response, "channel", json_object_new_string(client->custom));
+			json_object_object_add(response, "events", client->custom2);
+		}
+
+		free(client->custom);
+		http_reply_header("Content-Type", "text/javascript");
+		http_reply("%s", json_object_to_json_string(response));
+		json_object_put(response);
+		http_request_finalize(client);
+	}
+	return 0;
+}
+
+HTTP_HANDLER(ajax_events_handler)
+{
+	REQUIRE_SESSION
+	CHECK_RULE(events_rule)
+	char *channel, *str;
+	struct chanreg *chanreg;
+	struct chanreg_user *cuser;
+	int rval;
+	unsigned int offset = 0;
+	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
+
+	if(!(channel = dict_find(post_vars, "channel")))
+	{
+		struct json_object *list, *response = json_object_new_object();
+		json_object_object_add(response, "success", json_object_new_boolean(1));
+		list = json_object_new_array();
+		struct chanreg_list *channels = chanreg_get_access_channels(session->account, 350, 0);
+		for(unsigned int i = 0; i < channels->count; i++)
+			json_object_array_add(list, json_object_new_string(channels->data[i]->channel));
+		chanreg_list_free(channels);
+		json_object_object_add(response, "channels", list);
+		http_reply_header("Content-Type", "text/javascript");
+		http_reply("%s", json_object_to_json_string(response));
+		json_object_put(response);
+		dict_free(post_vars);
+		return;
+	}
+
+	if(!(chanreg = chanreg_find(channel)) || !(cuser = chanreg_user_find(chanreg, session->account->name)) || cuser->level < 350)
+	{
+		struct json_object *response = json_object_new_object();
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "error", json_object_new_string("accessDenied"));
+		http_reply_header("Content-Type", "text/javascript");
+		http_reply("%s", json_object_to_json_string(response));
+		json_object_put(response);
+		dict_free(post_vars);
+		return;
+	}
+
+	if((str = dict_find(post_vars, "offset")))
+		offset = atoi(str);
+
+	client->custom = strdup(channel);
+	rval = db_async_select(event_table, events_cb, client, NULL,
+				"channel", client->custom, NULL,
+				"time", "channel", "nick", "ident", "host", "account", "command", NULL,
+				"-time", "$LIMIT", 25, "$OFFSET", offset, NULL);
+	if(rval)
+	{
+		struct json_object *response = json_object_new_object();
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "error", json_object_new_string("queryFailed"));
+		http_reply_header("Content-Type", "text/javascript");
+		http_reply("%s", json_object_to_json_string(response));
+		json_object_put(response);
+		free(client->custom);
+		dict_free(post_vars);
+		return;
+	}
+
+	dict_free(post_vars);
+	http_request_detach(client, NULL);
 }
 
 HTTP_HANDLER(ajax_raw_handler)

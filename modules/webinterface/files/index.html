@@ -11,6 +11,7 @@
   <script type="text/javascript" src="/static/json2005.js"></script>
   <script type="text/javascript" src="/static/rsh.js"></script>
   <script type="text/javascript" src="/static/tools.js"></script>
+  <script type="text/javascript" src="/static/Date.format.js"></script>
 </head>
 <body>
   <script type="text/javascript">
@@ -192,7 +193,10 @@
     function checkSuccess(data, action, acceptUnknownErrors)
     {
         if(data.success)
+        {
+            clearErrors(true);
             return true;
+        }
 
         if(data.error == '404')
         {
@@ -289,6 +293,12 @@
 
         formatted += (minutes < 10 ? '0' + minutes : minutes) + ':' + (seconds < 10 ? '0' + seconds : seconds);
         return formatted;
+    };
+    
+    Number.prototype.dateFormat = function(format) {
+        var d = new Date;
+        d.setTime(this * 1000);
+        return d.format(format)
     };
 
     // init 'page'

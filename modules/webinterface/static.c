@@ -24,6 +24,7 @@ static struct static_file {
 	{ "jquery.validate.js", "modules/webinterface/files/jquery.validate.js", "text/javascript" },
 	{ "rsh.js", "modules/webinterface/files/rsh.js", "text/javascript" },
 	{ "json2005.js", "modules/webinterface/files/json2005.js", "text/javascript" },
+	{ "Date.format.js", "modules/webinterface/files/Date.format.js", "text/javascript" },
 	// css
 	{ "style.css", "modules/webinterface/files/style.css", "text/css" },
 	// images

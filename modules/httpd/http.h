@@ -6,6 +6,10 @@
 #include "sock.h"
 #include "stringbuffer.h"
 
+#ifdef HTTP_THREADS
+#include <pthread.h>
+#endif
+
 #define REQUEST_MAX_SIZE 8192
 
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
@@ -51,8 +55,14 @@ struct http_client
 	http_handler_f *handler;
 
 	unsigned char delay;
+
+	void *custom; // for custom data. never touched by http module
+	void *custom2; // for custom data. never touched by http module
 #ifdef HTTP_THREADS
 	pthread_t thread;
+	pthread_mutex_t thread_mutex;
+	pthread_cond_t thread_cond;
+	pthread_mutex_t thread_cond_mutex;
 #endif
 };
 
@@ -78,6 +88,7 @@ void http_send_error(struct http_client *client, int code);
 const char *http_header_get(struct http_client *client, const char *key);
 struct dict *http_parse_vars(struct http_client *client, enum http_method type);
 struct dict *http_parse_cookies(struct http_client *client);
+void http_request_finalize(struct http_client *client);
 #ifdef HTTP_THREADS
 void http_request_detach(struct http_client *client, http_thread_f *func);
 void http_request_finish_int(struct http_client *client);

@@ -368,8 +368,12 @@ static void pgsql_async_event(struct sock *sock, enum sock_event event, int err)
 					break;
 				}
 
-				debug("PQntuples = %d", PQntuples(res));
-				for(ii = 0, count = PQntuples(res); ii < count; ++ii)
+				count = PQntuples(res);
+				debug("PQntuples = %d", count);
+				if(count == 0) // no rows
+					async->cb(async->ctx, NULL, 0, 0, 0);
+
+				for(ii = 0; ii < count; ++ii)
 				{
 					/* Usable row: unpack into async->values. */
 					if(db_put_values(async->table, res, ii, async->values, 0))

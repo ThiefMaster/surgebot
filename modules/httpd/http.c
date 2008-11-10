@@ -108,7 +108,6 @@ static int http_parse_request_line(struct http_client *client, const char *line,
 static int http_parse_header(struct http_client *client, const char *line, unsigned int n);
 static int http_parse(struct http_client *client);
 static void http_process_request(struct http_client *client);
-static void http_request_finalize(struct http_client *client);
 static void http_request_complete(struct http_client *client);
 static void http_request_timeout(void *bound, struct http_client *client);
 static void http_writesock(struct http_client *client);
@@ -761,7 +760,7 @@ static void http_process_request(struct http_client *client)
 		http_request_finalize(client);
 }
 
-static void http_request_finalize(struct http_client *client)
+void http_request_finalize(struct http_client *client)
 {
 	debug("Finalizing client %p", client);
 	client->delay = 0;
@@ -774,10 +773,13 @@ void http_request_detach(struct http_client *client, http_thread_f *func)
 {
 	client->delay = 1;
 	client->thread = 0;
-	typedef void* (__pthread_f)(void *);
-	pthread_create(&client->thread, NULL, (__pthread_f*)func, client);
+	if(func)
+	{
+		typedef void* (__pthread_f)(void *);
+		pthread_create(&client->thread, NULL, (__pthread_f*)func, client);
 #undef __pthread_f
-	pthread_detach(client->thread);
+	//	pthread_detach(client->thread);
+	}
 }
 
 void http_request_finish_int(struct http_client *client)

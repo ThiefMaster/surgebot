@@ -1,4 +1,5 @@
 Welcome to the SurgeBot web interface, <b id="indexUserName"></b>.<br />
+Your Session ID is <b id="indexSessionID"></b>.<br />
 <br />
 <b>Bot information:</b><br />
 <ul>
@@ -18,6 +19,7 @@ Welcome to the SurgeBot web interface, <b id="indexUserName"></b>.<br />
       $.getJSON('/ajax/index/' + sessionID, null, index_response)
       $('#pageTitle').html('Index');
       $('#indexUserName').html(sessionUserName);
+      $('#indexSessionID').html(sessionID);
       return true;
   }
   

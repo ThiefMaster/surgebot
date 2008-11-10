@@ -6,9 +6,14 @@
 #include "usercount.h"
 #include "rules.h"
 #include "module.h"
+#include "module-config.h"
 #include "app-core.h"
 
-MODULE_DEPENDS("httpd", "tools", "parser", NULL);
+MODULE_DEPENDS("httpd", "tools", "parser",
+#ifdef WITH_MODULE_chanserv
+		"chanserv",
+#endif
+		NULL);
 
 MODULE_INIT
 {
