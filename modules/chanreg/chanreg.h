@@ -121,6 +121,7 @@ extern unsigned int chanreg_staff_rule;
 
 struct chanreg *chanreg_find(const char *channel);
 struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname);
+struct chanreg_list *chanreg_get_access_channels(struct user_account *account, unsigned short min_access, unsigned int check_staff);
 
 void chanreg_setting_set(struct chanreg *reg, struct chanreg_module *cmod, const char *setting, const char *value);
 const char *chanreg_setting_get(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
@@ -133,6 +134,8 @@ void chanreg_module_writedb(struct chanreg_module *cmod);
 struct chanreg_module *chanreg_module_find(const char *name);
 struct chanreg_module_setting *chanreg_module_setting_reg(struct chanreg_module *cmod, const char *name, const char *default_value, cset_validator_f *validator, cset_format_f *formatter, cset_encode_f *encoder);
 unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *channel);
+
+int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason);
 
 // Default validators for module settings
 int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value);
