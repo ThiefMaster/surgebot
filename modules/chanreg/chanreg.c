@@ -335,21 +335,30 @@ struct chanreg *chanreg_find(const char *channel)
 
 struct chanreg_list *chanreg_get_access_channels(struct user_account *account, unsigned short min_access, unsigned int check_staff)
 {
-	struct chanreg_list *chanregs = chanreg_list_create();
+	struct irc_user user;
+	struct chanreg_list *list = chanreg_list_create();
 
-	for(int i = 0; i < chanregs->count; i++)
+	memset(&user, 0, sizeof(struct irc_user));
+	user.nick = "*webinterface*";
+	user.info = "";
+	user.channels = NULL;
+	user.account = account;
+
+	dict_iter(node, chanregs)
 	{
-		struct chanreg *reg = chanregs->data[i];
+		struct chanreg *reg = node->data;
 
 		for(int i = 0; i < reg->users->count; i++)
 		{
 			struct irc_channel *channel;
-			if(reg->users->data[i]->level >= min_access || (check_staff && chanreg_staff_rule && (channel = channel_find(reg->channel)) && command_rule_exec(chanreg_staff_rule, NULL, (account->users->head ? account->users->head->data : NULL), channel, channel->name)))
-				chanreg_list_add(chanregs, reg);
+			if(reg->users->data[i]->level >= min_access ||
+			   (check_staff && chanreg_staff_rule && (channel = channel_find(reg->channel)) &&
+			    command_rule_exec(chanreg_staff_rule, NULL, &user, channel, channel->name)))
+				chanreg_list_add(list, reg);
 		}
 	}
 
-	return chanregs;
+	return list;
 }
 
 static void chanreg_free(struct chanreg *reg)
