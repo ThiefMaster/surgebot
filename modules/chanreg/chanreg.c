@@ -347,18 +347,57 @@ struct chanreg_list *chanreg_get_access_channels(struct user_account *account, u
 	dict_iter(node, chanregs)
 	{
 		struct chanreg *reg = node->data;
+		struct irc_channel *channel;
+		unsigned int found = 0;
 
-		for(int i = 0; i < reg->users->count; i++)
+		for(unsigned int i = 0; i < reg->users->count; i++)
 		{
-			struct irc_channel *channel;
-			if(reg->users->data[i]->level >= min_access ||
-			   (check_staff && chanreg_staff_rule && (channel = channel_find(reg->channel)) &&
-			    command_rule_exec(chanreg_staff_rule, NULL, &user, channel, channel->name)))
-				chanreg_list_add(list, reg);
+			if(reg->users->data[i]->account != account)
+				continue;
+			if(reg->users->data[i]->level >= min_access)
+			{
+				found = 1;
+				break;
+			}
 		}
+
+		if(found)
+		{
+			chanreg_list_add(list, reg);
+			continue;
+		}
+
+		debug("checking staff rule for %s", reg->channel);
+		if(check_staff && chanreg_staff_rule && (channel = channel_find(reg->channel)) &&
+		   command_rule_exec(chanreg_staff_rule, NULL, &user, channel, channel->name) == CR_ALLOW)
+			chanreg_list_add(list, reg);
 	}
 
 	return list;
+}
+
+unsigned int chanreg_check_access(struct chanreg *reg, struct user_account *account, unsigned short min_access, unsigned int check_staff)
+{
+	struct irc_user user;
+	struct irc_channel *channel;
+
+	memset(&user, 0, sizeof(struct irc_user));
+	user.nick = "*webinterface*";
+	user.info = "";
+	user.channels = NULL;
+	user.account = account;
+
+	channel = channel_find(reg->channel);
+	for(int i = 0; i < reg->users->count; i++)
+	{
+		if(reg->users->data[i]->account == account && reg->users->data[i]->level >= min_access)
+			return 1;
+	}
+
+	if(check_staff && chanreg_staff_rule && channel && command_rule_exec(chanreg_staff_rule, NULL, &user, channel, channel->name) == CR_ALLOW)
+		return 1;
+
+	return 0;
 }
 
 static void chanreg_free(struct chanreg *reg)

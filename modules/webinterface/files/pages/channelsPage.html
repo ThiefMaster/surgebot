@@ -74,7 +74,7 @@
       }
           
       $('#channelsChannelName').html(data.channel);
-      $('#channelsChannelTopic').html(data.topic);
+      $('#channelsChannelTopic').html(data.topic ? data.topic : '');
       $('#channelsChannelModes').html(data.modes ? '+' + data.modes : '');
       $('#channelsChannelUsers').children().remove();
       channels_channel_showUsers(data.users.ops, '@');

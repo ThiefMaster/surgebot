@@ -194,7 +194,8 @@
     {
         if(data.success)
         {
-            clearErrors(true);
+            if(action != 'MenuInit')
+                clearErrors(true);
             return true;
         }
 

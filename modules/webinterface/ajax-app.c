@@ -128,7 +128,7 @@ void ajaxapp_init()
 	events_rule = menu_add("events", "ChanServ Events", "loggedin()");
 #endif
 	raw_rule = menu_add("raw", "Raw commands", "group(admins)");
-	channels_rule = menu_add("channels", "Channels", "group(helpers)");
+	channels_rule = menu_add("channels", "Channels", "group(helpers) || group(admins)");
 	menu_add("logout", "Logout", "loggedin()");
 
 #ifdef WITH_MODULE_chanserv
@@ -243,7 +243,6 @@ HTTP_HANDLER(ajax_events_handler)
 	CHECK_RULE(events_rule)
 	char *channel, *str;
 	struct chanreg *chanreg;
-	struct chanreg_user *cuser;
 	int rval;
 	unsigned int offset = 0;
 	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
@@ -253,7 +252,7 @@ HTTP_HANDLER(ajax_events_handler)
 		struct json_object *list, *response = json_object_new_object();
 		json_object_object_add(response, "success", json_object_new_boolean(1));
 		list = json_object_new_array();
-		struct chanreg_list *channels = chanreg_get_access_channels(session->account, 350, 0);
+		struct chanreg_list *channels = chanreg_get_access_channels(session->account, 350, 1);
 		for(unsigned int i = 0; i < channels->count; i++)
 			json_object_array_add(list, json_object_new_string(channels->data[i]->channel));
 		chanreg_list_free(channels);
@@ -265,7 +264,7 @@ HTTP_HANDLER(ajax_events_handler)
 		return;
 	}
 
-	if(!(chanreg = chanreg_find(channel)) || !(cuser = chanreg_user_find(chanreg, session->account->name)) || cuser->level < 350)
+	if(!(chanreg = chanreg_find(channel)) || !chanreg_check_access(chanreg, session->account, 350, 1))
 	{
 		struct json_object *response = json_object_new_object();
 		json_object_object_add(response, "success", json_object_new_boolean(0));
