@@ -7,6 +7,8 @@
 IMPLEMENT_LIST(module_load_func_list, module_f *)
 IMPLEMENT_LIST(module_unload_func_list, module_f *)
 
+IMPLEMENT_HOOKABLE(modules_loaded);
+
 static struct module_load_func_list *module_load_funcs;
 static struct module_unload_func_list *module_unload_funcs;
 static struct dict *module_list;
@@ -42,6 +44,8 @@ void module_init()
 		for(i = 0; i < slist->count; i++)
 			module_add(slist->data[i]);
 	}
+
+	CALL_HOOKS(modules_loaded, ());
 }
 
 void module_fini()
@@ -64,6 +68,8 @@ void module_fini()
 	dict_free(module_list);
 	module_load_func_list_free(module_load_funcs);
 	module_unload_func_list_free(module_unload_funcs);
+
+	clear_modules_loaded_hooks();
 }
 
 static void module_conf_reload()

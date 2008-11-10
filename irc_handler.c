@@ -158,10 +158,9 @@ IRC_HANDLER(num_whoisuser)
 		if(!bot.ready)
 		{
 			bot.ready = 1;
+
 			for(int i = 0; i < connected_funcs->count; i++)
-			{
 				connected_funcs->data[i]();
-			}
 		}
 	}
 }

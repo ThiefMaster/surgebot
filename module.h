@@ -3,6 +3,7 @@
 
 #include "list.h"
 #include "stringlist.h"
+#include "hook.h"
 
 #define MODULE_DEPENDS(NAME, ...)	void mod_depends(struct module *self)		\
 					{							\
@@ -56,5 +57,7 @@ void unreg_module_load_func(module_f *load_func, module_f *unload_func);
 
 DECLARE_LIST(module_load_func_list, module_f *)
 DECLARE_LIST(module_unload_func_list, module_f *)
+
+DECLARE_HOOKABLE(modules_loaded, ());
 
 #endif
