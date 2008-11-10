@@ -102,7 +102,9 @@ static struct http_handler handlers[] = {
 };
 
 static struct dict *menu_items;
+#ifdef WITH_MODULE_chanserv
 static unsigned int events_rule = 0;
+#endif
 static unsigned int raw_rule = 0;
 static unsigned int channels_rule = 0;
 
@@ -122,7 +124,9 @@ void ajaxapp_init()
 	menu_add("signup", "Signup", "!loggedin()");
 	// user menu
 	menu_add("index", "Index", "loggedin()");
+#ifdef WITH_MODULE_chanserv
 	events_rule = menu_add("events", "ChanServ Events", "loggedin()");
+#endif
 	raw_rule = menu_add("raw", "Raw commands", "group(admins)");
 	channels_rule = menu_add("channels", "Channels", "group(helpers)");
 	menu_add("logout", "Logout", "loggedin()");
@@ -142,7 +146,9 @@ void ajaxapp_fini()
 #endif
 
 	menu_del("index");
+#ifdef WITH_MODULE_chanserv
 	menu_del("events");
+#endif
 	menu_del("raw");
 	menu_del("channels");
 	menu_del("logout");
@@ -173,6 +179,7 @@ HTTP_HANDLER(ajax_index_handler)
 	json_object_put(response);
 }
 
+#ifdef WITH_MODULE_chanserv
 DB_SELECT_CB(events_cb)
 {
 	struct json_object *response;
@@ -294,6 +301,7 @@ HTTP_HANDLER(ajax_events_handler)
 	dict_free(post_vars);
 	http_request_detach(client, NULL);
 }
+#endif
 
 HTTP_HANDLER(ajax_raw_handler)
 {
