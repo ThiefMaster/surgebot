@@ -191,7 +191,7 @@ DB_SELECT_CB(events_cb)
 	if(rownum <= 1) // rownum 0 if there were no rows at all
 		client->custom2 = json_object_new_array();
 
-	if(rowcount == 0)
+	if(DB_EMPTY_RESULT())
 		goto finish;
 
 	// "time", "channel", "nick", "ident", "host", "account", "command"
@@ -213,7 +213,7 @@ DB_SELECT_CB(events_cb)
 	json_object_array_add(client->custom2, row);
 
 finish:
-	if(error || rownum == rowcount || !rowcount) // !rowcount -> rownum == rowcount, but in this way it's more clear
+	if(error || rownum == rowcount || DB_EMPTY_RESULT()) // !rowcount -> rownum == rowcount, but in this way it's more clear
 	{
 		response = json_object_new_object();
 		if(error)

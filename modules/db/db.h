@@ -39,6 +39,7 @@ struct db_table {
 
 #define DB_SELECT_CB(NAME) static int NAME(UNUSED_ARG(void *ctx), struct db_nv_list *values, unsigned int rownum, unsigned int rowcount, unsigned int error)
 typedef int (db_select_cb)(void *ctx, struct db_nv_list *values, unsigned int rownum, unsigned int rowcount, unsigned int error);
+#define DB_EMPTY_RESULT() (rowcount == 0)
 
 const char *db_type_to_name(enum db_type type);
 enum db_type db_type_from_name(const char *name);
