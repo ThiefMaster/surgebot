@@ -61,7 +61,6 @@ static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
 static void chanreg_join(struct chanreg *creg);
-static void chanreg_modules_loaded();
 
 static struct module *this;
 static struct database *chanreg_db = NULL;
@@ -78,8 +77,6 @@ MODULE_INIT
 
 	REG_COMMAND_RULE("chanuser", chanuser);
 	REG_COMMAND_RULE("privchan", privchan);
-
-	reg_modules_loaded_hook(chanreg_modules_loaded);
 
 	help_load(self, "chanreg.help");
 	DEFINE_COMMAND(self, "cregister",	cregister,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "group(admins)");
@@ -135,30 +132,6 @@ static void chanreg_conf_reload()
 	if(chanreg_staff_rule)
 		command_rule_free(chanreg_staff_rule);
 	chanreg_staff_rule = chanreg_conf.staff_rule ? command_rule_compile(chanreg_conf.staff_rule) : 0;
-}
-
-static void chanreg_modules_loaded()
-{
-	dict_iter(topnode, chanregs)
-	{
-		struct chanreg *reg = topnode->data;
-
-		dict_iter(node, chanreg_modules)
-		{
-			if(stringlist_find(reg->modules, node->key) != -1)
-			{
-				struct chanreg_module *cmod = chanreg_module_find(node->key);
-
-				stringlist_add(reg->active_modules, strdup(node->key));
-				if(cmod)
-				{
-					chanreg_list_add(cmod->channels, reg);
-					if(cmod->enable_func)
-						cmod->enable_func(reg, CER_REG);
-				}
-			}
-		}
-	}
 }
 
 static void chanreg_db_read(struct database *db)
@@ -522,6 +495,9 @@ struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, 
 		{
 			stringlist_add(reg->active_modules, strdup(name));
 			chanreg_list_add(cmod->channels, reg);
+			if(cmod->enable_func)
+				cmod->enable_func(reg, CER_REG);
+
 		}
 	}
 
