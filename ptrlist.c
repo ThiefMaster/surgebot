@@ -15,7 +15,11 @@ void ptrlist_free(struct ptrlist *list)
 {
 	unsigned int i;
 	for(i = 0; i < list->count; i++)
+	{
+		if(list->free_func)
+			list->free_func(list->data[i]->ptr);
 		free(list->data[i]);
+	}
 	free(list->data);
 	free(list);
 }
@@ -45,21 +49,25 @@ unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr)
 
 unsigned int ptrlist_find(struct ptrlist *list, void *ptr)
 {
-	int i;
-
-	for(i = 0; i < list->count; i++)
+	for(int i = 0; i < list->count; i++)
 		if(list->data[i]->ptr == ptr)
 			return i;
 
 	return -1;
 }
 
+void ptrlist_set_free_func(struct ptrlist *list, ptrlist_free_f *free_func)
+{
+	list->free_func = free_func;
+}
+
 void ptrlist_del(struct ptrlist *list, unsigned int pos, unsigned int *pos_ptr)
 {
 	assert(pos < list->count);
+	if(list->free_func)
+		list->free_func(list->data[pos]->ptr);
 	free(list->data[pos]);
 	list->data[pos] = list->data[--list->count]; // copy last element into empty position
 	if(pos_ptr != NULL && *pos_ptr == list->count)
 		*pos_ptr = pos;
 }
-
