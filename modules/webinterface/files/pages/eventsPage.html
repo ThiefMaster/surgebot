@@ -1,0 +1,98 @@
+<b>ChanServ events:</b><br />
+<ul id="eventsChannelList">
+  <li>Loading...</li>
+</ul>
+
+<div id="eventsChannelEvents" style="display:none;">
+  <br />
+  <br />
+  Events in <b id="eventsChannelName"></b>:<br />
+  <ul id="eventsChannelEventList">
+    <li>dummy</li>
+  </ul>
+</div>
+
+<script type="text/javascript">
+/* <![CDATA[ */
+  var eventsChannelList = [];
+  var eventsEventList = [];
+
+  function events_show()
+  {
+      $('#pageTitle').html('ChanServ Events');
+      $('#eventsChannelEvents').hide();
+      eventsEventList = [];
+
+      $.getJSON('/ajax/events/' + sessionID, null, events_channels_response)
+      if(pageArg)
+          $.post('/ajax/events/' + sessionID, {'channel': pageArg}, events_events_response, 'json');
+          
+      return true;
+  }
+
+  function events_channels_response(data)
+  {
+      if(!checkSuccess(data, 'ChanServ Events/Channels'))
+          return;
+
+      eventsChannelList = data.channels;
+      eventsChannelList.sort(events_channels_sort_ci);
+      $('#eventsChannelList').children().remove();
+      for(var i = 0; i < eventsChannelList.length; i++)
+          $('#eventsChannelList').append('<li><span id="eventsChannelsChannel' + i + '">' + eventsChannelList[i].toHtml() + '</span></li>');
+
+      $('#eventsChannelList > li > span').addClass('link').click(function() {
+          var channelID = this.id.substr(21);
+          if(eventsChannelList[channelID] == undefined)
+              return;
+          $('#eventsChannelEvents').hide();
+          setPageArg(eventsChannelList[channelID]);
+          eventsEventList = []; // clear list
+          $.post('/ajax/events/' + sessionID, {'channel': pageArg}, events_events_response, 'json');
+      });
+  }
+  
+  function events_channels_sort_ci(a, b)
+  {
+      var a = a.toUpperCase();
+      var b = b.toUpperCase();
+      if(a > b)
+          return 1;
+      else if(a < b)
+          return -1;
+      return 0;
+  }
+  
+  function events_events_response(data)
+  {
+      if(!checkSuccess(data, 'ChanServ Events/Events'))
+      {
+          $('#eventsChannelEvents').hide();
+          return;
+      }
+
+      $('#eventsChannelName').html(data.channel.toHtml());
+      eventsEventList = eventsEventList.concat(data.events);
+      $('#eventsChannelEventList').children().remove();
+      if(eventsEventList.length == 0)
+          $('#eventsChannelEventList').append('<li>No events found.</li>');
+          
+      for(var i = 0; i < eventsEventList.length; i++)
+      {
+          var event = eventsEventList[i];
+          $('#eventsChannelEventList').append('<li>['+event.time.dateFormat('%H:%M:%S %b/%d/%Y')+'] ['+event.nick+(event.account ? ':'+event.account : '')+']: ' + event.command + '</li>');
+      }
+      
+      if(data.events.length == 25) // we might have more data
+      {
+          $('#eventsChannelEventList').append('<li><a id="moreEventsLink" href="javascript://void(0)">more</a>');
+          $('#moreEventsLink').click(function() {
+              $.post('/ajax/events/' + sessionID, {'channel': pageArg, 'offset': eventsEventList.length}, events_events_response, 'json');
+          });
+      }
+      
+      $('#eventsChannelEvents').show();
+      window.scrollByLines(25);
+  }
+/* ]]> */
+</script>
