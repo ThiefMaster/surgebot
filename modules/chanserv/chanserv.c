@@ -46,8 +46,8 @@ MODULE_INIT
 
 	chanserv_channels_populate();
 
-	DEFINE_COMMAND(self, "events",	events,	0,	CMD_REQUIRE_CHANNEL, "chanuser(350) || group(admins)");
-	DEFINE_COMMAND(self, "users",	users,	0,	CMD_REQUIRE_CHANNEL, "chanuser(350) || group(admins)");
+	DEFINE_COMMAND(self, "events",	events,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
+	DEFINE_COMMAND(self, "users",	users,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
 
 	event_table = db_table_open(sz_chanserv_db_table, event_table_cols);
 	if(!event_table)
