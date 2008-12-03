@@ -12,7 +12,6 @@ MODULE_DEPENDS("commands", "help", NULL);
 
 struct module *this;
 
-void module_reload_cb(const char *name, unsigned char success, unsigned int errors, void *ctx);
 static void module_deps_recursive(struct irc_source *src, struct module *module, unsigned int depth);
 static int do_backslash_arg(int start, int argc, char ***argv_ptr);
 COMMAND(rehash);
@@ -379,7 +378,7 @@ COMMAND(writeall)
 	struct dict *databases = database_dict();
 	struct timeval start, stop;
 	int count = 0, bad_count = 0;
-	
+
 	gettimeofday(&start, NULL);
 	dict_iter(node, databases)
 	{
@@ -391,7 +390,7 @@ COMMAND(writeall)
 	gettimeofday(&stop, NULL);
 	stop.tv_sec -= start.tv_sec;
 	stop.tv_usec -= start.tv_usec;
-	
+
 	if(stop.tv_usec < 0)
 	{
 		stop.tv_sec -= 1;
@@ -402,7 +401,7 @@ COMMAND(writeall)
 		reply("Wrote all databases in %ld.%ld seconds.", stop.tv_sec, stop.tv_usec);
 	else
 		reply("Wrote %d out of %d dataases in %ld.%ld seconds", count, (count + bad_count), stop.tv_sec, stop.tv_usec);
-	
+
 	return 1;
 }
 

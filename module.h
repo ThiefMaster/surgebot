@@ -17,7 +17,6 @@ extern unsigned int reloading_module;
 
 struct module;
 typedef void (module_f)(struct module *self);
-typedef void (module_reload_f)(const char *name, unsigned char success, unsigned int errors, void *ctx);
 
 enum module_states {
 	MODULE_UNKNOWN,

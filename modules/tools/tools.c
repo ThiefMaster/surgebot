@@ -233,7 +233,7 @@ char *trim(char * const str)
 	char *tmp = str;
 
 	while(len > 0 && isspace(str[len - 1])) len--;
-		str[len] = '\0';
+	str[len] = '\0';
 
 	len++;
 	tmp = str + strspn(str, " \n\r\t\v\f");

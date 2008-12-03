@@ -142,12 +142,12 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	assert(obj);
 
 	i = 0, tmp = buf;
-	while(i < google_conf.results && (tmp = strstr(tmp, "<h3 class=r")))
+	while(i < google_conf.results && (tmp = strstr(tmp, "<h2 class=r")))
 	{
 		tmp += 12;
 
 		// Find end of match
-		if(!(tmp2 = strstr(tmp, "</h3")))
+		if(!(tmp2 = strstr(tmp, "</h2")))
 		{
 			log_append(LOG_ERROR, "(Google Request %s) Invalid Google Response, couldn't find closing h2-tag", obj->id);
 			google_error(obj, NULL);

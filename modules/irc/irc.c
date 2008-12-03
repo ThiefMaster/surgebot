@@ -26,9 +26,7 @@ MODULE_INIT
 
 MODULE_FINI
 {
-
 }
-
 
 COMMAND(whois)
 {
@@ -222,4 +220,3 @@ COMMAND(topic)
 
 	return 1;
 }
-

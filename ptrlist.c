@@ -71,3 +71,10 @@ void ptrlist_del(struct ptrlist *list, unsigned int pos, unsigned int *pos_ptr)
 	if(pos_ptr != NULL && *pos_ptr == list->count)
 		*pos_ptr = pos;
 }
+
+void ptrlist_del_ptr(struct ptrlist *list, void *ptr)
+{
+	int pos = ptrlist_find(list, ptr);
+	if(pos != -1)
+		ptrlist_del(list, pos, NULL);
+}

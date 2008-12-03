@@ -9,13 +9,11 @@
 
 typedef int (chanuser_irc_handler_f)(int argc, char **argv, struct irc_source *src, const char *raw_line);
 
-
 static struct dict* chanuser_irc_handlers = NULL;
 
 int check_burst(struct irc_channel *channel, const char *line);
 void parse_channel_modes(struct irc_channel *channel, int argc, char **argv);
 static void setup_handlers();
-
 
 void chanuser_irc_init()
 {
@@ -148,7 +146,6 @@ void parse_channel_modes(struct irc_channel *channel, int argc, char **argv)
 #undef do_chan_mode
 }
 
-
 CHANUSER_IRC_HANDLER(join)
 {
 	struct irc_channel *channel;
@@ -189,7 +186,7 @@ CHANUSER_IRC_HANDLER(part)
 
 	if(check_burst(channel, raw_line))
 		return -1;
-	
+
 	if(argc > 2)
 		part_reason = argv[2];
 
@@ -220,7 +217,7 @@ CHANUSER_IRC_HANDLER(kick)
 
 	if(check_burst(channel, raw_line))
 		return -1;
-	
+
 	if(argc > 3)
 		kick_reason = argv[3];
 

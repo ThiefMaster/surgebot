@@ -18,6 +18,7 @@ COMMAND(stats_timers);
 
 static int sort_commands(const void *a_, const void *b_);
 static int sort_bindings(const void *a_, const void *b_);
+static int sort_timers(const void *a_, const void *b_);
 
 MODULE_INIT
 {
@@ -39,14 +40,15 @@ MODULE_FINI
 COMMAND(stats_timers)
 {
 	struct dict *timers = timer_dict();
-	struct table *timer_table = table_create(4, dict_size(timers));
+	struct table *table = table_create(4, dict_size(timers));
 	unsigned int i = 0;
 	const char *wildmask = (argc > 1 ? argv[1] : NULL);
 
-	table_set_header(timer_table, "Id", "Name", "Execute in", "Data");
+	table_set_header(table, "Id", "Name", "Execute in", "Data");
 	dict_iter(node, timers)
 	{
 		struct timer *tmr = node->data;
+		time_t *triggering = malloc(sizeof(time_t));
 
 		if(tmr->triggered || !tmr->name || tmr->time <= now)
 			continue;
@@ -54,25 +56,36 @@ COMMAND(stats_timers)
 		if(wildmask && match(wildmask, tmr->name))
 			continue;
 
-		timer_table->data[i][0] = strtab(tmr->id);
-		timer_table->data[i][1] = tmr->name;
-		timer_table->data[i][2] = strdupa(duration2string(tmr->time - now));
-		timer_table->data[i][3] = tmr->data ? strdupa(tmr->data) : "-";
+		*triggering = tmr->time - now;
+
+		table->data[i][0] = strtab(tmr->id);
+		table->data[i][1] = tmr->name;
+		// To compare the timers, this needs to stay an int, so no 'real' converting for now
+		table->data[i][2] = (char*)triggering;
+		table->data[i][3] = tmr->data ? strdupa(tmr->data) : "-";
 
 		i++;
 	}
 
-	timer_table->rows = i;
+	table->rows = i;
+	qsort(table->data, table->rows, sizeof(table->data[0]), sort_timers);
+	// Now convert all triggering times to 'true' strings
+	for(unsigned int i = 0; i < table->rows; i++)
+	{
+		time_t *backup = (time_t*)table->data[i][2];
+		table->data[i][2] = strdupa(duration2string(*backup));
+		free(backup);
+	}
 
 	if(i)
-		table_send(timer_table, src->nick);
+		table_send(table, src->nick);
 
 	if(wildmask)
 		reply("There are $b%d$b active timers matching $b%s$b.", i, wildmask);
 	else
 		reply("There are $b%d$b active timers.", i);
 
-	table_free(timer_table);
+	table_free(table);
 	return 1;
 }
 
@@ -182,7 +195,7 @@ COMMAND(stats_commands)
 		reply("$b%d$b commands registered.", command_count);
 	}
 	else if(module)
-		reply("Module $b%s$b does not seem to implement any commands.", module->name);
+		reply("Module $b%s$b does not implement any commands.", module->name);
 
 	return 1;
 }
@@ -266,3 +279,9 @@ static int sort_bindings(const void *a_, const void *b_)
 	return strcasecmp(name_a, name_b);
 }
 
+static int sort_timers(const void *a_, const void *b_)
+{
+	time_t a = *(time_t*)((*(const char ***)a_)[2]);
+	time_t b = *(time_t*)((*(const char ***)b_)[2]);
+	return a - b;
+}
