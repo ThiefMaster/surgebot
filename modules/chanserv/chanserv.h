@@ -44,6 +44,4 @@ unsigned long parse_chanserv_duration(const char *);
 struct chanreg_module *cmod;
 struct module *this;
 
-extern struct db_table *event_table;
-
 #endif // __CHANSERV_H__

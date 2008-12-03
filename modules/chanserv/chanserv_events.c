@@ -151,18 +151,15 @@ int cmod_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disab
 {
 	if(delete_data)
 	{
-		struct chanserv_channel *cschan;
+		struct chanserv_channel *cschan = chanserv_channel_find(reg->channel);
+		if(!cschan)
+			log_append(LOG_ERROR, "Channel %s is not registered with ChanServ.", reg->channel);
+
 
 		if(event_table)
 		{
 			db_row_drop(event_table, "channel", reg->channel, NULL);
 			cschan->last_event_ts = 0;
-		}
-
-		if(!(cschan = chanserv_channel_find(reg->channel)))
-		{
-			log_append(LOG_ERROR, "Channel %s is not registered with ChanServ.", reg->channel);
-			return 1;
 		}
 	}
 
@@ -177,5 +174,5 @@ void chanserv_event_timer_add(struct chanserv_channel *cschan)
 
 void chanserv_event_timer_del(struct chanserv_channel *cschan)
 {
-	timer_del_boundname(cmod, sz_chanserv_event_timer_name);
+	timer_del(cmod, sz_chanserv_event_timer_name, 0, NULL, cschan, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 }

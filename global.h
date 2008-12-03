@@ -69,7 +69,7 @@ extern time_t now;
 #include "structs.h"
 
 #define ArraySize(ARRAY)		(sizeof((ARRAY)) / sizeof((ARRAY)[0]))
-#define MyFree(PTR)				{ if(PTR) { free(PTR); (PTR) = NULL; } }
+#define MyFree(PTR)				{ if(PTR) free_null(PTR); }
 #define free_null(PTR)			{ free(PTR); (PTR) = NULL; }
 
 #undef assert
