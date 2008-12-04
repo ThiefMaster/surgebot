@@ -104,8 +104,11 @@ unsigned long parse_chanserv_duration(const char *duration)
 		{ "second", "seconds",                1 }
 	};
 
-	if(!duration || !strcasecmp(duration, "Here"))
+	if(!duration || !strcmp(duration, "Here"))
 		return 0;
+
+	if(!strcmp(duration, "Never"))
+		return -1;
 
 	tmp2 = tmp = duration;
 	*last = '\0';
@@ -204,8 +207,10 @@ COMMAND(users)
 		table->data[i][0] = strtab(user->access);
 		table->data[i][1] = user->name;
 
-		if(!user->last_seen)
+		if(user->last_seen == 0)
 			table->data[i][2] = "Here";
+		else if(user->last_seen == -1)
+			table->data[i][2] = "-";
 		else
 			table->data[i][2] = strdupa(duration2string(user->last_seen));
 

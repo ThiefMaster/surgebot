@@ -821,7 +821,7 @@ int sock_poll()
 				{
 					sock->event_func(sock, EV_READ, 0);
 				}
-				else if(sock->read_buf) // line-buffered reading
+				else if(sock->read_buf)
 				{
 					int rres = 0;
 					size_t skiplen, retlen, getlen;

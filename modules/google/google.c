@@ -141,13 +141,32 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 
 	assert(obj);
 
-	i = 0, tmp = buf;
-	while(i < google_conf.results && (tmp = strstr(tmp, "<h2 class=r")))
+	i = 0;
+
+	if((tmp = strstr(buf, "<h2 class=r")))
+	{
+		// Find end of string
+		char *tmp2 = strstr(tmp, "</h2");
+		if(!tmp2)
+		{
+			log_append(LOG_ERROR, "(Google Request %s) Invalid Google calculator Response, missing closing h2-tag", obj->id);
+			google_error(obj, NULL);
+			return;
+		}
+
+		strlcpy(static_buf, tmp, tmp2 - tmp + 1);
+		result = html_decode(strip_html_tags(static_buf));
+		google_msg(obj, "[$b%s$b] %s", obj->nick, result);
+		return;
+	}
+
+	tmp = buf;
+	while(i < google_conf.results && (tmp = strstr(tmp, "<h3 class=r")))
 	{
 		tmp += 12;
 
 		// Find end of match
-		if(!(tmp2 = strstr(tmp, "</h2")))
+		if(!(tmp2 = strstr(tmp, "</h3")))
 		{
 			log_append(LOG_ERROR, "(Google Request %s) Invalid Google Response, couldn't find closing h2-tag", obj->id);
 			google_error(obj, NULL);
@@ -189,11 +208,6 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			link = strndup(tmp3, tmp4 - tmp3);
 			google_msg(obj, "%d: $b%s$b (%s)", i, result, link);
 			free(link);
-		}
-		else // No link -> Google Calculator, print and return
-		{
-			google_msg(obj, "[$b%s$b] %s", obj->nick, result);
-			return;
 		}
 	}
 

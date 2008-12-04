@@ -25,7 +25,7 @@ inline int chanserv_user_add(struct chanserv_channel *cschan, const char *line, 
 		cs_user->name = strdup(argv[1]);
 		cs_user->access = access;
 
-		tmp = strndup(line + (argv[2] - argv[0]), (argv[argc - 1] - argv[2]) - 1);
+		tmp = trim(strndup(line + (argv[2] - argv[0]), (argv[argc - 1] - argv[2]) - 1));
 		cs_user->last_seen = parse_chanserv_duration(tmp);
 		free(tmp);
 
