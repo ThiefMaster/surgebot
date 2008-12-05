@@ -47,14 +47,14 @@ inline void chanserv_event_add(struct tm calendar, const char *channel, const ch
 		int diff = tmp - issuer;
 		if(diff > (sizeof(source) - 1))
 		{
-			log_append(LOG_ERROR, "IRC Source issuer '%s' exceeds %lu chars", issuer, sizeof(source) - 1);
+			log_append(LOG_ERROR, "IRC Source issuer '%s' exceeds %lu chars", issuer, (unsigned long)(sizeof(source) - 1));
 			free(event);
 			return;
 		}
 		strncpy(source, issuer, diff);
 		if((len - diff + 1) > (sizeof(account) - 1))
 		{
-			log_append(LOG_ERROR, "IRC Source account '%s' exceeds %lu chars", tmp, sizeof(account) - 1);
+			log_append(LOG_ERROR, "IRC Source account '%s' exceeds %lu chars", tmp, (unsigned long)(sizeof(account) - 1));
 			free(event);
 			return;
 		}
@@ -64,7 +64,7 @@ inline void chanserv_event_add(struct tm calendar, const char *channel, const ch
 	{
 		if(len > (sizeof(source) - 1))
 		{
-			log_append(LOG_ERROR, "IRC Source '%s' exceeds %lu chars", issuer, sizeof(source) - 1);
+			log_append(LOG_ERROR, "IRC Source '%s' exceeds %lu chars", issuer, (unsigned long)(sizeof(source) - 1));
 			free(event);
 			return;
 		}

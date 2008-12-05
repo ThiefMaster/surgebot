@@ -122,7 +122,7 @@ unsigned long parse_chanserv_duration(const char *duration)
 
 		if((tmp2 - tmp) > (sizeof(last) - 1))
 		{
-			log_append(LOG_ERROR, "String exceeding max length %lu: '%s'", sizeof(last) - 1, duration);
+			log_append(LOG_ERROR, "String exceeding max length %lu: '%s'", (unsigned long)(sizeof(last) - 1), duration);
 			return 0;
 		}
 
