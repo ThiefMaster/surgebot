@@ -70,6 +70,21 @@ static int autoop_db_write(struct database_object *dbo, struct chanreg *reg)
 
 static int autoop_enabled(struct chanreg *reg, enum cmod_enable_reason reason)
 {
+	if(reason == CER_ENABLED)
+	{
+		struct irc_channel *channel = channel_find(reg->channel);
+		struct irc_user *me = user_find(bot.nickname);
+		struct irc_chanuser *chanuser;
+		assert_return(channel, 1);
+		assert_return(me, 1);
+		chanuser = channel_user_find(channel, me);
+		if(!chanuser || !(chanuser->flags & MODE_OP))
+		{
+			irc_send("NOTICE @%s :AutoOp cannot work without the bot being opped in $b%s$b.", reg->channel, reg->channel);
+			return 1;
+		}
+	}
+
 	check_aop_users(reg, NULL);
 	return 0;
 }
