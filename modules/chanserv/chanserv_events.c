@@ -132,7 +132,12 @@ void chanserv_fetch_events(void *bound, struct chanserv_channel *cschan)
 		return irc_send(sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
 
 	for(int i = 0; i < cmod->channels->count; i++)
-		irc_send(sz_chanserv_fetch_events, cmod->channels->data[i], u_chanserv_fetch_events_amount);
+	{
+		struct chanreg *reg = cmod->channels->data[i];
+		irc_send(sz_chanserv_fetch_events, reg->channel, u_chanserv_fetch_events_amount);
+	}
+
+	chanserv_event_timer_add();
 }
 
 void chanserv_event_free(struct chanserv_event *event)
