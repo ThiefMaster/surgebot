@@ -7,7 +7,9 @@ char *str_replace(const char *str, const char *search, const char *replace, unsi
 char *strip_html_tags(char * const str);
 char *strip_duplicate_whitespace(char *str);
 size_t substr_count(const char *haystack, const char *needle, unsigned char case_sensitive);
-char *trim(char * const str);
+char *ltrim(char * const str);
+char *rtrim(char * const str);
+inline char *trim(char * const str);
 char *urlencode(const char *s);
 char *urldecode(char *uri);
 char *html_encode(const char *str);

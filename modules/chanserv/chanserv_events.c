@@ -86,10 +86,23 @@ inline void chanserv_event_add(struct tm calendar, const char *channel, const ch
 			return;
 		}
 
-		src->nick = strndup(source, tmp2 - &source[0]);
+		src->nick = strndup(source, tmp2 - source);
 		tmp2++;
 		src->ident = strndup(tmp2, tmp - tmp2);
 		src->host = strdup(tmp + 1);
+	}
+
+	if(!strcmp(src->nick, bot.nickname))
+	{
+		debug("We issued this event ourselves, skipping.");
+		cschan->last_event_ts = stamp;
+
+		free(src->nick);
+		MyFree(src->ident);
+		MyFree(src->host);
+		free(src);
+		free(event);
+		return;
 	}
 
 	event->src = src;
@@ -115,8 +128,11 @@ inline void chanserv_event_add(struct tm calendar, const char *channel, const ch
 
 void chanserv_fetch_events(void *bound, struct chanserv_channel *cschan)
 {
-	irc_send(sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
-	chanserv_event_timer_add(cschan);
+	if(cschan)
+		return irc_send(sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
+
+	for(int i = 0; i < cmod->channels->count; i++)
+		irc_send(sz_chanserv_fetch_events, cmod->channels->data[i], u_chanserv_fetch_events_amount);
 }
 
 void chanserv_event_free(struct chanserv_event *event)
@@ -168,13 +184,13 @@ int cmod_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disab
 	return 0;
 }
 
-void chanserv_event_timer_add(struct chanserv_channel *cschan)
+void chanserv_event_timer_add()
 {
-	chanserv_event_timer_del(cschan);
-	timer_add(cmod, sz_chanserv_event_timer_name, now + u_chanserv_fetch_events_interval, (timer_f*)chanserv_fetch_events, cschan, 0, 1);
+	chanserv_event_timer_del();
+	timer_add(cmod, sz_chanserv_event_timer_name, now + u_chanserv_fetch_events_interval, (timer_f*)chanserv_fetch_events, NULL, 0, 1);
 }
 
 void chanserv_event_timer_del(struct chanserv_channel *cschan)
 {
-	timer_del(cmod, sz_chanserv_event_timer_name, 0, NULL, cschan, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
+	timer_del_boundname(cmod, sz_chanserv_event_timer_name);
 }

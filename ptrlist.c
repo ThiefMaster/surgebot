@@ -61,6 +61,18 @@ void ptrlist_set_free_func(struct ptrlist *list, ptrlist_free_f *free_func)
 	list->free_func = free_func;
 }
 
+void ptrlist_clear(struct ptrlist *list)
+{
+
+	for(int i = 0; i < list->count; i++)
+	{
+		if(list->free_func)
+			list->free_func(list->data[i]->ptr);
+		free(list->data[i]);
+	}
+	list->count = 0;
+}
+
 void ptrlist_del(struct ptrlist *list, unsigned int pos, unsigned int *pos_ptr)
 {
 	assert(pos < list->count);

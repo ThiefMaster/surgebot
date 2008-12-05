@@ -227,19 +227,24 @@ size_t substr_count(const char *haystack, const char *needle, unsigned char case
 	return count + 1;
 }
 
-char *trim(char * const str)
+char *ltrim(char * const str)
 {
-	int len = strlen(str);
-	char *tmp = str;
-
-	while(len > 0 && isspace(str[len - 1])) len--;
+	int len;
+	for(len = strlen(str); len && isspace(str[len - 1]); len--);
 	str[len] = '\0';
-
-	len++;
-	tmp = str + strspn(str, " \n\r\t\v\f");
-	memmove(str, tmp, len - (tmp - str));
-
 	return str;
+}
+
+char *rtrim(char * const str)
+{
+	char *tmp = str + strspn(str, " \t\n\v\f\r");
+	memmove(str, tmp, strlen(str) - (tmp - str));
+	return str;
+}
+
+inline char *trim(char * const str)
+{
+	return ltrim(rtrim(str));
 }
 
 

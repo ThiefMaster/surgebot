@@ -72,11 +72,11 @@ static int autoop_enabled(struct chanreg *reg, enum cmod_enable_reason reason)
 {
 	if(reason == CER_ENABLED)
 	{
-		struct irc_channel *channel = channel_find(reg->channel);
-		struct irc_user *me = user_find(bot.nickname);
+		struct irc_channel *channel;
+		struct irc_user *me;
 		struct irc_chanuser *chanuser;
-		assert_return(channel, 1);
-		assert_return(me, 1);
+		assert_return((channel = channel_find(reg->channel)), 1);
+		assert_return((me = user_find(bot.nickname)), 1);
 		chanuser = channel_user_find(channel, me);
 		if(!chanuser || !(chanuser->flags & MODE_OP))
 		{

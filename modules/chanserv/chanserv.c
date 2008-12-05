@@ -59,12 +59,13 @@ MODULE_INIT
 	reg_irc_handler("PART", part);
 
 	reg_channel_complete_hook(chanserv_channel_complete_hook);
+	chanserv_event_timer_add();
 }
 
 MODULE_FINI
 {
+	chanserv_event_timer_del();
 	unreg_channel_complete_hook(chanserv_channel_complete_hook);
-	timer_del_boundname(cmod, sz_chanserv_event_timer_name);
 
 	unreg_irc_handler("PART", part);
 	unreg_irc_handler("NOTICE", notice);

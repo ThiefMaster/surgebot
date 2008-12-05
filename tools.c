@@ -369,10 +369,18 @@ unsigned int is_valid_string(const char *str)
 	 return 1;
 }
 
-void strtolower(char *str)
+char *strtolower(char *str)
 {
 	for(char *ptr = str; *ptr; ptr++)
 		*ptr = tolower(*ptr);
+	return str;
+}
+
+char *strtoupper(char *str)
+{
+	for(char *ptr = str; *ptr; ptr++)
+		*ptr = toupper(*ptr);
+	return str;
 }
 
 unsigned char check_date(int day, int month, int year)
