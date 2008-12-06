@@ -15,7 +15,7 @@ const unsigned int urbandict_request_amount = 3;
 struct urbandict_request
 {
 	struct HTTPRequest *http;
-	char *target;
+	char *issuer;
 	char *request;
 
 	int linecount;
@@ -61,7 +61,7 @@ COMMAND(urbandict)
 	req->request = untokenize(argc - 1, argv + 1, " ");
 	request_encoded = urlencode(req->request);
 
-	req->target = channel ? strdup(channelname) : strdup(src->nick);
+	req->issuer = strdup(src->nick);
 	target = malloc(strlen(url_prefix) + strlen(request_encoded) + 1);
 	sprintf(target, "%s%s", url_prefix, request_encoded);
 	debug("UrbanDict: Querying %s", target);
@@ -158,7 +158,7 @@ static void urbandict_report(struct urbandict_request *req, const char *format, 
 
 	va_start(va, format);
 	vsnprintf(buf, sizeof(buf), format, va);
-	irc_send("NOTICE %s :%s", req->target, buf);
+	irc_send("NOTICE %s :%s", req->issuer, buf);
 	va_end(va);
 }
 
@@ -166,6 +166,6 @@ static void urbandict_request_free(struct urbandict_request *req)
 {
 	stringbuffer_free(req->sbuf);
 	free(req->request);
-	free(req->target);
+	free(req->issuer);
 	free(req);
 }
