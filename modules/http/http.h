@@ -24,16 +24,17 @@ struct HTTPHost
 struct HTTPRequest
 {
 	char *id;
-	
+
 	struct HTTPHost *host;
 	unsigned int port;
 	struct sock *sock;
-	
+
 	struct dict *request_headers;
 	struct dict *response_headers;
 	struct stringbuffer *buf;
 	unsigned char in_headers;
-	
+	unsigned char read_linewise;
+
 	struct ptrlist *read_funcs;
 	struct ptrlist *event_funcs;
 };

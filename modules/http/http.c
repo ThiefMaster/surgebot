@@ -34,7 +34,7 @@ static unsigned int next_id = 0;
 MODULE_INIT
 {
 	requests = dict_create();
-	
+
 	dict_set_free_funcs(requests, free, (dict_free_f*)HTTPRequest_free);
 }
 
@@ -47,43 +47,43 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 {
 	struct HTTPRequest *http;
 	char tmp[MAXLEN];
-	
+
 	debug("Creating new HTTP request to host \"%s\" with ID %d", host, next_id);
 	sprintf(tmp, "%u", next_id++);
 
 	http = malloc(sizeof(struct HTTPRequest));
 	memset(http, 0, sizeof(struct HTTPRequest));
-	
+
 	// Create structs/Assign main struct
 	http->request_headers = dict_create();
 	http->response_headers = dict_create();
-	
+
 	http->read_funcs = ptrlist_create();
 	http->event_funcs = ptrlist_create();
-	
+
 	http->buf = stringbuffer_create();
-	
+
 	http->port = 80;
 	HTTPRequest_set_host(http, host);
-	
+
 	http->in_headers = 1;
 	http->id = strdup(tmp);
-	
+
 	// Set appropriate struct settings
 	dict_set_free_funcs(http->request_headers, free, free);
 	dict_set_free_funcs(http->response_headers, free, free);
-	
+
 	// Fill struct with given values
 	ptrlist_add(http->read_funcs, 0, read_func);
-	
+
 	if(event_func)
 		ptrlist_add(http->event_funcs, 0, event_func);
-	
+
 	HTTPRequest_add_header(http, "Host", http->host->host);
 	HTTPRequest_add_header(http, "Connection", "Close");
-	
+
 	dict_insert(requests, http->id, http);
-	
+
 	return http;
 }
 
@@ -94,10 +94,10 @@ void HTTPRequest_free(struct HTTPRequest *http)
 	{
 		if(http->sock)
 			sock_close(http->sock);
-		
+
 		if(http->buf)
 			stringbuffer_free(http->buf);
-		
+
 		dict_free(http->request_headers);
 		dict_free(http->response_headers);
 		ptrlist_free(http->read_funcs);
@@ -113,13 +113,13 @@ void HTTPRequest_free(struct HTTPRequest *http)
 void HTTPRequest_add_header(struct HTTPRequest *http, const char *name, const char *content)
 {
 	struct dict_node *node = dict_find_node(http->request_headers, name);
-	
+
 	// If the node already exists, only replace its content
 	if(node)
 	{
 		if(node->data)
 			free(node->data);
-		
+
 		node->data = strdup(content);
 	}
 	else
@@ -134,7 +134,7 @@ void HTTPRequest_del_header(struct HTTPRequest *http, const char *name)
 void HTTPRequest_connect(struct HTTPRequest *http)
 {
 	assert(!http->sock);
-	
+
 	http->sock = sock_create(SOCK_IPV4 | SOCK_QUIET, http_sock_event, http_sock_read);
 	debug("Connecting HTTP Request %s", http->id);
 	sock_connect(http->sock, http->host->host, http->port);
@@ -144,7 +144,7 @@ void HTTPRequest_disconnect(struct HTTPRequest *http)
 {
 	sock_close(http->sock);
 	http->sock = NULL;
-	
+
 	dict_clear(http->response_headers);
 	stringbuffer_flush(http->buf);
 	http->in_headers = 1;
@@ -154,21 +154,21 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 {
 	struct HTTPRequest *http = http_find_sock(sock);
 	assert(http);
-	
+
 	switch(event)
 	{
 		case EV_HANGUP:
 		{
 			// Socket was closed by remote side = reached end of http content
-			// -> Dump read buffer to socket_read_functions
+			// -> Dump (remaining) read buffer to socket_read_functions
 			unsigned int i;
-			
+
 			for(i = 0; i < http->read_funcs->count; i++)
 				((http_read_f*)http->read_funcs->data[i]->ptr)(http, http->buf->string, (unsigned int)http->buf->len);
-			
+
 			stringbuffer_free(http->buf);
 			http->buf = NULL;
-			
+
 			// Fall through
 		}
 		case EV_ERROR:
@@ -178,7 +178,7 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 			dict_delete(requests, http->id);
 			break;
 		}
-		
+
 		case EV_CONNECT:
 		{
 			sock_write_fmt(sock, "GET /%s HTTP/1.0\n", (http->host->path ? http->host->path : ""));
@@ -186,7 +186,7 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 			{
 				sock_write_fmt(sock, "%s: %s\n", node->key, (char*)node->data);
 			}
-			// Empty line to signal end of headers
+			// Empty line to signalise end of headers
 			sock_write(sock, "\n", 1);
 			break;
 		}
@@ -201,28 +201,40 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 	struct HTTPRequest *http = http_find_sock(sock);
 	assert(http);
 	stringbuffer_append_string_n(http->buf, buf, len);
-	
-	// If we aren't currently retrieving headers, there's nothing more we need to do
-	if(!http->in_headers)
+
+	if(!http->in_headers && !http->read_linewise)
 		return;
-	
+
 	while((str = stringbuffer_shift(http->buf, "\n", 1)))
 	{
 		len = strlen(str);
 		// Do we have \r\n aka windows-type line endings?
 		if(len && str[len - 1] == '\r')
 			str[--len] = '\0';
-		
+
+		if(!http->in_headers)
+		{
+			for(int i = 0; i < http->read_funcs->count; i++)
+			{
+				http_read_f *read_f = http->read_funcs->data[i]->ptr;
+				read_f(http, str, len);
+			}
+			continue;
+		}
+
 		// Empty line... as in end of headers?
 		if(!len)
 		{
 			http->in_headers = 0;
 			free(str);
+
+			if(http->read_linewise)
+				continue;
 			break;
 		}
-		
+
 		// So apparently, this is a header, let's find a colon
-		if(!(tmp = strstr(str, ":")))
+		if(!(tmp = strchr(str, ':')))
 		{
 			// No colon, this must be the first line of headers in the form "HTTP/1.0 302 Found"
 			char *tmp2;
@@ -232,7 +244,7 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 				// Send timeout event and free request
 				HTTPRequest_event(http, H_EV_TIMEOUT);
 				sock_close(sock); // Will trigger a socket event deleting the HTTP Request
-				
+
 				free(str);
 				return;
 			}
@@ -254,7 +266,7 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 			}
 			dict_insert(http->response_headers, strdup(str), strdup(tmp));
 		}
-		
+
 		free(str);
 	}
 }
@@ -273,7 +285,7 @@ static struct HTTPRequest *http_find_sock(struct sock *sock)
 		if(((struct HTTPRequest *)node->data)->sock == sock)
 			return node->data;
 	}
-	
+
 	return NULL;
 }
 
@@ -281,7 +293,7 @@ static struct HTTPHost *parse_host(const char *host)
 {
 	struct HTTPHost *hhost = malloc(sizeof(struct HTTPHost));
 	char *tmp;
-	
+
 	// Is there a slash introducing a possible path?
 	if((tmp = strstr(host, "/")))
 	{
@@ -293,7 +305,7 @@ static struct HTTPHost *parse_host(const char *host)
 		hhost->host = strdup(host);
 		hhost->path = NULL;
 	}
-	
+
 	return hhost;
 }
 
@@ -305,14 +317,14 @@ static void HTTPRequest_set_host(struct HTTPRequest *http, const char *new_host)
 		free(http->host->path);
 		free(http->host);
 	}
-	
+
 	// Remove http part
 	if(!strncasecmp(new_host, "https://", 8))
 		new_host += 8;
 	else if(!strncasecmp(new_host, "http://", 7))
 		new_host += 7;
-	
+
 	http->host = parse_host(new_host);
-	
+
 	HTTPRequest_add_header(http, "Host", http->host->host);
 }

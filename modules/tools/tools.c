@@ -20,7 +20,8 @@ entities[] =
 	{ "quot",	'"' },
 	{ "amp",	'&' },
 	{ "lt",		'<' },
-	{ "gt",		'>' }
+	{ "gt",		'>' },
+	{ "apos",	'\'' }
 };
 
 unsigned char hexchars[] = "0123456789ABCDEF";
