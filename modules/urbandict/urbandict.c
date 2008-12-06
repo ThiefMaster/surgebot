@@ -105,7 +105,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 
 	if(!req->linecount)
 	{
-		urbandict_report(req, "[Urban Dictionary] Searching $u%s$u", req->request);
+		urbandict_report(req, "[Urban Dictionary] Searching $u%s$u:", req->request);
 		req->linecount++;
 		return;
 	}
@@ -113,7 +113,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	if(!strcmp(buf, "__end__"))
 	{
 		if(req->sbuf->len)
-			urbandict_report(req, "%d) %s", req->linecount + 1, req->sbuf->string);
+			urbandict_report(req, "%d) %s", req->linecount, req->sbuf->string);
 		return;
 	}
 
@@ -158,7 +158,7 @@ static void urbandict_report(struct urbandict_request *req, const char *format, 
 
 	va_start(va, format);
 	vsnprintf(buf, sizeof(buf), format, va);
-	irc_send("PRIVMSG %s :%s", req->target, buf);
+	irc_send("NOTICE %s :%s", req->target, buf);
 	va_end(va);
 }
 
