@@ -25,8 +25,7 @@ entities[] =
 };
 
 unsigned char hexchars[] = "0123456789ABCDEF";
-
-
+const char whitespace_chars[] = " \t\n\v\f\r";
 
 MODULE_DEPENDS(NULL);
 
@@ -174,45 +173,27 @@ char *strip_html_tags(char *str)
 	return str;
 }
 
+//Dies       ist      ein String mit   Leerzeichen
+
 char *strip_duplicate_whitespace(char *str)
 {
-	unsigned char white = 0;
-	char *tmp = str, *tmp2 = NULL, *end;
-	size_t len;
+	char *tmp;
+	size_t len, white;
 
 	trim(str);
+	// Make sure to copy null byte as well
+	len = strlen(str) + 1;
 
-	len = strlen(str);
-	end = str + len;
-
-	while(tmp < end)
+	for(tmp = str; *tmp; tmp++)
 	{
-		if(isspace(*tmp))
-		{
-			if(white && !tmp2)
-				tmp2 = tmp;
-
-			white = 1;
-			tmp++;
+		if(!isspace(*tmp))
 			continue;
-		}
-		else
-		{
-			if(tmp2)
-			{
-				memmove(tmp2, tmp, len - (tmp - str));
-				end -= (tmp - tmp2);
 
-				tmp = tmp2;
-				tmp2 = NULL;
-				continue;
-			}
-			white = 0;
-			tmp++;
-		}
+		// Keep first space
+		tmp++;
+		white = strspn(tmp, " \t\n\v\f\r");
+		memmove(tmp, tmp + white, (len - white) - (tmp - str));
 	}
-
-	*end = 0;
 	return str;
 }
 
@@ -238,8 +219,8 @@ char *ltrim(char * const str)
 
 char *rtrim(char * const str)
 {
-	char *tmp = str + strspn(str, " \t\n\v\f\r");
-	memmove(str, tmp, strlen(str) - (tmp - str));
+	char *tmp = str + strspn(str, whitespace_chars);
+	memmove(str, tmp, strlen(str) - (tmp - str) + 1);
 	return str;
 }
 
