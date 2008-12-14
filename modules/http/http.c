@@ -67,6 +67,7 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 	HTTPRequest_set_host(http, host);
 
 	http->in_headers = 1;
+	http->forward_request = 1;
 	http->id = strdup(tmp);
 
 	// Set appropriate struct settings
@@ -152,15 +153,16 @@ void HTTPRequest_disconnect(struct HTTPRequest *http)
 
 static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 {
-	struct HTTPRequest *http = http_find_sock(sock);
-	assert(http);
+	struct HTTPRequest *http;
+	assert((http = http_find_sock(sock)));
 
 	switch(event)
 	{
 		case EV_HANGUP:
 		{
-			// Socket was closed by remote side = reached end of http content
-			// -> Dump (remaining) read buffer to socket_read_functions
+			/* Socket was closed by remote side = reached end of http content
+			 * -> Dump (remaining) read buffer to socket-read-functions
+			 */
 			unsigned int i;
 
 			for(i = 0; i < http->read_funcs->count; i++)
@@ -181,13 +183,13 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 
 		case EV_CONNECT:
 		{
-			sock_write_fmt(sock, "GET /%s HTTP/1.0\n", (http->host->path ? http->host->path : ""));
+			sock_write_fmt(sock, "GET /%s HTTP/1.0\r\n", (http->host->path ? http->host->path : ""));
 			dict_iter(node, http->request_headers)
 			{
-				sock_write_fmt(sock, "%s: %s\n", node->key, (char*)node->data);
+				sock_write_fmt(sock, "%s: %s\r\n", node->key, (char*)node->data);
 			}
 			// Empty line to signalise end of headers
-			sock_write(sock, "\n", 1);
+			sock_write(sock, "\r\n", 2);
 			break;
 		}
 		default:
@@ -238,7 +240,7 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 		{
 			// No colon, this must be the first line of headers in the form "HTTP/1.0 302 Found"
 			char *tmp2;
-			if(!(tmp = strstr(str, " ")) || !(tmp2 = strstr(str + (tmp - str) + 1, " ")))
+			if(!(tmp2 = strchr(str, ' ')) || !(http->status = atoi(tmp2)))
 			{
 				log_append(LOG_ERROR, "(HTTP Request %s) Invalid HTTP header format: %s", http->id, str);
 				// Send timeout event and free request
@@ -255,7 +257,7 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 			str[tmp - str] = '\0';
 			tmp += 2;
 			// In case we got a Location-header, we need to redirect the query
-			if(!strcasecmp(str, "Location"))
+			if(http->forward_request && !strcasecmp(str, "Location"))
 			{
 				debug("Redirecting HTTP Request %s to %s", http->id, tmp);
 				HTTPRequest_disconnect(http);

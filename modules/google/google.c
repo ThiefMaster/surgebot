@@ -82,12 +82,14 @@ COMMAND(google)
 	{
 		CHANREG_MODULE_COMMAND(cmod);
 
-		if(((level = chanreg_setting_get_int(reg, cmod, "MinAccess")) > 0) &&  user->account && (creg_user = chanreg_user_find(reg, user->account->name)) && creg_user->level < level)
+		if((level = chanreg_setting_get_int(reg, cmod, "MinAccess")) > 0)
 		{
-			reply("You do not have enough access to run this command.");
-			return 0;
+			if(!user->account || ((creg_user = chanreg_user_find(reg, user->account->name)) && creg_user->level < level))
+			{
+				reply("You do not have enough access to run this command.");
+				return 0;
+			}
 		}
-
 		obj->channel = strdup(channelname);
 	}
 	else

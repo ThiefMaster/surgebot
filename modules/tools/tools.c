@@ -173,8 +173,6 @@ char *strip_html_tags(char *str)
 	return str;
 }
 
-//Dies       ist      ein String mit   Leerzeichen
-
 char *strip_duplicate_whitespace(char *str)
 {
 	char *tmp;
@@ -191,7 +189,7 @@ char *strip_duplicate_whitespace(char *str)
 
 		// Keep first space
 		tmp++;
-		white = strspn(tmp, " \t\n\v\f\r");
+		white = strspn(tmp, whitespace_chars);
 		memmove(tmp, tmp + white, (len - white) - (tmp - str));
 	}
 	return str;

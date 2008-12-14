@@ -332,12 +332,12 @@ static void youtube_timer(void *bound, void *data)
 static inline void youtube_timer_add()
 {
 	youtube_timer_del();
-	timer_add(NULL, "youtube_check", now + 600, youtube_timer, NULL, 0, 0);
+	timer_add(NULL, "youtube_cleanup", now + 600, youtube_timer, NULL, 0, 0);
 }
 
 static inline void youtube_timer_del()
 {
-	timer_del_boundname(NULL, "youtube_check");
+	timer_del_boundname(NULL, "youtube_cleanup");
 }
 
 static int youtube_disable_cmod(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason)

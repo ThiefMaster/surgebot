@@ -28,15 +28,24 @@ struct HTTPRequest
 	struct HTTPHost *host;
 	unsigned int port;
 	struct sock *sock;
+	int status;
 
 	struct dict *request_headers;
 	struct dict *response_headers;
 	struct stringbuffer *buf;
 	unsigned char in_headers;
-	unsigned char read_linewise;
 
 	struct ptrlist *read_funcs;
 	struct ptrlist *event_funcs;
+
+	/*
+	 * Options that can be set by the caller
+	 */
+
+	// Follow redirecting headers
+	unsigned char forward_request;
+	// Pass the HTTP response line by line to the read function
+	unsigned char read_linewise;
 };
 
 enum HTTPRequest_event
