@@ -51,7 +51,7 @@ static void sig_segv(int n)
 	if(bot.server_sock)
 		irc_send_fast("QUIT :Received SIGSEGV - shutting down");
 	sock_poll(); // run a single poll to get quit message sent
-	exit(0);
+	// we must NOT exit() here or no core dump is created
 }
 
 static void signal_init()
@@ -65,12 +65,13 @@ static void signal_init()
 	sigaction(SIGINT, &sa, NULL);
 	sa.sa_handler = sig_exit;
 	sigaction(SIGTERM, &sa, NULL);
-	sa.sa_handler = sig_segv;
-	sigaction(SIGSEGV, &sa, NULL);
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &sa, NULL);
 	sa.sa_handler = sig_rehash;
 	sigaction(SIGHUP, &sa, NULL);
+	sa.sa_handler = sig_segv;
+	sa.sa_flags = SA_RESETHAND; // reset handler after calling it so the program creates a core dump
+	sigaction(SIGSEGV, &sa, NULL);
 }
 
 static int bot_init()
