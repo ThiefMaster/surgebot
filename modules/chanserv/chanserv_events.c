@@ -178,7 +178,6 @@ int cmod_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disab
 		if(!cschan)
 			log_append(LOG_ERROR, "Channel %s is not registered with ChanServ.", reg->channel);
 
-
 		if(event_table)
 		{
 			db_row_drop(event_table, "channel", reg->channel, NULL);

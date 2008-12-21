@@ -270,26 +270,29 @@ IRC_HANDLER(notice)
 
 	// "You lack access..." after requesting events
 	// -> Turn off eventlog module
-	if(count == ArraySize(vec) && strncmp(dup, "You lack sufficient access in", 29) == 0)
+	if((count == 5 && strncmp(dup, "You lack access to", 18) == 0) || (count > 5 && strncmp(dup, "You lack sufficient access in", 29) == 0))
 	{
-		if((curchan = chanserv_channel_find(vec[5])))
+		if(count == 5)
 		{
-			struct chanreg *reg;
+			// Remove trailing dot
+			char *tmp = strndup(vec[4], strlen(vec[4]) - 1);
+			curchan = chanserv_channel_find(tmp);
+			free(tmp);
+		}
+		else
+			curchan = chanserv_channel_find(vec[5]);
+
+		if(curchan)
+		{
 			struct chanserv_channel *cschan = curchan;
 
 			curchan->process = CS_P_NONE;
 			curchan = NULL;
 
-			if(!(reg = chanreg_find(vec[5])))
-				goto free_return;
-
-			if(chanreg_module_disable(reg, cmod, 0, CDR_DISABLED) == 0)
-			{
+			if(chanreg_module_disable(cschan->reg, cmod, 0, CDR_DISABLED) == 0)
 				chanserv_report(cschan->reg->channel, "My access has been clvl'ed to less than 350. Module $b%s$b has been disabled.", cmod->name);
-				ptrlist_del_ptr(chanserv_channels, cschan);
-			}
-			goto free_return;
 		}
+		goto free_return;
 	}
 
 	// First line of channel info
