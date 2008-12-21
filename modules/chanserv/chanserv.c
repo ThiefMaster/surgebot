@@ -39,6 +39,7 @@ static const struct column_desc event_table_cols[] = {
 
 MODULE_INIT
 {
+	curchan = NULL;
 	chanserv_channels_init();
 
 	this = self;
@@ -266,6 +267,30 @@ IRC_HANDLER(notice)
 	dup = strdup(str);
 
 	count = tokenize(str, vec, ArraySize(vec), ' ', 0);
+
+	// "You lack access..." after requesting events
+	// -> Turn off eventlog module
+	if(count == ArraySize(vec) && strncmp(dup, "You lack sufficient access in", 29) == 0)
+	{
+		if((curchan = chanserv_channel_find(vec[5])))
+		{
+			struct chanreg *reg;
+			struct chanserv_channel *cschan = curchan;
+
+			curchan->process = CS_P_NONE;
+			curchan = NULL;
+
+			if(!(reg = chanreg_find(vec[5])))
+				goto free_return;
+
+			if(chanreg_module_disable(reg, cmod, 0, CDR_DISABLED) == 0)
+			{
+				chanserv_report(cschan->reg->channel, "My access has been clvl'ed to less than 350. Module $b%s$b has been disabled.", cmod->name);
+				ptrlist_del_ptr(chanserv_channels, cschan);
+			}
+			goto free_return;
+		}
+	}
 
 	// First line of channel info
 	if(count == 2 && IsChannelName(vec[0]) && !strcmp(vec[1], "Information:"))
