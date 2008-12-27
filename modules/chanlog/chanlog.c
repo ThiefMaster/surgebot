@@ -45,8 +45,12 @@ static void chanlog(const char *target, const char *format, ...);
 static void chanlog_free(struct chanlog *);
 static int cmod_enabled(struct chanreg *, enum cmod_enable_reason);
 static int cmod_disabled(struct chanreg *, unsigned int, enum cmod_disable_reason);
+
 int cset_purgeafter_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 const char *cset_purgeafter_formatter(const char *value);
+
+int cset_logfilemode_validator(struct chanreg *reg, struct irc_source *src, const char *value);
+const char *cset_logfilemode_encoder(const char *old_value, const char *value);
 
 IRC_HANDLER(join);
 IRC_HANDLER(kick);
@@ -60,6 +64,7 @@ MODULE_INIT
 {
 	cmod = chanreg_module_reg("Chanlog", CMOD_STAFF | CMOD_HIDDEN, NULL, NULL, cmod_enabled, cmod_disabled);
 	chanreg_module_setting_reg(cmod, "PurgeAfter", "7", cset_purgeafter_validator, cset_purgeafter_formatter, NULL);
+	chanreg_module_setting_reg(cmod, "LogFileMode", "600", cset_logfilemode_validator, NULL, cset_logfilemode_encoder);
 
 	reg_irc_handler("JOIN", join);
 	reg_irc_handler("KICK", kick);
@@ -99,8 +104,7 @@ MODULE_FINI
 static void chanlog_init()
 {
 	struct irc_user *me;
-	if(!(me = user_find(bot.nickname)))
-		return;
+	assert((me = user_find(bot.nickname)));
 
 	dict_iter(node, me->channels)
 	{
@@ -132,10 +136,12 @@ static FILE *fd_find(const char *target)
 static int chanlog_add(const char *target)
 {
 	char dirname[512], *str;
+	const char *szMode;
 	struct tm *timeinfo;
 	struct chanlog *item;
 	FILE *fd;
 	int len;
+	struct chanreg *reg;
 
 	if(!target)
 		return -1;
@@ -151,9 +157,11 @@ static int chanlog_add(const char *target)
 		return -1;
 	}
 
+	assert_return((reg = chanreg_find(target)), -1);
+
 	snprintf(dirname, sizeof(dirname), "%s", chanlog_conf.directory);
 	strtolower(dirname);
-	if(mkdir(dirname, 0700) && errno != EEXIST)
+	if(mkdir(dirname, 600) && errno != EEXIST)
 	{
 		debug("Could not create directory '%s' in chanlog-module, disabling module", chanlog_conf.directory);
 		return -1;
@@ -181,8 +189,16 @@ static int chanlog_add(const char *target)
 		if(!fd)
 		{
 			debug("Could not open/create logfile '%s' in chanlog-module, disabling module", dirname);
+			chanreg_module_disable(reg, cmod, 0, CDR_DISABLED);
 			return -1;
 		}
+	}
+
+	if((szMode = chanreg_setting_get(reg, cmod, "LogFileMode")))
+	{
+		unsigned int mode = ((szMode[0] - '0') << 6) | ((szMode[1] - '0') << 3) | (szMode[2] - '0');
+		if(chmod(dirname, mode) != 0)
+			log_append(LOG_ERROR, "Could not set filemode %o for file %s", mode, dirname);
 	}
 
 	item = malloc(sizeof(struct chanlog));
@@ -289,7 +305,7 @@ static int chanlog_purge(const char *target)
 		if(!creg)
 			continue;
 
-		str = chanreg_setting_get(creg, cmod, "purgeafter");
+		str = chanreg_setting_get(creg, cmod, "PurgeAfter");
 		if(!str || !(purge_after = atoi(str)))
 			continue;
 
@@ -312,7 +328,7 @@ static int chanlog_purge(const char *target)
 						continue;
 
 					// Now try to convert the first 10 chars to a valid date so we can compare it...
-					snprintf(filedate, 11, direntry->d_name);
+					strncpy(filedate, direntry->d_name, sizeof(filedate) - 1);
 					sscanf(filedate, "%4d-%2d-%2d", &year, &month, &day);
 					if(!check_date(day, month, year))
 						continue;
@@ -330,8 +346,6 @@ static int chanlog_purge(const char *target)
 					if(((today - date) / 60 / 60 / 24) >= purge_after)
 					{
 						debug("Purging logfile %s", direntry->d_name);
-						// Criteria match, file can be removed! Congratulations!
-
 						count++;
 						unlink(cwd);
 					}
@@ -344,13 +358,12 @@ static int chanlog_purge(const char *target)
 		}
 	}
 	closedir(dir);
-
 	return count;
 }
 
 static void chanlog_rotate()
 {
-	debug("Rotating logfiles of module chanlog");
+	debug("Rotating channel logfiles.");
 	chanlog_fini();
 	chanlog_init();
 }
@@ -377,6 +390,9 @@ static void chanlog(const char *target, const char *format, ...)
 
 static int cmod_enabled(struct chanreg *creg, enum cmod_enable_reason reason)
 {
+	if(reason == CER_REG)
+		return 1;
+
 	return chanlog_add(creg->channel);
 }
 
@@ -391,7 +407,6 @@ static int cmod_disabled(struct chanreg *creg, unsigned int delete_data, enum cm
 		strtolower(dir);
 		ret = remdir(dir, 1);
 	}
-
 	return ret;
 }
 
@@ -435,6 +450,32 @@ const char *cset_purgeafter_formatter(const char *value)
 		snprintf(str, sizeof(str), "%d day%s", iValue, (iValue != 1 ? "s" : ""));
 		return str;
 	}
+}
+
+int cset_logfilemode_validator(struct chanreg *reg, struct irc_source *src, const char *value)
+{
+	if(!aredigits(value) || strlen(value) != 3 || value[0] > '7' || value[1] > '7' || value[2] > '7')
+	{
+		reply("$b%s$b is not a valid filemode.", value);
+		return 0;
+	}
+
+	if(!((value[0] - 48) & 2))
+		reply("I, the owner, need to be able to write to the file. I'm going to grant myself writing permissions.");
+
+	return 1;
+}
+
+const char *cset_logfilemode_encoder(const char *old_value, const char *value)
+{
+	static char str[4];
+	memset(str, 0, sizeof(str));
+
+	strcpy(str, value);
+	if(!((str[0] - '0') & 2))
+		str[0] = ((str[0] - '0') | 2) + '0';
+
+	return str;
 }
 
 static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, const char *reason)
