@@ -1151,7 +1151,7 @@ COMMAND(cset)
 
 				value = chanreg_setting_get(reg, cmod, cset->name);
 				if(cset->formatter)
-					value = cset->formatter(value);
+					value = cset->formatter(reg, value);
 
 				table->data[row][0] = ""; // Indent
 				table->data[row][1] = str;
@@ -1257,7 +1257,7 @@ COMMAND(cset)
 		if(!cset->validator || cset->validator(reg, src, new_value))
 		{
 			if(cset->encoder)
-				chanreg_setting_set(reg, cmod, setting, cset->encoder(chanreg_setting_get(reg, cmod, cset->name), new_value));
+				chanreg_setting_set(reg, cmod, setting, cset->encoder(reg, chanreg_setting_get(reg, cmod, cset->name), new_value));
 			else
 				chanreg_setting_set(reg, cmod, setting, new_value);
 		}
@@ -1267,7 +1267,7 @@ COMMAND(cset)
 	// Display current (or new) value
 	value = chanreg_setting_get(reg, cmod, cset->name);
 	if(cset->formatter)
-		value = cset->formatter(value);
+		value = cset->formatter(reg, value);
 	reply("$b%s.%s:$b  %s", cmod->name, cset->name, value);
 
 	free(name_dup);
@@ -1610,21 +1610,21 @@ int access_validator(struct chanreg *reg, struct irc_source *src, const char *va
 
 // Formatters
 
-const char *null_none(const char *value)
+const char *null_none(struct chanreg *reg, const char *value)
 {
 	return value ? value : "None";
 }
 
 // Encoders
 
-const char *asterisk_null(const char *old_value, const char *value)
+const char *asterisk_null(struct chanreg *reg, const char *old_value, const char *value)
 {
 	if(!strcmp(value, "*"))
 		return NULL;
 	return value;
 }
 
-const char *access_encoder(const char *old_Value, const char *value)
+const char *access_encoder(struct chanreg *reg, const char *old_Value, const char *value)
 {
 	const char *str = value;
 

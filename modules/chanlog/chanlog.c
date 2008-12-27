@@ -40,6 +40,7 @@ static void chanlog_rotate();
 
 static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, const char *reason);
 static void chanlog_timer(void *bound, void *data);
+static void chanlog_chmod(const char *target, unsigned int mode);
 
 static void chanlog(const char *target, const char *format, ...);
 static void chanlog_free(struct chanlog *);
@@ -47,10 +48,10 @@ static int cmod_enabled(struct chanreg *, enum cmod_enable_reason);
 static int cmod_disabled(struct chanreg *, unsigned int, enum cmod_disable_reason);
 
 int cset_purgeafter_validator(struct chanreg *reg, struct irc_source *src, const char *value);
-const char *cset_purgeafter_formatter(const char *value);
+const char *cset_purgeafter_formatter(struct chanreg *reg, const char *value);
 
 int cset_logfilemode_validator(struct chanreg *reg, struct irc_source *src, const char *value);
-const char *cset_logfilemode_encoder(const char *old_value, const char *value);
+const char *cset_logfilemode_encoder(struct chanreg *reg, const char *old_value, const char *value);
 
 IRC_HANDLER(join);
 IRC_HANDLER(kick);
@@ -197,8 +198,7 @@ static int chanlog_add(const char *target)
 	if((szMode = chanreg_setting_get(reg, cmod, "LogFileMode")))
 	{
 		unsigned int mode = ((szMode[0] - '0') << 6) | ((szMode[1] - '0') << 3) | (szMode[2] - '0');
-		if(chmod(dirname, mode) != 0)
-			log_append(LOG_ERROR, "Could not set filemode %o for file %s", mode, dirname);
+		chanlog_chmod(dirname, mode);
 	}
 
 	item = malloc(sizeof(struct chanlog));
@@ -435,7 +435,7 @@ int cset_purgeafter_validator(struct chanreg *reg, struct irc_source *src, const
 	return 0;
 }
 
-const char *cset_purgeafter_formatter(const char *value)
+const char *cset_purgeafter_formatter(struct chanreg *reg, const char *value)
 {
 	static char str[30];
 	int iValue = atoi(value);
@@ -466,15 +466,45 @@ int cset_logfilemode_validator(struct chanreg *reg, struct irc_source *src, cons
 	return 1;
 }
 
-const char *cset_logfilemode_encoder(const char *old_value, const char *value)
+const char *cset_logfilemode_encoder(struct chanreg *reg, const char *old_value, const char *value)
 {
 	static char str[4];
 	memset(str, 0, sizeof(str));
 
-	strcpy(str, value);
+	strncpy(str, value, sizeof(str));
 	if(!((str[0] - '0') & 2))
 		str[0] = ((str[0] - '0') | 2) + '0';
 
+	if(chanlog_conf.directory)
+	{
+		char path[PATH_MAX], file[PATH_MAX];
+		DIR *dir;
+		struct stat attribute;
+
+		unsigned int mode = ((str[0] - '0') << 6) | ((str[1] - '0') << 3) | (str[2] - '0');
+		dict_iter(node, chanlogs)
+		{
+			struct chanlog *log = node->data;
+			snprintf(path, sizeof(path), "%s/%s", chanlog_conf.directory, log->target);
+			stat(path, &attribute);
+			if(!(attribute.st_mode & S_IFDIR))
+				continue;
+
+			if((dir = opendir(path)))
+			{
+				struct dirent *entry;
+				while((entry = readdir(dir)))
+				{
+					snprintf(file, sizeof(file), "%s/%s", path, entry->d_name);
+					stat(file, &attribute);
+					if(!(attribute.st_mode & S_IFREG))
+						continue;
+
+					chanlog_chmod(file, mode);
+				}
+			}
+		}
+	}
 	return str;
 }
 
@@ -501,6 +531,12 @@ static void chanlog_timer(void *bound, void *data)
 	chanlog_rotate();
 	chanlog_purge(NULL);
 	chanlog_timer_add();
+}
+
+static void chanlog_chmod(const char *file, unsigned int mode)
+{
+	if(chmod(file, mode) != 0)
+		log_append(LOG_ERROR, "Could not set filemode %o for file %s", mode, file);
 }
 
 IRC_HANDLER(join)

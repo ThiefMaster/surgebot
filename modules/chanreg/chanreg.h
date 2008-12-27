@@ -40,8 +40,8 @@ enum cmod_disable_reason
 };
 
 typedef int (cset_validator_f)(struct chanreg *reg, struct irc_source *src, const char *value);
-typedef const char* (cset_format_f)(const char *value);
-typedef const char* (cset_encode_f)(const char *old_value, const char *value);
+typedef const char* (cset_format_f)(struct chanreg *reg, const char *value);
+typedef const char* (cset_encode_f)(struct chanreg *reg, const char *old_value, const char *value);
 typedef int (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
 typedef int (cmod_disable_f)(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 typedef void (cmod_db_read_f)(struct dict *db_nodes, struct chanreg *reg);
@@ -143,10 +143,10 @@ int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *v
 int access_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 
 // Default formatters
-const char *null_none(const char *value);
+const char *null_none(struct chanreg *reg, const char *value);
 
 // Default encoders
-const char *asterisk_null(const char *old_value, const char *value);
-const char *access_encoder(const char *old_Value, const char *value);
+const char *asterisk_null(struct chanreg *reg, const char *old_value, const char *value);
+const char *access_encoder(struct chanreg *reg, const char *old_Value, const char *value);
 
 #endif
