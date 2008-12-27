@@ -143,6 +143,7 @@ static int chanlog_add(const char *target)
 	FILE *fd;
 	int len;
 	struct chanreg *reg;
+	unsigned int mode = 0600;
 
 	if(!target)
 		return -1;
@@ -160,9 +161,12 @@ static int chanlog_add(const char *target)
 
 	assert_return((reg = chanreg_find(target)), -1);
 
+	if((szMode = chanreg_setting_get(reg, cmod, "LogFileMode")))
+		mode = ((szMode[0] - '0') << 6) | ((szMode[1] - '0') << 3) | (szMode[2] - '0');
+
 	snprintf(dirname, sizeof(dirname), "%s", chanlog_conf.directory);
 	strtolower(dirname);
-	if(mkdir(dirname, 600) && errno != EEXIST)
+	if(mkdir(dirname, mode | 0700) && errno != EEXIST)
 	{
 		debug("Could not create directory '%s' in chanlog-module, disabling module", chanlog_conf.directory);
 		return -1;
@@ -173,7 +177,7 @@ static int chanlog_add(const char *target)
 	len = strlen(dirname);
 	snprintf(dirname + len, sizeof(dirname) - len, "/%s", target);
 	strtolower(dirname + len);
-	if(mkdir(dirname, 0700) && errno != EEXIST)
+	if(mkdir(dirname, mode | 0700) && errno != EEXIST)
 	{
 		debug("Could not create directory '%s' in chanlog-module, disabling module", dirname);
 		return -1;
@@ -193,12 +197,6 @@ static int chanlog_add(const char *target)
 			chanreg_module_disable(reg, cmod, 0, CDR_DISABLED);
 			return -1;
 		}
-	}
-
-	if((szMode = chanreg_setting_get(reg, cmod, "LogFileMode")))
-	{
-		unsigned int mode = ((szMode[0] - '0') << 6) | ((szMode[1] - '0') << 3) | (szMode[2] - '0');
-		chanlog_chmod(dirname, mode);
 	}
 
 	item = malloc(sizeof(struct chanlog));
@@ -473,23 +471,19 @@ const char *cset_logfilemode_encoder(struct chanreg *reg, const char *old_value,
 
 	strncpy(str, value, sizeof(str));
 	if(!((str[0] - '0') & 2))
-		str[0] = ((str[0] - '0') | 2) + '0';
+		str[0] = ((str[0] - '0') | 6) + '0';
 
 	if(chanlog_conf.directory)
 	{
 		char path[PATH_MAX], file[PATH_MAX];
 		DIR *dir;
 		struct stat attribute;
-
 		unsigned int mode = ((str[0] - '0') << 6) | ((str[1] - '0') << 3) | (str[2] - '0');
-		dict_iter(node, chanlogs)
-		{
-			struct chanlog *log = node->data;
-			snprintf(path, sizeof(path), "%s/%s", chanlog_conf.directory, log->target);
-			stat(path, &attribute);
-			if(!(attribute.st_mode & S_IFDIR))
-				continue;
 
+		snprintf(path, sizeof(path), "%s/%s", chanlog_conf.directory, reg->channel);
+		stat(path, &attribute);
+		if((attribute.st_mode & S_IFDIR))
+		{
 			if((dir = opendir(path)))
 			{
 				struct dirent *entry;
@@ -497,7 +491,7 @@ const char *cset_logfilemode_encoder(struct chanreg *reg, const char *old_value,
 				{
 					snprintf(file, sizeof(file), "%s/%s", path, entry->d_name);
 					stat(file, &attribute);
-					if(!(attribute.st_mode & S_IFREG))
+					if(!(attribute.st_mode & S_IFREG) || match("????" "-??" "-??" ".log", entry->d_name))
 						continue;
 
 					chanlog_chmod(file, mode);
@@ -635,4 +629,3 @@ IRC_HANDLER(topic)
 	assert(argc > 2);
 	chanlog(argv[1], "*** %s changes topic to '%s'", src->nick, argv[2]);
 }
-
