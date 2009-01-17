@@ -444,13 +444,3 @@ unsigned char file_exists(const char *file)
 	return (stat(file, &statbuf) == 0);
 }
 
-inline long min(long a, long b)
-{
-	return (a < b) ? a : b;
-}
-
-inline long max(long a, long b)
-{
-	return (a > b) ? a : b;
-}
-

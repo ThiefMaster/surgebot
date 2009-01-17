@@ -9,9 +9,13 @@ char *strip_duplicate_whitespace(char *str);
 size_t substr_count(const char *haystack, const char *needle, unsigned char case_sensitive);
 char *ltrim(char * const str);
 char *rtrim(char * const str);
-inline char *trim(char * const str);
 char *urlencode(const char *s);
 char *urldecode(char *uri);
 char *html_encode(const char *str);
+
+static inline char *trim(char * const str)
+{
+	return ltrim(rtrim(str));
+}
 
 #endif

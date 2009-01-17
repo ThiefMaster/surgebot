@@ -222,12 +222,6 @@ char *rtrim(char * const str)
 	return str;
 }
 
-inline char *trim(char * const str)
-{
-	return ltrim(rtrim(str));
-}
-
-
 char *urlencode(const char *s)
 {
 	register int x, y;

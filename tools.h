@@ -23,8 +23,15 @@ unsigned char check_date(int day, int month, int year);
 char *strip_codes(char *str);
 unsigned char file_exists(const char *file);
 
-inline long min(long a, long b);
-inline long max(long a, long b);
+static inline long min(long a, long b)
+{
+	return (a < b) ? a : b;
+}
+
+static inline long max(long a, long b)
+{
+	return (a > b) ? a : b;
+}
 
 #define true_string(STR)	((STR) && (!strcasecmp((STR), "on") || !strcasecmp((STR), "true") || !strcmp((STR), "1") || !strcasecmp((STR), "yes")))
 #define false_string(STR)	(!(STR) || !strcasecmp((STR), "off") || !strcasecmp((STR), "false") || !strcmp((STR), "0") || !strcasecmp((STR), "no"))
