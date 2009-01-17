@@ -33,8 +33,8 @@ static void remove_user(void *bound, struct chanfw_user *data);
 static void channel_complete_hook(struct irc_channel *);
 static int number_validate(struct chanreg *reg, struct irc_source *src, const char *value);
 static int notification_validate(struct chanreg *reg, struct irc_source *src, const char *value);
-static const char *notification_format(const char *value);
-static const char *notification_encode(const char *old_value, const char *value);
+static const char *notification_format(struct chanreg *reg, const char *value);
+static const char *notification_encode(struct chanreg *reg, const char *old_value, const char *value);
 static int cmod_enabled(struct chanreg *reg, enum cmod_enable_reason reason);
 static int cmod_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 
@@ -367,7 +367,7 @@ static int notification_validate(struct chanreg *reg, struct irc_source *src, co
 	return 1;
 }
 
-static const char *notification_format(const char *value)
+static const char *notification_format(struct chanreg *reg, const char *value)
 {
 	static char buf[64];
 	unsigned int flags = atoi(value);
@@ -384,7 +384,7 @@ static const char *notification_format(const char *value)
 	return buf;
 }
 
-static const char *notification_encode(const char *old_value, const char *value)
+static const char *notification_encode(struct chanreg *reg, const char *old_value, const char *value)
 {
 	static char flag_str[8];
 	unsigned int flags, old_flags;
