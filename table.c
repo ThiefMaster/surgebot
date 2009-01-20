@@ -54,8 +54,18 @@ void table_free(struct table *table)
 	free(table);
 }
 
-#define col_bold(TABLE, COL)	((TABLE)->bold_cols & (1 << COL))
 void table_send(struct table *table, const char *target)
+{
+	do_table_send(table, target, "NOTICE");
+}
+
+void table_send_pm(struct table *table, const char *target)
+{
+	do_table_send(table, target, "PRIVMSG");
+}
+
+#define col_bold(TABLE, COL)	((TABLE)->bold_cols & (1 << COL))
+void do_table_send(struct table *table, const char *target, const char *msgtype)
 {
 	unsigned int len, spaces, *maxlens;
 	struct stringbuffer *line;
@@ -115,7 +125,7 @@ void table_send(struct table *table, const char *target)
 			}
 		}
 
-		irc_send_msg(target, "NOTICE", "%s", line->string);
+		irc_send_msg(target, msgtype, "%s", line->string);
 		line->len = 0;
 	}
 
