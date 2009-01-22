@@ -140,7 +140,7 @@ IRC_HANDLER(privmsg)
 	else if(bot_conf.trigger)
 	{
 		size_t trigger_len = strlen(bot_conf.trigger);
-		if((channel = channel_find(argv[1])) && !strncmp(argv[2], bot_conf.trigger, trigger_len) && *(argv[2] + 1))
+		if((channel = channel_find(argv[1])) && !strncmp(argv[2], bot_conf.trigger, trigger_len) && *(argv[2] + trigger_len))
 			handle_command(src, user, channel, (argv[2] + trigger_len));
 	}
 }
