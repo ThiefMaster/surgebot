@@ -47,7 +47,7 @@ struct surgebot_conf
 	char		*username;
 	char		*realname;
 
-	char		trigger;
+	char		*trigger;
 };
 
 struct user_account

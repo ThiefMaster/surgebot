@@ -110,7 +110,7 @@ static int bot_conf_reload()
 	bot_conf.nickname	= ((str = conf_get("bot/nick", DB_STRING)) ? str : NULL);
 	bot_conf.username	= ((str = conf_get("bot/username", DB_STRING)) ? str : NULL);
 	bot_conf.realname	= ((str = conf_get("bot/realname", DB_STRING)) ? str : NULL);
-	bot_conf.trigger	= ((str = conf_get("bot/trigger", DB_STRING)) ? *str : '\0');
+	bot_conf.trigger	= ((str = conf_get("bot/trigger", DB_STRING)) ? str : "");
 
 	bot_conf.server_host		= ((str = conf_get("uplink/host", DB_STRING)) ? str : NULL);
 	bot_conf.server_port		= ((str = conf_get("uplink/port", DB_STRING)) ? atoi(str) : 6667);
