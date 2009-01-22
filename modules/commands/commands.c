@@ -310,7 +310,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 
 	// Call command function and log it if the return value is >0.
-	ret = cmd->func(src, user, channel, channel_arg, argc, argv);
+	ret = cmd->func(src, user, channel, channel_arg, argc, argv, msg);
 
 	if(ret == -1) // Not enough arguments
 	{

@@ -105,7 +105,12 @@ COMMAND(die)
 {
 	extern int quit_poll;
 	quit_poll = 1;
-	irc_send_fast("QUIT :Received DIE");
+
+	if(argc > 1)
+		irc_send_fast("Quit :Received DIE [%s]", line + (argv[1] - argv[0]));
+	else
+		irc_send_fast("QUIT :Received DIE");
+
 	sock_poll();
 	return 1;
 }
