@@ -545,7 +545,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 	// However, it does not prevent them from setting a bad access rule to the auth command.
 	if(res == CR_DENY && (binding->cmd->flags & CMD_KEEP_BOUND) && user && user->account && group_has_member("admins", user->account))
 	{
-		reply("You have no access to $b%s$b but overrided its access rule since you are in the admin group.", binding->name);
+		reply("You have no access to $b%s$b but overrode its access rule since you are in the admin group.", binding->name);
 		res = CR_ALLOW;
 	}
 

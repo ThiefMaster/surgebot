@@ -297,7 +297,6 @@ static struct chanreg *chanreg_add(const char *channel, const struct stringlist 
 
 	chanreg_join(reg);
 	dict_insert(chanregs, reg->channel, reg);
-
 	return reg;
 }
 

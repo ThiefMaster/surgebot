@@ -1,4 +1,5 @@
 #include <sys/time.h>
+#include <errno.h>
 #include "global.h"
 #include "module.h"
 #include "modules/commands/commands.h"
@@ -7,6 +8,7 @@
 #include "irc.h"
 #include "conf.h"
 #include "sock.h"
+#include "timer.h"
 
 MODULE_DEPENDS("commands", "help", NULL);
 
@@ -27,6 +29,7 @@ COMMAND(binding_add);
 COMMAND(binding_del);
 COMMAND(binding_rule);
 COMMAND(writeall);
+COMMAND(trigger_timer);
 
 MODULE_INIT
 {
@@ -47,6 +50,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "binding del",	binding_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "binding rule",	binding_rule,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "writeall",	writeall,	1,	0,	"group(admins)");
+	DEFINE_COMMAND(self, "timer trigger",	trigger_timer, 2, 0, "group(admins)");
 }
 
 MODULE_FINI
@@ -410,6 +414,41 @@ COMMAND(writeall)
 	return 1;
 }
 
+COMMAND(trigger_timer)
+{
+	unsigned long id;
+	struct dict *timers;
+
+	if(!aredigits(argv[1]))
+	{
+		reply("The timer id needs to be a positive integral number.");
+		return 0;
+	}
+
+	errno = 0;
+	id = strtoul(argv[1], NULL, 10);
+	if(id == ULONG_MAX && errno == ERANGE)
+	{
+		reply("The timer ID needs to be positive and below %lu.", ULONG_MAX);
+		return 0;
+	}
+
+	timers = timer_dict();
+	dict_iter(node, timers)
+	{
+		struct timer *timer = node->data;
+		if(timer->id == id)
+		{
+			timer->time = now;
+			reply("Triggering timer $b%lu$b.", id);
+			return 1;
+		}
+	}
+
+	reply("There is no timer with the ID $b%lu$b.", id);
+	return 0;
+}
+
 static void module_deps_recursive(struct irc_source *src, struct module *module, unsigned int depth)
 {
 	unsigned int i, nn, pos = 0;
@@ -466,4 +505,3 @@ static int do_backslash_arg(int start, int argc, char ***argv_ptr)
 
 	return argc;
 }
-

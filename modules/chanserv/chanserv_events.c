@@ -109,7 +109,6 @@ inline void chanserv_event_add(struct tm calendar, const char *channel, const ch
 	event->account = strdup(account);
 	event->command = strdup(command);
 
-	ptrlist_add(cschan->events, 0, event);
 	cschan->last_event_ts = event->timestamp;
 
 	if(event_table)

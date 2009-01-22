@@ -15,6 +15,7 @@ MODULE_DEPENDS("chanreg", "commands", "tools", "db", NULL);
 
 COMMAND(users);
 COMMAND(events);
+IRC_HANDLER(join);
 IRC_HANDLER(part);
 IRC_HANDLER(notice);
 DB_SELECT_CB(show_events_cb);
@@ -58,6 +59,7 @@ MODULE_INIT
 
 	reg_irc_handler("NOTICE", notice);
 	reg_irc_handler("PART", part);
+	reg_irc_handler("JOIN", join);
 
 	reg_channel_complete_hook(chanserv_channel_complete_hook);
 	chanserv_event_timer_add();
@@ -68,6 +70,7 @@ MODULE_FINI
 	chanserv_event_timer_del();
 	unreg_channel_complete_hook(chanserv_channel_complete_hook);
 
+	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("PART", part);
 	unreg_irc_handler("NOTICE", notice);
 
@@ -231,9 +234,21 @@ COMMAND(users)
 	return 1;
 }
 
-IRC_HANDLER(part)
+IRC_HANDLER(join)
 {
 	struct chanreg *reg;
+
+	if(strcmp(src->nick, sz_chanserv_botname))
+		return;
+
+	if(!(reg = chanreg_find(argv[1])))
+		return;
+
+	chanserv_channel_create(reg);
+}
+
+IRC_HANDLER(part)
+{
 	struct chanserv_channel *cschan;
 
 	if(strcmp(src->nick, sz_chanserv_botname))
@@ -242,17 +257,12 @@ IRC_HANDLER(part)
 	if(!(cschan = chanserv_channel_find(argv[1])))
 		return;
 
-	if(!(reg = chanreg_find(argv[1])))
-		return;
-
-	if(stringlist_find(reg->active_modules, cmod->name) != -1)
+	if(stringlist_find(cschan->reg->active_modules, cmod->name) != -1)
 	{
-		if(chanreg_module_disable(reg, cmod, 0, CDR_DISABLED) == 0)
-		{
+		if(chanreg_module_disable(cschan->reg, cmod, 0, CDR_DISABLED) == 0)
 			chanserv_report(argv[1], "Module $b%s$b has automatically been disabled as ChanServ left the channel.", cmod->name);
-			ptrlist_del_ptr(chanserv_channels, cschan);
-		}
 	}
+	ptrlist_del_ptr(chanserv_channels, cschan);
 }
 
 IRC_HANDLER(notice)

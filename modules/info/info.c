@@ -205,6 +205,7 @@ COMMAND(stats_bindings)
 	struct dict *bindings = binding_dict();
 	struct table *table;
 	unsigned int i = 0;
+	enum command_rule_result res;
 
 	table = table_create(2, dict_size(bindings));
 	table_set_header(table, "Name", "Access Rule");
@@ -212,6 +213,14 @@ COMMAND(stats_bindings)
 	dict_iter(node, bindings)
 	{
 		struct cmd_binding *binding = node->data;
+
+		if(binding->comp_rule && command_rule_executable(binding->comp_rule))
+		{
+			res = command_rule_exec(binding->comp_rule, src, user, channel, channelname);
+
+			if(res != CR_ALLOW) // Only show commands that the user is able to execute
+				continue;
+		}
 
 		if(argc > 1 && match(argv[1], binding->name))
 			continue;
