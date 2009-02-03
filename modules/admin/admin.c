@@ -111,7 +111,7 @@ COMMAND(die)
 	quit_poll = 1;
 
 	if(argc > 1)
-		irc_send_fast("Quit :Received DIE [%s]", line + (argv[1] - argv[0]));
+		irc_send_fast("Quit :Received DIE [%s]", argline + (argv[1] - argv[0]));
 	else
 		irc_send_fast("QUIT :Received DIE");
 
