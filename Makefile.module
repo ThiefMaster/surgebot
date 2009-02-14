@@ -18,34 +18,34 @@ LIB_mod	= modules/$(MODULE).so
 all: $(DEP_mod) $(LIB_mod)
 
 clean:
-	@echo "   CLEANMOD  $(MODULE)"
+	@echo -e "   \033[38;5;154mCLEANMOD\033[0m  $(MODULE)"
 	rm -f .tmp/modules/$(MODULE)/*.d .tmp/modules/$(MODULE)/*.dd .tmp/modules/$(MODULE)/*.o .tmp/modules/$(MODULE)/*.oo $(LIB_mod)
 
 # rule for creating final binary
 $(LIB_mod): $(OBJ_mod) $(OBJX_mod)
-	@echo "   LD        [$(MODULE)] $@"
+	@echo -e "   \033[38;5;69mLD\033[0m        [\033[38;5;220m$(MODULE)\033[0m] $@"
 	$(CC) $(LDFLAGS_mod) $(LIBS_mod) $(OBJ_mod) $(OBJX_mod) -o $(LIB_mod)
 
 # rule for creating object files
 $(OBJ_mod) : .tmp/modules/$(MODULE)/%.o : modules/$(MODULE)/%.c
-	@echo "   CC        $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.o))"
+	@echo -e "   \033[38;5;33mCC\033[0m        $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.o))"
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
 
 # rule for creating dependency files
 $(DEP_mod) : .tmp/modules/$(MODULE)/%.d : modules/$(MODULE)/%.c module-config.h
 	@mkdir -p .tmp/modules/$(MODULE)
-	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.d))"
+	@echo -e "   \033[38;5;80mDEP\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.d))"
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MM -MT $(@:.d=.o) $< > $@
 
 # rule for creating object files (c++)
 $(OBJX_mod) : .tmp/modules/$(MODULE)/%.oo : modules/$(MODULE)/%.cc
-	@echo "   CXX       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.cc=.oo))"
+	@echo -e "   \033[38;5;37mCXX\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.oo))"
 	@$(CXX) $(CXXFLAGS_mod) -MMD -MF .tmp/$(<:.cc=.dd) -MT $@ -o $@ -c $<
 
 # rule for creating dependency files (c++)
 $(DEPX_mod) : .tmp/modules/$(MODULE)/%.dd : modules/$(MODULE)/%.cc module-config.h
 	@mkdir -p .tmp/modules/$(MODULE)
-	@echo "   DEP       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.cc=.dd))"
+	@echo -e "   \033[38;5;80mDEP\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.dd))"
 	@$(CXX) $(CXXFLAGS_mod) -MM -MT $(@:.dd=.o) $< > $@
 
 
