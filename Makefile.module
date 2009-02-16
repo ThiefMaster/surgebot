@@ -10,16 +10,17 @@ OBJX_mod = $(patsubst %.cc,.tmp/%.oo,$(SRCX_mod))
 DEP_mod = $(patsubst %.c,.tmp/%.d,$(SRC_mod))
 DEPX_mod = $(patsubst %.cc,.tmp/%.dd,$(SRCX_mod))
 LIB_mod	= modules/$(MODULE).so
+TMPDIR = .tmp/modules/$(MODULE)
 
 -include modules/$(MODULE)/Makefile.in
 
 .PHONY: all clean
 
-all: $(DEP_mod) $(LIB_mod)
+all: $(TMPDIR) $(LIB_mod)
 
 clean:
 	@echo -e "   \033[38;5;154mCLEANMOD\033[0m  $(MODULE)"
-	rm -f .tmp/modules/$(MODULE)/*.d .tmp/modules/$(MODULE)/*.dd .tmp/modules/$(MODULE)/*.o .tmp/modules/$(MODULE)/*.oo $(LIB_mod)
+	@rm -f $(TMPDIR)/*.d $(TMPDIR)/*.dd $(TMPDIR)/*.o $(TMPDIR)/*.oo $(LIB_mod)
 
 # rule for creating final binary
 $(LIB_mod): $(OBJ_mod) $(OBJX_mod)
@@ -27,27 +28,24 @@ $(LIB_mod): $(OBJ_mod) $(OBJX_mod)
 	$(CC) $(LDFLAGS_mod) $(LIBS_mod) $(OBJ_mod) $(OBJX_mod) -o $(LIB_mod)
 
 # rule for creating object files
-$(OBJ_mod) : .tmp/modules/$(MODULE)/%.o : modules/$(MODULE)/%.c
+$(OBJ_mod) : $(TMPDIR)/%.o : modules/$(MODULE)/%.c
 	@echo -e "   \033[38;5;33mCC\033[0m        $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.o))"
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
+	@cp -f $(TMPDIR)/$*.d $(TMPDIR)/$*.d.tmp
+	@sed -e 's/.*://' -e 's/\\$$//' < $(TMPDIR)/$*.d.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TMPDIR)/$*.d
+	@rm -f $(TMPDIR)/$*.d.tmp
 
-# rule for creating dependency files
-$(DEP_mod) : .tmp/modules/$(MODULE)/%.d : modules/$(MODULE)/%.c module-config.h
-	@mkdir -p .tmp/modules/$(MODULE)
-	@echo -e "   \033[38;5;80mDEP\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.d))"
-	@$(CC) $(CFLAGS_mod) -std=gnu99 -MM -MT $(@:.d=.o) $< > $@
 
 # rule for creating object files (c++)
-$(OBJX_mod) : .tmp/modules/$(MODULE)/%.oo : modules/$(MODULE)/%.cc
+$(OBJX_mod) : $(TMPDIR)/%.oo : modules/$(MODULE)/%.cc
 	@echo -e "   \033[38;5;37mCXX\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.oo))"
 	@$(CXX) $(CXXFLAGS_mod) -MMD -MF .tmp/$(<:.cc=.dd) -MT $@ -o $@ -c $<
+	@cp -f $(TMPDIR)/$*.dd $(TMPDIR)/$*.dd.tmp
+	@sed -e 's/.*://' -e 's/\\$$//' < $(TMPDIR)/$*.dd.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TMPDIR)/$*.dd
+	@rm -f $(TMPDIR)/$*.dd.tmp
 
-# rule for creating dependency files (c++)
-$(DEPX_mod) : .tmp/modules/$(MODULE)/%.dd : modules/$(MODULE)/%.cc module-config.h
-	@mkdir -p .tmp/modules/$(MODULE)
-	@echo -e "   \033[38;5;80mDEP\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.dd))"
-	@$(CXX) $(CXXFLAGS_mod) -MM -MT $(@:.dd=.o) $< > $@
-
+$(TMPDIR):
+	@mkdir -p $(TMPDIR)
 
 # include dependency files
 ifneq ($(MAKECMDGOALS),clean)
