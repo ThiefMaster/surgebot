@@ -148,7 +148,7 @@ IRC_HANDLER(privmsg)
 static void handle_command(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *msg)
 {
 	int is_privmsg = (channel == NULL);
-	char *orig_argv[MAXARG], *exp_argv[MAXARG], **argv, *msg_dup, *new_msg, *channel_arg = NULL;
+	char *orig_argv[MAXARG], *exp_argv[MAXARG], **argv, *msg_dup, *arg_string, *channel_arg = NULL;
 	int argc, count, ret;
 	struct stringbuffer *name, *log_entry;
 	struct cmd_binding *binding = NULL, *fallback = NULL;
@@ -309,8 +309,9 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		return;
 	}
 
+	arg_string = untokenize(argc, argv, " ");
 	// Call command function and log it if the return value is >0.
-	ret = cmd->func(src, user, channel, channel_arg, argc, argv, msg);
+	ret = cmd->func(src, user, channel, channel_arg, argc, argv, arg_string);
 
 	if(ret == -1) // Not enough arguments
 	{
@@ -360,9 +361,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 			argv[0] = binding->cmd_name;
 		}
 
-		new_msg = untokenize(argc, argv, " ");
-		stringbuffer_append_string(log_entry, new_msg);
-		free(new_msg);
+		stringbuffer_append_string(log_entry, arg_string);
 
 		log_append(LOG_CMD, "%s", log_entry->string);
 		stringbuffer_free(log_entry);
@@ -373,6 +372,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 
 	free(msg_dup);
+	free(arg_string);
 }
 
 static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, int argc, char **argv, char **exp_argv)
