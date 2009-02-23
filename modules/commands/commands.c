@@ -312,6 +312,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	arg_string = untokenize(argc, argv, " ");
 	// Call command function and log it if the return value is >0.
 	ret = cmd->func(src, user, channel, channel_arg, argc, argv, arg_string);
+	free(arg_string);
 
 	if(ret == -1) // Not enough arguments
 	{
@@ -361,7 +362,10 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 			argv[0] = binding->cmd_name;
 		}
 
+		// Unsplit args again in case some were updated (e.g. passwords replaced by ****)
+		arg_string = untokenize(argc, argv, " ");
 		stringbuffer_append_string(log_entry, arg_string);
+		free(arg_string);
 
 		log_append(LOG_CMD, "%s", log_entry->string);
 		stringbuffer_free(log_entry);
@@ -372,7 +376,6 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	}
 
 	free(msg_dup);
-	free(arg_string);
 }
 
 static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, int argc, char **argv, char **exp_argv)
