@@ -137,7 +137,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	 */
 
 	const char *tmp;
-	char *tmp2, *tmp3, *tmp4, *result, *link, static_buf[MAXLEN];
+	char *tmp2, *tmp3, *tmp4, *result, *link, *read_buf;
 	struct google_object *obj = google_object_find(http);
 	int i; // Counting variable to print out a certain amount of results
 
@@ -156,30 +156,29 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			return;
 		}
 
-		strlcpy(static_buf, tmp, tmp2 - tmp + 1);
-		result = html_decode(strip_html_tags(static_buf));
+		read_buf = strndup(tmp, tmp2 - tmp + 1);
+		result = html_decode(strip_html_tags(read_buf));
 		google_msg(obj, "[$b%s$b] %s", obj->nick, result);
+		free(read_buf);
 		return;
 	}
 
 	tmp = buf;
-	while(i < google_conf.results && (tmp = strstr(tmp, "<h3 class=r")))
+	while(i < google_conf.results && (tmp = strstr(tmp, "<h3 class=r>")))
 	{
 		tmp += 12;
 
 		// Find end of match
 		if(!(tmp2 = strstr(tmp, "</h3")))
 		{
-			log_append(LOG_ERROR, "(Google Request %s) Invalid Google Response, couldn't find closing h2-tag", obj->id);
+			log_append(LOG_ERROR, "(Google Request %s) Invalid Google Response, couldn't find closing h3-tag", obj->id);
 			google_error(obj, NULL);
 			return;
 		}
 
 		i++;
 
-		// If there is a link within the h2, treat as "normal" result
-		strlcpy(static_buf, tmp, tmp2 - tmp + 1);
-		result = html_decode(strip_html_tags(static_buf));
+		// Find start of link
 		if((tmp3 = strstr(tmp, "<a")) && (tmp3 < tmp2))
 		{
 			// First result
@@ -207,15 +206,17 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 				return;
 			}
 
-			link = strndup(tmp3, tmp4 - tmp3);
+			// If there is a link within the h2, treat as "normal" result
+			result = html_decode(strip_html_tags(strndup(tmp, tmp2 - tmp)));
+			link = html_decode(strndup(tmp3, tmp4 - tmp3));
 			google_msg(obj, "%d: $b%s$b (%s)", i, result, link);
 			free(link);
+			free(result);
 		}
 	}
 
 	if(!i)
 		google_msg(obj, "No results found.");
-
 }
 
 static void event_func(struct HTTPRequest *http, enum HTTPRequest_event event)

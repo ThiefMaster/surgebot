@@ -55,7 +55,6 @@ struct chanserv_channel *chanserv_channel_create(struct chanreg *reg)
 	if(chanreg_module_active(cmod, reg->channel))
 		chanserv_fetch_events(NULL, cschan);
 
-	debug("Created new chanserv channel channel %s, chanreg %p", reg->channel, reg);
 	return cschan;
 }
 
@@ -72,7 +71,6 @@ struct chanserv_channel *chanserv_channel_find(const char *channelname)
 
 void chanserv_channel_free(struct chanserv_channel *cschan)
 {
-	debug("Freeing chanserv channel %s, chanreg %p", cschan->reg->channel, cschan->reg);
 	ptrlist_free(cschan->events);
 	dict_free(cschan->users);
 	free(cschan);

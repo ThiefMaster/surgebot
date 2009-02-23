@@ -180,7 +180,9 @@ int cmod_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disab
 		if(event_table)
 		{
 			db_row_drop(event_table, "channel", reg->channel, NULL);
-			cschan->last_event_ts = 0;
+
+			if(cschan)
+				cschan->last_event_ts = 0;
 		}
 	}
 

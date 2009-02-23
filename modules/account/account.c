@@ -59,7 +59,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "auth",		auth,			3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "pass",		pass,			1, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "unregister",	unregister,		2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		1, 0, "true");
+	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		1, CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "loginmask",	loginmask,		1, CMD_REQUIRE_AUTHED, "true");
 	DEFINE_COMMAND(self, "logout",		logout,			1, CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
 
@@ -264,7 +264,13 @@ COMMAND(accountinfo)
 		stringlist_free(lines);
 	}
 
-	if(account->login_mask && ((argc < 2 && user->account) || (!strcasecmp(src->nick, argv[1]) || !strcasecmp(user->account->name, account->name))))
+	if(account->login_mask
+		// Getting here without argument means the user is authed and infoing himself, no more checks
+		&& (
+				(argc < 2)
+			||	(user->account && !strcasecmp(user->account->name, account->name))
+		)
+	)
 	{
 		reply("  $bLoginmask:      $b %s", account->login_mask);
 	}
