@@ -1,0 +1,8 @@
+"greeting" = (
+	"Usage: /msg $N greeting <#channel> [index [text|*]]",
+	"Sets/Removes a greeting or shows the current greetings.",
+	"Without arguments, all greetings are displayed.",
+	"With one argument, the index of a greeting, only this greeting will be displayed.",
+	"To set/change a greeting, simply put the text after the index.",
+	"To remove a greeting, set it to $b*$b."
+);
