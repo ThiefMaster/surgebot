@@ -187,9 +187,11 @@ static int chanlog_add(const char *target)
 	snprintf(dirname + len, sizeof(dirname) - len, "/%d-%02d-%02d.log", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
 
 	strtolower(dirname + len);
+	// Try to open file for reading
 	fd = fopen(dirname, "a");
 	if(!fd)
 	{
+		// File doesn't seem to exist, opening it for writing will create it
 		fd = fopen(dirname, "w");
 		if(!fd)
 		{
@@ -198,6 +200,10 @@ static int chanlog_add(const char *target)
 			return -1;
 		}
 	}
+
+	// Make sure the correct filemode was set
+	if(chmod(dirname, mode))
+		log_append(LOG_ERROR, "Chanlog: Could not set provided filemode %o on: %s", mode, dirname);
 
 	item = malloc(sizeof(struct chanlog));
 	memset(item, 0, sizeof(struct chanlog));
