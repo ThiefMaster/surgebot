@@ -208,7 +208,9 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 
 			// If there is a link within the h2, treat as "normal" result
 			result = html_decode(strip_html_tags(strndup(tmp, tmp2 - tmp)));
-			link = html_decode(strndup(tmp3, tmp4 - tmp3));
+			link = strndup(tmp3, tmp4 - tmp3);
+			// Does the link really need to be decoded?
+			//link = html_decode(link);
 			google_msg(obj, "%d: $b%s$b (%s)", i, result, link);
 			free(link);
 			free(result);
