@@ -27,7 +27,7 @@ void ptrlist_free(struct ptrlist *list)
 unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr)
 {
 	struct ptrlist_node *node;
-	unsigned int pos;
+	int pos;
 
 	if((pos = ptrlist_find(list, ptr)) != -1)
 		return pos;
@@ -49,7 +49,7 @@ unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr)
 
 unsigned int ptrlist_find(struct ptrlist *list, void *ptr)
 {
-	for(int i = 0; i < list->count; i++)
+	for(unsigned int i = 0; i < list->count; i++)
 		if(list->data[i]->ptr == ptr)
 			return i;
 
@@ -64,7 +64,7 @@ void ptrlist_set_free_func(struct ptrlist *list, ptrlist_free_f *free_func)
 void ptrlist_clear(struct ptrlist *list)
 {
 
-	for(int i = 0; i < list->count; i++)
+	for(unsigned int i = 0; i < list->count; i++)
 	{
 		if(list->free_func)
 			list->free_func(list->data[i]->ptr);

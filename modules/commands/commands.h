@@ -3,8 +3,8 @@
 
 #include "command_rule.h"
 
-#define COMMAND(CMD)	static int __command_ ## CMD(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, int argc, char **argv, const char *argline)
-typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, int argc, char **argv, const char *argline);
+#define COMMAND(CMD)	static int __command_ ## CMD(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, unsigned int argc, char **argv, const char *argline)
+typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, unsigned int argc, char **argv, const char *argline);
 #define DEFINE_COMMAND(MOD, NAME, FUNC, ARGC, FLAGS, RULE)	command_add(MOD, NAME, __command_ ## FUNC, ARGC, FLAGS, RULE)
 
 #define CMD_ACCEPT_CHANNEL	0x001 // accept channel argument

@@ -257,7 +257,7 @@ COMMAND(accountinfo)
 
 		stringlist_sort(slist);
 		lines = stringlist_to_irclines(src->nick, slist);
-		for(int i = 0; i < lines->count; i++)
+		for(unsigned int i = 0; i < lines->count; i++)
 			reply("  $bGroups:         $b %s", lines->data[i]);
 
 		stringlist_free(slist);
@@ -286,7 +286,7 @@ COMMAND(accountinfo)
 
 		stringlist_sort(slist);
 		lines = stringlist_to_irclines(src->nick, slist);
-		for(int i = 0; i < lines->count; i++)
+		for(unsigned int i = 0; i < lines->count; i++)
 			reply("  $bCurrent nicks:  $b %s", lines->data[i]);
 
 		stringlist_free(slist);
@@ -330,7 +330,7 @@ COMMAND(group_list)
 
 	stringlist_sort(slist);
 	lines = stringlist_to_irclines(src->nick, slist);
-	for(int i = 0; i < lines->count; i++)
+	for(unsigned int i = 0; i < lines->count; i++)
 		reply("%s", lines->data[i]);
 
 	stringlist_free(slist);
@@ -363,12 +363,12 @@ COMMAND(group_info)
 	if(group->members->count)
 	{
 		slist = stringlist_create();
-		for(int i = 0; i < group->members->count; i++)
+		for(unsigned int i = 0; i < group->members->count; i++)
 			stringlist_add(slist, strdup(group->members->data[i]));
 
 		stringlist_sort(slist);
 		lines = stringlist_to_irclines(src->nick, slist);
-		for(int i = 0; i < lines->count; i++)
+		for(unsigned int i = 0; i < lines->count; i++)
 			reply("  $bMembers: $b %s", lines->data[i]);
 
 		stringlist_free(slist);

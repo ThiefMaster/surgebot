@@ -34,7 +34,7 @@ MODULE_FINI {}
 
 char *html_decode(char *str)
 {
-	int i;
+	unsigned int i;
 	char *tmp2, *tmp = str, entity[11];
 	size_t len = strlen(str);
 

@@ -233,7 +233,7 @@ static int chanreg_db_write(struct database *db)
 					database_write_string(db, "registrar", reg->registrar);
 
 				database_begin_object(db, "users");
-					for(int j = 0; j < reg->users->count; j++)
+					for(unsigned int j = 0; j < reg->users->count; j++)
 					{
 						struct chanreg_user *c_user = reg->users->data[j];
 						database_begin_object(db, c_user->account->name);
@@ -257,7 +257,7 @@ static int chanreg_db_write(struct database *db)
 				database_end_object(db);
 
 				database_begin_object(db, "data");
-					for(int i = 0; i < reg->modules->count; i++)
+					for(unsigned int i = 0; i < reg->modules->count; i++)
 					{
 						struct dict *object = dict_find(reg->db_data, reg->modules->data[i]);
 						if(object)
@@ -360,7 +360,7 @@ unsigned int chanreg_check_access(struct chanreg *reg, struct user_account *acco
 	user.account = account;
 
 	channel = channel_find(reg->channel);
-	for(int i = 0; i < reg->users->count; i++)
+	for(unsigned int i = 0; i < reg->users->count; i++)
 	{
 		if(reg->users->data[i]->account == account && reg->users->data[i]->level >= min_access)
 			return 1;
@@ -377,7 +377,7 @@ static void chanreg_free(struct chanreg *reg)
 	if(reg->active && !reloading_module)
 		chanjoin_delchan(reg->channel, this, NULL);
 
-	for(int i = 0; i < reg->users->count; i++)
+	for(unsigned int i = 0; i < reg->users->count; i++)
 		free(reg->users->data[i]);
 	chanreg_user_list_free(reg->users);
 
@@ -417,7 +417,7 @@ static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user)
 
 struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname)
 {
-	for(int i = 0; i < reg->users->count; i++)
+	for(unsigned int i = 0; i < reg->users->count; i++)
 	{
 		struct chanreg_user *c_user = reg->users->data[i];
 		if(!strcasecmp(c_user->account->name, accountname))
@@ -538,7 +538,7 @@ void chanreg_module_writedb(struct chanreg_module *cmod)
 	struct database_object *dbo;
 
 	assert(cmod->db_write);
-	for(int i = 0; i < cmod->channels->count; i++)
+	for(unsigned int i = 0; i < cmod->channels->count; i++)
 	{
 		struct chanreg *reg = cmod->channels->data[i];
 
@@ -646,7 +646,7 @@ unsigned int chanreg_module_active(struct chanreg_module *cmod, const char *chan
 	if(!channel)
 		return 0;
 
-	for(int i = 0; i < cmod->channels->count; i++)
+	for(unsigned int i = 0; i < cmod->channels->count; i++)
 	{
 		if(cmod->channels->data[i] == reg)
 			return 1;
@@ -931,7 +931,7 @@ COMMAND(giveownership)
 		return 0;
 	}
 
-	for(int i = 0; i < reg->users->count; i++)
+	for(unsigned int i = 0; i < reg->users->count; i++)
 	{
 		if(reg->users->data[i]->level == UL_OWNER)
 		{
@@ -1095,7 +1095,7 @@ COMMAND(users)
 	table = table_create(3, reg->users->count);
 	table_set_header(table, "Access", "Account", "Status");
 
-	for(int j = 0; j < reg->users->count; j++)
+	for(unsigned int j = 0; j < reg->users->count; j++)
 	{
 		struct chanreg_user *c_user = reg->users->data[j];
 
@@ -1129,7 +1129,7 @@ COMMAND(cset)
 		struct stringlist *free_strings;
 
 		stringlist_sort(reg->active_modules);
-		for(int i = 0; i < reg->active_modules->count; i++)
+		for(unsigned int i = 0; i < reg->active_modules->count; i++)
 		{
 			struct chanreg_module *cmod = chanreg_module_find(reg->active_modules->data[i]);
 			assert_continue(cmod);
@@ -1203,7 +1203,7 @@ COMMAND(cset)
 	}
 	else if(!modname) // Check if setting is not ambiguous.
 	{
-		for(int i = 0; i < reg->active_modules->count; i++)
+		for(unsigned int i = 0; i < reg->active_modules->count; i++)
 		{
 			struct chanreg_module *cmod_tmp = chanreg_module_find(reg->active_modules->data[i]);
 			assert_continue(cmod_tmp);
@@ -1281,7 +1281,7 @@ COMMAND(cinfo)
 	CHANREG_COMMAND;
 
 	reply("Information about $b%s$b:", channelname);
-	for(int i = 0; i < reg->users->count; i++)
+	for(unsigned int i = 0; i < reg->users->count; i++)
 	{
 		struct chanreg_user *c_user = reg->users->data[i];
 		if(c_user->level == UL_OWNER)
@@ -1293,7 +1293,7 @@ COMMAND(cinfo)
 	if(reg->active_modules->count)
 	{
 		slist = stringlist_create();
-		for(int i = 0; i < reg->active_modules->count; i++)
+		for(unsigned int i = 0; i < reg->active_modules->count; i++)
 		{
 			struct chanreg_module *cmod = chanreg_module_find(reg->active_modules->data[i]);
 			if(!(cmod->flags & CMOD_HIDDEN) || IsStaff())
@@ -1324,7 +1324,7 @@ COMMAND(cmod_list)
 	unsigned int staff = IsStaff();
 	struct stringlist *modules;
 	char buf[MAXLEN];
-	int pos = 0;
+	unsigned int pos = 0;
 
 	CHANREG_COMMAND;
 
@@ -1362,7 +1362,7 @@ COMMAND(cmod_list)
 	{
 		reply("Available modules ($bbold$b modules are loaded):");
 		stringlist_sort(modules);
-		for(int i = 0; i < modules->count; i++)
+		for(unsigned int i = 0; i < modules->count; i++)
 			reply("  %s", modules->data[i]);
 	}
 	else
@@ -1390,12 +1390,12 @@ COMMAND(cmod_info)
 	else
 	{
 		slist = stringlist_create();
-		for(int i = 0; i < cmod->channels->count; i++)
+		for(unsigned int i = 0; i < cmod->channels->count; i++)
 			stringlist_add(slist, strdup(cmod->channels->data[i]->channel));
 		stringlist_sort(slist);
 		channels = stringlist_to_irclines(src->nick, slist);
 		reply("The module $b%s$b is activated in the following channel%s:", argv[1], channels->count == 1 ? "" : "s");
-		for(int i = 0; i < channels->count; i++)
+		for(unsigned int i = 0; i < channels->count; i++)
 			reply("  %s", channels->data[i]);
 
 		stringlist_free(slist);
@@ -1527,9 +1527,8 @@ COMMAND(rejoin)
 			else
 			{
 				struct stringlist *irclist = stringlist_to_irclines(src->nick, slist);
-				int i;
 				reply("Attempting to rejoin the following $b%d$b channels:", count);
-				for(i = 0; i < irclist->count; i++)
+				for(unsigned int i = 0; i < irclist->count; i++)
 					reply("  %s", irclist->data[i]);
 
 				stringlist_free(irclist);

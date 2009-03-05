@@ -307,7 +307,7 @@ static int perform_exec(struct dict *record, struct irc_source *src, int argc, c
 	// Send data to irc
 	if((slist = database_fetch(record, "send", DB_STRINGLIST)) != NULL)
 	{
-		for(int i = 0; i < slist->count; i++)
+		for(unsigned int i = 0; i < slist->count; i++)
 			irc_send("%s", slist->data[i]);
 	}
 
@@ -319,7 +319,7 @@ static int perform_exec(struct dict *record, struct irc_source *src, int argc, c
 	// Delete timer(s)
 	if((slist = database_fetch(record, "timerdel", DB_STRINGLIST)) != NULL)
 	{
-		for(int i = 0; i < slist->count; i++)
+		for(unsigned int i = 0; i < slist->count; i++)
 			timer_del_boundname(perform, slist->data[i]);
 	}
 
@@ -349,7 +349,7 @@ static int perform_exec(struct dict *record, struct irc_source *src, int argc, c
 	if((slist = database_fetch(record, "call", DB_STRINGLIST)) != NULL)
 	{
 		perform_f *func;
-		for(int i = 0; i < slist->count; i++)
+		for(unsigned int i = 0; i < slist->count; i++)
 		{
 			if((func = dict_find(perform_funcs, str)))
 				func();

@@ -30,7 +30,7 @@ static struct {
 void module_init()
 {
 	struct stringlist *slist;
-	int i;
+	unsigned int i;
 
 	module_load_funcs = module_load_func_list_create();
 	module_unload_funcs = module_unload_func_list_create();
@@ -75,7 +75,7 @@ void module_fini()
 static void module_conf_reload()
 {
 	struct stringlist *slist;
-	int i;
+	unsigned int i;
 
 	if((slist = conf_get("core/modules", DB_STRINGLIST)) == NULL)
 	{
@@ -201,7 +201,7 @@ int module_add(const char *name)
 	module->state = MODULE_ACTIVE;
 	module->init_func(module);
 
-	for(int i = 0; i < module_load_funcs->count; i++)
+	for(unsigned int i = 0; i < module_load_funcs->count; i++)
 		module_load_funcs->data[i](module);
 
 	return 0;
@@ -250,7 +250,7 @@ int module_reload(const char *name)
 
 	while(unloaded < modules->count)
 	{
-		for(int i = 0; i < modules->count; i++)
+		for(unsigned int i = 0; i < modules->count; i++)
 		{
 			depmod = module_find(modules->data[i]);
 			if(depmod && depmod->rdepend->count == 0)
@@ -261,7 +261,7 @@ int module_reload(const char *name)
 		}
 	}
 
-	for(int i = 0; i < modules->count; i++)
+	for(unsigned int i = 0; i < modules->count; i++)
 	{
 		if(module_find(modules->data[i]) == NULL)
 			ret += module_add(modules->data[i]) ? 1 : 0;
@@ -274,7 +274,7 @@ int module_reload(const char *name)
 
 void module_get_rdeps(struct module *module, struct stringlist *rdeps)
 {
-	for(int i = 0; i < module->rdepend->count; i++)
+	for(unsigned int i = 0; i < module->rdepend->count; i++)
 	{
 		struct module *depmod = module_find(module->rdepend->data[i]);
 		assert_continue(depmod);
@@ -287,7 +287,7 @@ void module_get_rdeps(struct module *module, struct stringlist *rdeps)
 int module_del(const char *name)
 {
 	struct module *module;
-	int i;
+	unsigned int i;
 
 	if((module = module_find(name)) == NULL)
 	{
@@ -314,7 +314,7 @@ int module_del(const char *name)
 
 static void module_release_dependencies(struct module *module)
 {
-	int i, j;
+	unsigned int i, j;
 	for(i = 0; i < module->depend->count; i++)
 	{
 		struct module *depmod = module_find(module->depend->data[i]);
@@ -347,7 +347,7 @@ static void module_free(struct module *module)
 
 static int module_solve_dependencies(struct module *module)
 {
-	int i;
+	unsigned int i;
 	for(i = 0; i < module->depend->count; i++)
 	{
 		char *name = module->depend->data[i];

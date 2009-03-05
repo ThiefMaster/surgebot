@@ -2,7 +2,7 @@ BIN = surgebot
 -include modules.build
 
 LIBS = -lssl -ldl
-CFLAGS = -pipe -Werror -Wall -g -fPIC
+CFLAGS = -pipe -Werror -Wall -Wextra -Wno-unused -g -fPIC
 LDFLAGS = -Wl,--export-dynamic
 
 SRC = $(wildcard *.c)

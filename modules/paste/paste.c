@@ -61,7 +61,7 @@ static void paste_event(struct sock *sock, enum sock_event event, int err)
 	{
 		struct paster *paster = NULL;
 
-		for(int i = 0; i < pasters->count; i++)
+		for(unsigned int i = 0; i < pasters->count; i++)
 		{
 			if(pasters->data[i]->sock == sock)
 			{
@@ -83,7 +83,7 @@ static void paste_read(struct sock *sock, char *buf, size_t len)
 {
 	struct paster *paster = NULL;
 
-	for(int i = 0; i < pasters->count; i++)
+	for(unsigned int i = 0; i < pasters->count; i++)
 	{
 		if(pasters->data[i]->sock == sock)
 		{
@@ -110,7 +110,7 @@ static void paste_listener_event(struct sock *sock, enum sock_event event, int e
 	{
 		struct paster *paster = NULL;
 
-		for(int i = 0; i < pasters->count; i++)
+		for(unsigned int i = 0; i < pasters->count; i++)
 		{
 			if(pasters->data[i]->listener == sock)
 			{
@@ -156,7 +156,7 @@ COMMAND(paste)
 
 	if(port)
 	{
-		for(int i = 0; i < pasters->count; i++)
+		for(unsigned int i = 0; i < pasters->count; i++)
 		{
 			struct paster *tmp = pasters->data[i];
 			if(tmp->port == port && tmp->listener)
@@ -241,7 +241,7 @@ COMMAND(stats_paste)
 	struct table *table = table_create(4, pasters->count);
 	table_set_header(table, "Paster", "Channel", "Port", "Connected");
 
-	for(int i = 0; i < pasters->count; i++)
+	for(unsigned int i = 0; i < pasters->count; i++)
 	{
 		struct paster *paster = pasters->data[i];
 		table->data[i][0] = paster->owner;

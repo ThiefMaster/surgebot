@@ -121,7 +121,7 @@ static unsigned int check_aop_users(struct chanreg *reg, const char *host)
 		}
 		else if(!host) // we need to check all aop hosts
 		{
-			for(int i = 0; i < channel_aop_hosts->count; i++)
+			for(unsigned int i = 0; i < channel_aop_hosts->count; i++)
 			{
 				if(match(channel_aop_hosts->data[i], chanuser->user->host) == 0)
 				{
@@ -148,7 +148,7 @@ IRC_HANDLER(join)
 	if(!(channel_aop_hosts = dict_find(aop_hosts, argv[1])))
 		return;
 
-	for(int i = 0; i < channel_aop_hosts->count; i++)
+	for(unsigned int i = 0; i < channel_aop_hosts->count; i++)
 	{
 		if(src->host && match(channel_aop_hosts->data[i], src->host) == 0)
 		{
@@ -213,7 +213,7 @@ COMMAND(aop_list)
 	}
 
 	reply("$bAutoOp hosts:$b");
-	for(int i = 0; i < channel_aop_hosts->count; i++)
+	for(unsigned int i = 0; i < channel_aop_hosts->count; i++)
 		reply("  %s", channel_aop_hosts->data[i]);
 	reply("Found $b%d$b hosts.", channel_aop_hosts->count);
 	return 1;

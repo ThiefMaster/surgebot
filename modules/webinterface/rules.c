@@ -55,7 +55,7 @@ void rule_unreg(const char *name)
 	// exist/work anymore.
 
 	debug("Deleting command rule function '%s'", name);
-	for(int i = 0; i < rules->count; i++)
+	for(unsigned int i = 0; i < rules->count; i++)
 	{
 		if(rules->data[i]->rule)
 			parser_free_tokens(rules->data[i]->rule);
@@ -96,7 +96,7 @@ unsigned int rule_compile(const char *rule_str)
 struct rule *rule_get(unsigned int rule_idx)
 {
 	assert_return(rule_idx < next_rule_idx, NULL);
-	for(int i = 0; i < rules->count; i++)
+	for(unsigned int i = 0; i < rules->count; i++)
 	{
 		if(rules->data[i]->idx == rule_idx)
 			return rules->data[i];

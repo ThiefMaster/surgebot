@@ -1,6 +1,6 @@
 LIBS_mod =
-CFLAGS_mod = -pipe -Werror -Wall -g -fPIC -I. -DSURGEBOT_MODULE
-CXXFLAGS_mod = -pipe -Werror -Wall -g -fPIC -I. -DSURGEBOT_MODULE
+CFLAGS_mod = -pipe -Werror -Wall -Wextra -Wno-unused -g -fPIC -I. -DSURGEBOT_MODULE
+CXXFLAGS_mod = -pipe -Werror -Wall -Wextra -Wno-unused -g -fPIC -I. -DSURGEBOT_MODULE
 LDFLAGS_mod = -shared
 
 SRC_mod = $(wildcard modules/$(MODULE)/*.c)

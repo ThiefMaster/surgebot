@@ -160,8 +160,6 @@ void unreg_loop_func(loop_func *func)
 
 int main(int argc, char **argv)
 {
-	int i;
-
 	chdir(dirname(argv[0])); // make sure we are in the bot's main directory
 	now = time(NULL);
 	srand(now);
@@ -198,7 +196,7 @@ int main(int argc, char **argv)
 	{
 		now = time(NULL);
 
-		for(i = 0; i < loop_funcs->count; i++) // call loop funcs
+		for(unsigned int i = 0; i < loop_funcs->count; i++) // call loop funcs
 			loop_funcs->data[i]();
 
 		sock_poll();

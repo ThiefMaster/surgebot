@@ -28,7 +28,7 @@ static void command_conf_reload();
 static void command_db_read(struct database *db);
 static int command_db_write(struct database *db);
 static void handle_command(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *msg);
-static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, int argc, char **argv, char **exp_argv);
+static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, unsigned int argc, char **argv, char **exp_argv);
 static int binding_check_access(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, char *channelname, struct cmd_binding *binding, unsigned int quiet);
 static int show_subcmds(struct irc_source *src, struct irc_user *user, const char *prefix, int check_access);
 static char *make_cmd_key(struct module *module, const char *cmd);
@@ -149,7 +149,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 {
 	int is_privmsg = (channel == NULL);
 	char *orig_argv[MAXARG], *exp_argv[MAXARG], **argv, *msg_dup, *arg_string, *channel_arg = NULL;
-	int argc, count, ret;
+	unsigned int argc, count;
+	int ret;
 	struct stringbuffer *name, *log_entry;
 	struct cmd_binding *binding = NULL, *fallback = NULL;
 	struct command *cmd;
@@ -378,7 +379,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	free(msg_dup);
 }
 
-static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, int argc, char **argv, char **exp_argv)
+static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *src, unsigned int argc, char **argv, char **exp_argv)
 {
 	char *alias = binding->alias;
 	static char buf[MAXLEN];
@@ -475,7 +476,7 @@ static int binding_expand_alias(struct cmd_binding *binding, struct irc_source *
 					if(ubound >= argc)
 						ubound = argc - 1;
 
-					for(int i = lbound; i <= ubound; i++)
+					for(unsigned int i = lbound; i <= ubound; i++)
 					{
 						safestrncpy(buf+buf_used, argv[i], buf_size-buf_used);
 						buf_used += strlen(argv[i]);
@@ -589,7 +590,7 @@ static int show_subcmds(struct irc_source *src, struct irc_user *user, const cha
 	if(completions->count && (!command_conf.stealth || (user && user->account)))
 	{
 		reply("Possible sub-commands of $b%s$b are:", prefix);
-		for(int i = 0; i < completions->count; i++)
+		for(unsigned int i = 0; i < completions->count; i++)
 			reply("  %s", completions->data[i]);
 	}
 

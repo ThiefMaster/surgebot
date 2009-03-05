@@ -63,7 +63,7 @@ void command_rule_unreg(const char *name)
 	// exist/work anymore.
 
 	debug("Deleting command rule function '%s'", name);
-	for(int i = 0; i < rules->count; i++)
+	for(unsigned int i = 0; i < rules->count; i++)
 	{
 		if(rules->data[i]->rule)
 			parser_free_tokens(rules->data[i]->rule);
@@ -104,7 +104,7 @@ unsigned int command_rule_compile(const char *rule)
 struct command_rule *command_rule_get(unsigned int rule_idx)
 {
 	assert_return(rule_idx < next_rule_idx, NULL);
-	for(int i = 0; i < rules->count; i++)
+	for(unsigned int i = 0; i < rules->count; i++)
 	{
 		if(rules->data[i]->idx == rule_idx)
 			return rules->data[i];
@@ -229,7 +229,7 @@ PARSER_FUNC(opped)
 	struct command_rule_context *cr_ctx = ctx;
 	struct irc_channel *chan;
 	struct irc_chanuser *chanuser;
-	
+
 	if(!arg)
 	{
 		if(!cr_ctx->channelname)
@@ -237,10 +237,10 @@ PARSER_FUNC(opped)
 		else
 			arg = cr_ctx->channelname;
 	}
-	
+
 	if((chan = channel_find(arg)) && cr_ctx->user && (chanuser = channel_user_find(chan, (struct irc_user *)cr_ctx->user)) && (chanuser->flags & MODE_OP))
 		return RET_TRUE;
-	
+
 	return RET_FALSE;
 }
 
@@ -249,7 +249,7 @@ PARSER_FUNC(voiced)
 	struct command_rule_context *cr_ctx = ctx;
 	struct irc_channel *chan;
 	struct irc_chanuser *chanuser;
-	
+
 	if(!arg)
 	{
 		if(!cr_ctx->channelname)
@@ -257,9 +257,9 @@ PARSER_FUNC(voiced)
 		else
 			arg = cr_ctx->channelname;
 	}
-	
+
 	if((chan = channel_find(arg)) && cr_ctx->user && (chanuser = channel_user_find(chan, (struct irc_user *)cr_ctx->user)) && (chanuser->flags & MODE_VOICE))
 		return RET_TRUE;
-	
+
 	return RET_FALSE;
 }

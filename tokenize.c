@@ -12,9 +12,9 @@
  *
  * This function splits up a string using the given token
  */
-int tokenize(char *str, char **vec, int vec_size, char token, unsigned char allow_empty)
+unsigned int tokenize(char *str, char **vec, unsigned int vec_size, char token, unsigned char allow_empty)
 {
-	int count = 1;
+	unsigned int count = 1;
 	unsigned char inside_string = 0;
 	char *ch = str;
 
@@ -58,10 +58,10 @@ int tokenize(char *str, char **vec, int vec_size, char token, unsigned char allo
  * This function splits up a string using the given token and
  * the given last-item token
  */
-int itokenize(char *str, char **vec, int vec_size, char token, char ltoken)
+unsigned int itokenize(char *str, char **vec, unsigned int vec_size, char token, char ltoken)
 {
 	char *ch = str;
-	int count = 1;
+	unsigned int count = 1;
 	unsigned char inside_string = 0;
 
 	vec[0] = ch;
@@ -105,7 +105,7 @@ int itokenize(char *str, char **vec, int vec_size, char token, char ltoken)
  * This function "unsplits" a vector using the given separator and
  * returns the string.
  */
-char *untokenize(int num_items, char **vec, const char *sep)
+char *untokenize(unsigned int num_items, char **vec, const char *sep)
 {
 	char *str;
 	size_t len;

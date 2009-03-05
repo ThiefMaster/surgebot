@@ -293,10 +293,10 @@ static int notification_parse(unsigned int current_flags, const char *str, char 
 	int modifier_found = -1;
 	int flag;
 	char *argv[8];
-	int argc;
+	unsigned int argc;
 
 	argc = tokenize(str_dup, argv, sizeof(argv), ' ', 0);
-	for(int i = 0; i < argc; i++)
+	for(unsigned int i = 0; i < argc; i++)
 	{
 		if(*argv[i] == '+' || *argv[i] == '-')
 		{
@@ -387,7 +387,7 @@ static const char *notification_format(struct chanreg *reg, const char *value)
 static const char *notification_encode(struct chanreg *reg, const char *old_value, const char *value)
 {
 	static char flag_str[8];
-	unsigned int flags, old_flags;
+	int flags, old_flags;
 
 	old_flags = atoi(old_value);
 	flags = notification_parse(old_flags, value, NULL);

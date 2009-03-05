@@ -124,7 +124,7 @@ MODULE_FINI
 	if(listen_sock)
 		sock_close(listen_sock);
 
-	for(int i = 0; i < chanspy_clients->count; i++)
+	for(unsigned int i = 0; i < chanspy_clients->count; i++)
 	{
 		struct chanspy_client *client = chanspy_clients->data[i];
 		sock_close(client->sock);
@@ -187,7 +187,7 @@ static void chanspy_conf_reload()
 	else
 	{
 		// Not listening anymore -> drop all clients
-		for(int i = 0; i < chanspy_clients->count; i++)
+		for(unsigned int i = 0; i < chanspy_clients->count; i++)
 		{
 			struct chanspy_client *client = chanspy_clients->data[i];
 			sock_close(client->sock);
@@ -274,7 +274,7 @@ static void chanspy_server_event(struct sock *sock, enum sock_event event, int e
 		if(event == EV_ERROR || event == EV_HANGUP)
 		{
 			debug("Chanspy client disconnected");
-			for(int i = 0; i < chanspy_clients->count; i++)
+			for(unsigned int i = 0; i < chanspy_clients->count; i++)
 			{
 				struct chanspy_client *client = chanspy_clients->data[i];
 				if(client->sock == sock)
@@ -313,7 +313,7 @@ static void chanspy_server_read(struct sock *sock, char *buf, size_t len)
 	debug("Received line on chanspy server socket: %s", buf);
 	argc = itokenize(buf, argv, MAXARG, ' ', ':');
 
-	for(int i = 0; i < chanspy_clients->count; i++)
+	for(unsigned int i = 0; i < chanspy_clients->count; i++)
 	{
 		if(chanspy_clients->data[i]->sock == sock)
 		{
@@ -381,7 +381,7 @@ static void chanspy_server_read(struct sock *sock, char *buf, size_t len)
 
 static void chanspy_server_drop_client_tmr(void *bound, struct sock *sock)
 {
-	for(int i = 0; i < chanspy_clients->count; i++)
+	for(unsigned int i = 0; i < chanspy_clients->count; i++)
 	{
 		struct chanspy_client *client = chanspy_clients->data[i];
 		if(client->sock == sock)
@@ -502,7 +502,7 @@ static struct chanspy *spy_add(const char *name, const char *channel, const char
 		spy->active = 0;
 		spy->last_error = "Not connected";
 
-		for(int i = 0; i < chanspy_clients->count; i++)
+		for(unsigned int i = 0; i < chanspy_clients->count; i++)
 		{
 			struct chanspy_client *client = chanspy_clients->data[i];
 			if(client->chan && !strcasecmp(client->chan, channel + 1))

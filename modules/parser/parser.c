@@ -11,7 +11,7 @@ static enum token_type add_token(struct parser_token_list *tokens, enum token_ty
 static struct parser_func_token *make_func_token(const char *name, parser_func_f *func);
 static pf_retval parser_eval_binary(struct parser *parser, pf_retval lhs, pf_retval rhs, enum token_type op);
 static pf_retval parser_eval_func(struct parser *parser, struct parser_func_token *ftok, void *ctx);
-static int parser_execute_recursive(struct parser *parser, const struct parser_token_list *tokens, void *ctx, int *pos_ptr);
+static int parser_execute_recursive(struct parser *parser, const struct parser_token_list *tokens, void *ctx, unsigned int *pos_ptr);
 
 static const char *token_names[] = {
 	"T_NONE",
@@ -274,7 +274,7 @@ error:
 
 void parser_free_tokens(struct parser_token_list *tokens)
 {
-	for(int i = 0; i < tokens->count; i++)
+	for(unsigned int i = 0; i < tokens->count; i++)
 	{
 		if(tokens->data[i]->type == T_FUNC)
 		{
@@ -311,12 +311,12 @@ static pf_retval parser_eval_func(struct parser *parser, struct parser_func_toke
 
 int parser_execute(struct parser *parser, const struct parser_token_list *tokens, void *ctx)
 {
-	int pos_ptr = 0;
+	unsigned int pos_ptr = 0;
 
 	return parser_execute_recursive(parser, tokens, ctx, &pos_ptr);
 }
 
-static int parser_execute_recursive(struct parser *parser, const struct parser_token_list *tokens, void *ctx, int *pos_ptr)
+static int parser_execute_recursive(struct parser *parser, const struct parser_token_list *tokens, void *ctx, unsigned int *pos_ptr)
 {
 	pf_retval tmp, lhs, rhs;
 	unsigned char neg = 0;

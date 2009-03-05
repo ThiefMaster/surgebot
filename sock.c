@@ -25,7 +25,7 @@ void sock_init()
 
 void sock_fini()
 {
-	int i;
+	unsigned int i;
 	for(i = 0; i < sock_list->count; i++)
 	{
 		sock_destroy(sock_list->data[i]);
@@ -680,8 +680,9 @@ static int sock_enable_ssl(struct sock *sock, SSL_CTX *ctx)
 
 int sock_poll()
 {
-	static int last_numsocks = 0;
-	int i, res;
+	static unsigned int last_numsocks = 0;
+	unsigned int i;
+	int res;
 
 	for(i = 0; i < sock_list->count; i++)
 	{
@@ -954,7 +955,7 @@ int sock_poll()
 #endif
 						log_append(LOG_WARNING, "Could not write to socket %d: %s (%d)", sock->fd, strerror(errno), errno);
 				}
-				else if(wres == sock->send_queue_len) // everything was written to the socket
+				else if(wres == (int)sock->send_queue_len) // everything was written to the socket
 				{
 					//sock_debug(sock, "Wrote everything");
 					free(sock->send_queue);
@@ -962,7 +963,7 @@ int sock_poll()
 					sock->send_queue_len = 0;
 					sock->event_func(sock, EV_WRITE, 0);
 				}
-				else if(wres < sock->send_queue_len) // we were not able to write out the whole buffer
+				else if(wres < (int)sock->send_queue_len) // we were not able to write out the whole buffer
 				{
 					char *new_queue;
 

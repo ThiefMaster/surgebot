@@ -105,7 +105,7 @@ void stringbuffer_append_printf(struct stringbuffer *sbuf, const char *fmt, ...)
 char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned char require_token)
 {
 	char *tmp;
-	int delim_len = strlen(delim);
+	unsigned int delim_len = strlen(delim);
 
 	// Delimiter substring?
 	if((tmp = strcasestr(sbuf->string, delim)))
@@ -120,7 +120,7 @@ char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned 
 	else
 	{
 		// No delimiter was found, could the end of the line be the beginning of the delimiter?
-		int i;
+		unsigned int i;
 		for(i = 0, tmp = sbuf->string + sbuf->len - 1; i < delim_len; i++, tmp--)
 			if(!strncasecmp(tmp, delim, i))
 				return NULL;
@@ -140,7 +140,7 @@ char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned 
 
 char *stringbuffer_shiftspn(struct stringbuffer *sbuf, const char *delim_list, unsigned char require_token)
 {
-	int i = strcspn(sbuf->string, delim_list);
+	unsigned int i = strcspn(sbuf->string, delim_list);
 	char *tmp;
 
 	// Not found

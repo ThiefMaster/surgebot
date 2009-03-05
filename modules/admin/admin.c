@@ -15,7 +15,7 @@ MODULE_DEPENDS("commands", "help", NULL);
 struct module *this;
 
 static void module_deps_recursive(struct irc_source *src, struct module *module, unsigned int depth);
-static int do_backslash_arg(int start, int argc, char ***argv_ptr);
+static int do_backslash_arg(unsigned int start, unsigned int argc, char ***argv_ptr);
 COMMAND(rehash);
 COMMAND(conf_get);
 COMMAND(die);
@@ -143,7 +143,7 @@ COMMAND(module_list)
 
 	stringlist_sort(slist);
 	lines = stringlist_to_irclines(src->nick, slist);
-	for(int i = 0; i < lines->count; i++)
+	for(unsigned int i = 0; i < lines->count; i++)
 		reply("  %s", lines->data[i]);
 
 	stringlist_free(slist);
@@ -480,7 +480,7 @@ static void module_deps_recursive(struct irc_source *src, struct module *module,
 	module_deps_recursive(src, module_find(module->rdepend->data[i]), (depth << 1)|1);
 }
 
-static int do_backslash_arg(int start, int argc, char ***argv_ptr)
+static int do_backslash_arg(unsigned int start, unsigned int argc, char ***argv_ptr)
 {
 	char **argv = *argv_ptr;
 

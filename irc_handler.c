@@ -64,7 +64,7 @@ void irc_handle_msg(int argc, char **argv, struct irc_source *src, const char *r
 {
 	struct irc_handler_list *list;
 	irc_handler_f *func;
-	int i;
+	unsigned int i;
 
 #ifdef IRC_HANDLER_DEBUG
 	if(src)
@@ -159,7 +159,7 @@ IRC_HANDLER(num_whoisuser)
 		{
 			bot.ready = 1;
 
-			for(int i = 0; i < connected_funcs->count; i++)
+			for(unsigned int i = 0; i < connected_funcs->count; i++)
 				connected_funcs->data[i]();
 		}
 	}

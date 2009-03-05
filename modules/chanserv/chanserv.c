@@ -93,7 +93,8 @@ unsigned long parse_chanserv_duration(const char *duration)
 	unsigned long number;
 	const char *tmp, *tmp2;
 	char last[51], cur[51]; // This should be fairly enough
-	int i, diff;
+	int diff;
+	unsigned int i;
 	size_t ret;
 
 	static const struct {
@@ -125,7 +126,7 @@ unsigned long parse_chanserv_duration(const char *duration)
 		if(!(tmp2 = strchr(tmp, ' ')))
 			tmp2 = tmp + strlen(tmp);
 
-		if((tmp2 - tmp) > (sizeof(last) - 1))
+		if((unsigned int)(tmp2 - tmp) > (sizeof(last) - 1))
 		{
 			log_append(LOG_ERROR, "String exceeding max length %lu: '%s'", (unsigned long)(sizeof(last) - 1), duration);
 			return 0;

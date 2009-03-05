@@ -60,7 +60,7 @@ struct chanserv_channel *chanserv_channel_create(struct chanreg *reg)
 
 struct chanserv_channel *chanserv_channel_find(const char *channelname)
 {
-	for(int i = 0; i < chanserv_channels->count; i++)
+	for(unsigned int i = 0; i < chanserv_channels->count; i++)
 	{
 		struct chanserv_channel *cschan = chanserv_channels->data[i]->ptr;
 		if(!strcasecmp(cschan->reg->channel, channelname))
@@ -81,7 +81,7 @@ static void chanserv_fetch_users(void *bound, struct chanserv_channel *cschan)
 	if(cschan)
 		return irc_send(sz_chanserv_fetch_info, cschan->reg->channel);
 
-	for(int i = 0; i < chanserv_channels->count; i++)
+	for(unsigned int i = 0; i < chanserv_channels->count; i++)
 	{
 		struct chanserv_channel *cschan = chanserv_channels->data[i]->ptr;
 		irc_send(sz_chanserv_fetch_info, cschan->reg->channel);
@@ -133,7 +133,7 @@ void chanserv_db_read(struct dict *db_nodes, struct chanreg *reg)
 
 int chanserv_db_write(struct database_object *dbo, struct chanreg *reg)
 {
-	for(int i = 0; i < chanserv_channels->count; i++)
+	for(unsigned int i = 0; i < chanserv_channels->count; i++)
 	{
 		struct chanserv_channel *cschan = chanserv_channels->data[i]->ptr;
 		if(cschan->reg == reg)

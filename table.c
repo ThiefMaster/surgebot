@@ -13,7 +13,7 @@ struct table *table_create(unsigned int cols, unsigned int rows)
 	table->header = NULL;
 
 	table->data = calloc(table->rows , sizeof(char **));
-	for(int i = 0; i < table->rows; i++)
+	for(unsigned int i = 0; i < table->rows; i++)
 		table->data[i] = calloc(table->cols, sizeof(char *));
 
 	return table;
@@ -28,7 +28,7 @@ void table_set_header(struct table *table, const char *str, ...)
 
 	va_start(args, str);
 	table->header[0] = str;
-	for(int i = 1; i < table->cols; i++)
+	for(unsigned int i = 1; i < table->cols; i++)
 		table->header[i] = va_arg(args, const char *);
 	va_end(args);
 }
@@ -45,7 +45,7 @@ void table_bold_column(struct table *table, unsigned int col, unsigned char enab
 
 void table_free(struct table *table)
 {
-	for(int i = 0; i < table->rows; i++)
+	for(unsigned int i = 0; i < table->rows; i++)
 		free(table->data[i]);
 
 	if(table->header)

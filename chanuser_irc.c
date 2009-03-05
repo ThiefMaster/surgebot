@@ -334,7 +334,7 @@ CHANUSER_IRC_HANDLER(num_endofwho)
 
 		if(channel->burst_lines->count)
 		{
-			for(int i = 0; i < channel->burst_lines->count; i++)
+			for(unsigned int i = 0; i < channel->burst_lines->count; i++)
 			{
 				debug("Parsing delayed line from channel[%s]->burst_lines: %s", channel->name, channel->burst_lines->data[i]);
 				irc_parse_line(channel->burst_lines->data[i]);
@@ -354,7 +354,7 @@ CHANUSER_IRC_HANDLER(num_endofwho)
 
 		if(bot.burst_count == 0 && bot.burst_lines->count)
 		{
-			for(int i = 0; i < bot.burst_lines->count; i++)
+			for(unsigned int i = 0; i < bot.burst_lines->count; i++)
 			{
 				debug("Parsing delayed line from bot.burst_lines: %s", bot.burst_lines->data[i]);
 				irc_parse_line(bot.burst_lines->data[i]);

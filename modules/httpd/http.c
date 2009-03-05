@@ -206,7 +206,7 @@ static void http_conf_reload()
 static void check_detached_clients()
 {
 	pthread_mutex_lock(&http_detached_clients_mutex);
-	for(int i = 0; i < detached_clients->count; i++)
+	for(unsigned int i = 0; i < detached_clients->count; i++)
 	{
 		struct http_client *client = detached_clients->data[i];
 		http_request_finalize(client);
@@ -322,7 +322,7 @@ static void http_client_read(struct sock *sock, char *buf, size_t len)
 static const char *http_get_response_phrase(int code)
 {
 	const char *phrase = "";
-	for(int i = 0; i < ArraySize(http_response_codes); i++)
+	for(unsigned int i = 0; i < ArraySize(http_response_codes); i++)
 	{
 		if(http_response_codes[i].code == code)
 			phrase = http_response_codes[i].phrase;
@@ -610,7 +610,7 @@ static int http_parse_header(struct http_client *client, const char *line, unsig
 		struct tm tm;
 		char buf[sizeof("DAY, DD MMM YYYY HH:MM:SS GMT")];
 
-		if(!(semicolon = strchr(field->value, ';')) || (semicolon - field->value) > field->vlen)
+		if(!(semicolon = strchr(field->value, ';')) || (unsigned int)(semicolon - field->value) > field->vlen)
 			used_len = field->vlen;
 		else
 			used_len = semicolon - field->value;
@@ -989,7 +989,7 @@ struct http_client *http_client_accept(struct sock *listen_sock)
 
 static struct http_client *http_client_bysock(struct sock *sock)
 {
-	for(int i = 0; i < clients->count; i++)
+	for(unsigned int i = 0; i < clients->count; i++)
 	{
 		if(clients->data[i]->sock == sock)
 			return clients->data[i];

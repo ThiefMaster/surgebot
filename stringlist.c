@@ -18,8 +18,7 @@ struct stringlist *stringlist_create()
 
 void stringlist_free(struct stringlist *list)
 {
-	unsigned int i;
-	for(i = 0; i < list->count; i++)
+	for(unsigned int i = 0; i < list->count; i++)
 		free(list->data[i]);
 	free(list->data);
 	free(list);
@@ -27,12 +26,11 @@ void stringlist_free(struct stringlist *list)
 
 struct stringlist *stringlist_copy(const struct stringlist *slist)
 {
-	unsigned int i;
 	struct stringlist *new = malloc(sizeof(struct stringlist));
 	new->count = slist->count;
 	new->size = slist->size;
 	new->data = calloc(new->size, sizeof(char *));
-	for(i = 0; i < slist->count; i++) // copy entries
+	for(unsigned int i = 0; i < slist->count; i++) // copy entries
 		new->data[i] = strdup(slist->data[i]);
 
 	return new;
@@ -51,7 +49,7 @@ void stringlist_add(struct stringlist *list, char *string)
 
 void stringlist_del(struct stringlist *list, int pos)
 {
-	assert(pos < list->count);
+	assert(pos < (int)list->count);
 	free(list->data[pos]);
 	list->data[pos] = list->data[--list->count]; // copy last element into empty position
 }
@@ -72,8 +70,7 @@ char *stringlist_shift(struct stringlist *list)
 
 int stringlist_find(struct stringlist *list, const char *string)
 {
-	int i;
-	for(i = 0; i < list->count; i++)
+	for(unsigned int i = 0; i < list->count; i++)
 	{
 		if(!strcasecmp(list->data[i], string))
 			return i;

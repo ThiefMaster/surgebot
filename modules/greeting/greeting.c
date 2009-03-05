@@ -81,7 +81,7 @@ IRC_HANDLER(join)
 	if(!(channel_greetings = dict_find(greetings, argv[1])))
 		return;
 
-	for(int i = 0; i < channel_greetings->count; i++)
+	for(unsigned int i = 0; i < channel_greetings->count; i++)
 	{
 		if(*channel_greetings->data[i] != '\0')
 			irc_send("NOTICE %s :(%s) %s", src->nick, argv[1], channel_greetings->data[i]);
@@ -96,7 +96,7 @@ COMMAND(greeting)
 
 	if(argc > 1)
 	{
-		int idx = atoi(argv[1]);
+		unsigned int idx = atoi(argv[1]);
 		channel_greetings = dict_find(greetings, reg->channel);
 		if(idx < 1 || idx > (channel_greetings ? (channel_greetings->count + 1) : 1))
 		{
@@ -158,7 +158,7 @@ COMMAND(greeting)
 	}
 
 	reply("$bGreetings:$b");
-	for(int i = 0; i < channel_greetings->count; i++)
+	for(unsigned int i = 0; i < channel_greetings->count; i++)
 		reply("  [%d] %s", (i + 1), (*channel_greetings->data[i] ? channel_greetings->data[i] : "(None)"));
 	reply("Found $b%d$b greeting%s.", channel_greetings->count, (channel_greetings->count != 1 ? "s" : ""));
 	return 1;

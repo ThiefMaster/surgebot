@@ -216,7 +216,7 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 
 		if(!http->in_headers)
 		{
-			for(int i = 0; i < http->read_funcs->count; i++)
+			for(unsigned int i = 0; i < http->read_funcs->count; i++)
 			{
 				http_read_f *read_f = http->read_funcs->data[i]->ptr;
 				read_f(http, str, len);

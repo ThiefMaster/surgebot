@@ -62,7 +62,7 @@ void conf_activate()
 	cfg = new_cfg;
 	new_cfg = NULL;
 
-	for(int i = 0; i < conf_reload_funcs->count; i++)
+	for(unsigned int i = 0; i < conf_reload_funcs->count; i++)
 		conf_reload_funcs->data[i]();
 }
 

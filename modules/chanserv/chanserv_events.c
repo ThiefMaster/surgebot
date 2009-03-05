@@ -45,7 +45,7 @@ inline void chanserv_event_add(struct tm calendar, const char *channel, const ch
 	if((tmp = strchr(issuer, ':')))
 	{
 		int diff = tmp - issuer;
-		if(diff > (sizeof(source) - 1))
+		if(diff > (int)(sizeof(source) - 1))
 		{
 			log_append(LOG_ERROR, "IRC Source issuer '%s' exceeds %lu chars", issuer, (unsigned long)(sizeof(source) - 1));
 			free(event);
@@ -130,7 +130,7 @@ void chanserv_fetch_events(void *bound, struct chanserv_channel *cschan)
 	if(cschan)
 		return irc_send(sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
 
-	for(int i = 0; i < cmod->channels->count; i++)
+	for(unsigned int i = 0; i < cmod->channels->count; i++)
 	{
 		struct chanreg *reg = cmod->channels->data[i];
 		irc_send(sz_chanserv_fetch_events, reg->channel, u_chanserv_fetch_events_amount);
@@ -145,7 +145,7 @@ void chanserv_event_free(struct chanserv_event *event)
 
 	if(event->src->ident)
 		free(event->src->ident);
-	if(event->src->host);
+	if(event->src->host)
 		free(event->src->host);
 
 	free(event->src);

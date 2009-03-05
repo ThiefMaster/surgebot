@@ -49,7 +49,7 @@ static void group_db_read(struct database *db)
 
 		if((group = group_add(name, 0)) && members != NULL)
 		{
-			for(int i = 0; i < members->count; i++)
+			for(unsigned int i = 0; i < members->count; i++)
 			{
 				struct user_account *account = account_find(members->data[i]);
 				if(account == NULL)
@@ -103,7 +103,7 @@ struct access_group *group_find(const char *name)
 
 void group_del(struct access_group *group)
 {
-	for(int i = 0; i < group->members->count; i++)
+	for(unsigned int i = 0; i < group->members->count; i++)
 	{
 		struct user_account *account = account_find(group->members->data[i]);
 		assert_continue(account);
