@@ -120,7 +120,7 @@ next_iteration:
 			tmp += 8;
 
 		// See if only letters, numbers and .- are in the host
-		if(!(slash = strstr(tmp, "/")) || (strspn(tmp, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") < (slash - tmp)))
+		if(!(slash = strstr(tmp, "/")) || (strspn(tmp, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") < (unsigned int)(slash - tmp)))
 			continue;
 
 		// Valid subdomain? 0 or more than 1 and not more than 3 chars (4 incl. dot)
@@ -317,7 +317,7 @@ static void youtube_timer(void *bound, void *data)
 	{
 		struct youtube_request *req = node->data;
 
-		if(req->requested < (now - refresh_delay))
+		if(req->requested < (time_t)(now - refresh_delay))
 			dict_delete(requests, req->id);
 	}
 
