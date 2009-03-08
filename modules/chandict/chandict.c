@@ -127,9 +127,11 @@ COMMAND(chandict_add)
 		dict_insert(entries, strdup(reg->channel), channel_entries);
 	}
 
-	if(dict_find(channel_entries, argv[1]))
+	char *old = dict_find(channel_entries, argv[1]);
+	if(old)
 	{
-		reply("$b%s$b is already added; overwriting it.", argv[1]);
+		reply("$bWARNING:$b %s was already added; overwriting it.", argv[1]);
+		reply("Old definition was: %s", old);
 		dict_delete(channel_entries, argv[1]);
 	}
 
