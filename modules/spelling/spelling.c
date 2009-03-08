@@ -14,7 +14,7 @@ COMMAND(word_list);
 IRC_HANDLER(privmsg);
 static void spelling_db_read(struct dict *db_nodes, struct chanreg *reg);
 static int spelling_db_write(struct database_object *dbo, struct chanreg *reg);
-static void spelling_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+static int spelling_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 
 static struct module *this;
 static struct chanreg_module *cmod;
@@ -81,10 +81,11 @@ static int spelling_db_write(struct database_object *dbo, struct chanreg *reg)
 	return 0;
 }
 
-static void spelling_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason)
+static int spelling_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason)
 {
 	if(delete_data)
 		dict_delete(words, reg->channel);
+	return 0;
 }
 
 IRC_HANDLER(privmsg)
@@ -112,7 +113,7 @@ COMMAND(word_add)
 {
 	struct dict *channel_words;
 
-	CHANREG_MODULE_COMMAND;
+	CHANREG_MODULE_COMMAND(cmod);
 
 	if(!(channel_words = dict_find(words, reg->channel)))
 	{
@@ -136,7 +137,7 @@ COMMAND(word_del)
 {
 	struct dict *channel_words;
 
-	CHANREG_MODULE_COMMAND;
+	CHANREG_MODULE_COMMAND(cmod);
 
 	if(!(channel_words = dict_find(words, reg->channel)) || !dict_find(channel_words, argv[1]))
 	{
@@ -162,7 +163,7 @@ COMMAND(word_list)
 	struct table *table;
 	unsigned int row = 0;
 
-	CHANREG_MODULE_COMMAND;
+	CHANREG_MODULE_COMMAND(cmod);
 
 	if(!(channel_words = dict_find(words, reg->channel)) || !dict_size(channel_words))
 	{
