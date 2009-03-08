@@ -106,7 +106,7 @@ IRC_HANDLER(privmsg)
 	if (strncmp(argv[2], "? ", 2))
 		return;
 	
-	const char* definition = dict_find(channel_entries, argv[2] + 2)
+	const char *definition = dict_find(channel_entries, argv[2] + 2);
 	
 	if(!definition)
 		definition = "<no definition>";
