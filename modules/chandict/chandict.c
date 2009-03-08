@@ -111,7 +111,7 @@ IRC_HANDLER(privmsg)
 	if(!node) //nothing found
 		return;
 	
-	irc_send("PRIVMSG %s :$b%s$b: %s", argv[1], node->key, node->data);
+	irc_send("PRIVMSG %s :$b%s$b: %s", argv[1], node->key, (char *)node->data);
 }
 
 COMMAND(chandict_add)
