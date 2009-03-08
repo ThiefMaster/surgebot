@@ -34,7 +34,7 @@ MODULE_INIT
 
 	DEFINE_COMMAND(self, "chandict add",	chandict_add,	3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "chandict del",	chandict_del,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "chandict list",	chandict_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "chandict list",	chandict_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
 }
 
 MODULE_FINI
@@ -105,14 +105,13 @@ IRC_HANDLER(privmsg)
 
 	if (strncmp(argv[2], "? ", 2))
 		return;
-	
-	const char *definition = dict_find(channel_entries, argv[2] + 2);
-	
-	if(!definition)
-		definition = "<no definition>";
-	
-	irc_send("PRIVMSG %s :$b%s$b: %s", argv[1], argv[2] + 2, definition);
 
+	const struct dict_node *node = dict_find_node(channel_entries, argv[2] + 2);
+
+	if(!node) //nothing found
+		return;
+	
+	irc_send("PRIVMSG %s :$b%s$b: %s", argv[1], node->key, node->data);
 }
 
 COMMAND(chandict_add)
@@ -178,7 +177,7 @@ COMMAND(chandict_list)
 	}
 
 	table = table_create(2, dict_size(channel_entries));
-	table_set_header(table, "Match", "definition");
+	table_set_header(table, "Item", "Definition");
 
 	dict_iter(node, channel_entries)
 	{
