@@ -198,11 +198,10 @@ static struct php_request *php_request_find(struct HTTPRequest *http)
 
 static void php_report(struct php_cache *cache, const char *target)
 {
-	int i;
 	char *method = (IsChannelName(target) ? "PRIVMSG" : "NOTICE");
 	irc_send("%s %s :$b%s$b - %s (http://www.php.net/%s)", method, target, cache->func_name, cache->description, cache->func_name);
 
-	for(i = 0; i < cache->synopsis->count; i++)
+	for(unsigned int i = 0; i < cache->synopsis->count; i++)
 		irc_send("%s %s :$uSynopsis$u: %s", method, target, cache->synopsis->data[i]);
 }
 
@@ -308,7 +307,6 @@ static void event_func(struct HTTPRequest *http, enum HTTPRequest_event event)
 static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, const char *value)
 {
 	const char *old_value;
-	int i;
 
 	if(!strlen(value) || (strspn(value, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") != strlen(value)))
 		return 0;
@@ -316,7 +314,7 @@ static int cmod_lang_validator(struct chanreg *reg, struct irc_source *src, cons
 	old_value = chanreg_setting_get(reg, cmod, "Language");
 
 	// In case no more channels need this old language, free function cache for this language
-	for(i = 0; i < cmod->channels->count; i++)
+	for(unsigned int i = 0; i < cmod->channels->count; i++)
 	{
 		struct chanreg *reg = cmod->channels->data[i];
 		if(!strcasecmp(chanreg_setting_get(reg, cmod, "Language"), old_value))
