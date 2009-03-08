@@ -142,7 +142,7 @@ static void event_func(struct HTTPRequest *http, enum HTTPRequest_event event)
 
 static int urbandict_request_find(struct HTTPRequest *http)
 {
-	for(int i = 0; i < requests->count; i++)
+	for(unsigned int i = 0; i < requests->count; i++)
 	{
 		struct urbandict_request *req = requests->data[i]->ptr;
 		if(req->http == http)

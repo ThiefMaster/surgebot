@@ -123,7 +123,7 @@ IRC_HANDLER(privmsg)
 	if(*argv[2] != '\001')
 		return;
 
-	for(int i = 0; i < ctcp_replies->count; i++)
+	for(unsigned int i = 0; i < ctcp_replies->count; i++)
 	{
 		struct ctcp *ctcp = ctcp_replies->data[i]->ptr;
 		int len = strlen(ctcp->name);
@@ -134,7 +134,7 @@ IRC_HANDLER(privmsg)
 				ctcp_reply(src->nick, ctcp->name, ctcp->reply.string);
 			else
 			{
-				for(int i = 0; i < ctcp->reply.slist->count; i++)
+				for(unsigned int i = 0; i < ctcp->reply.slist->count; i++)
 					ctcp_reply(src->nick, ctcp->name, ctcp->reply.slist->data[i]);
 			}
 			return;

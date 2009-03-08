@@ -184,7 +184,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	assert((tinyurl = tinyurl_find_http(http)));
 	if(http->status == 200)
 	{
-		for(int i = 0; i < tinyurl->channels->count; i++)
+		for(unsigned int i = 0; i < tinyurl->channels->count; i++)
 			irc_send("PRIVMSG %s :TinyUrl [$b%s$b] does not exist.", tinyurl->channels->data[i], tinyurl->alias);
 
 		return;
