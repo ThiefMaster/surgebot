@@ -51,7 +51,6 @@ static void chanreg_db_read(struct database *db);
 static int chanreg_db_write(struct database *db);
 static int sort_channels(const void *a_, const void *b_);
 static int sort_channel_users(const void *a_, const void *b_);
-static struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules);
 static void chanreg_free(struct chanreg *reg);
 static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
 static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user);
@@ -277,7 +276,7 @@ static int chanreg_db_write(struct database *db)
 	return 0;
 }
 
-static struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules)
+struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules)
 {
 	struct chanreg *reg = malloc(sizeof(struct chanreg));
 	memset(reg, 0, sizeof(struct chanreg));
