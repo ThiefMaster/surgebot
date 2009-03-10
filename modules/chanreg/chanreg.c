@@ -52,8 +52,6 @@ static int chanreg_db_write(struct database *db);
 static int sort_channels(const void *a_, const void *b_);
 static int sort_channel_users(const void *a_, const void *b_);
 static void chanreg_free(struct chanreg *reg);
-static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
-static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user);
 static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, const char *setting, const char *value);
 static int chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason);
 static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
@@ -389,7 +387,7 @@ static void chanreg_free(struct chanreg *reg)
 	free(reg);
 }
 
-static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level)
+struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level)
 {
 	struct chanreg_user *c_user;
 	struct user_account *account;
@@ -408,7 +406,7 @@ static struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *ac
 	return c_user;
 }
 
-static void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user)
+void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user)
 {
 	chanreg_user_list_del(reg->users, c_user);
 	free(c_user);

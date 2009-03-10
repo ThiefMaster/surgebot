@@ -121,6 +121,8 @@ extern unsigned int chanreg_staff_rule;
 
 struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules);
 struct chanreg *chanreg_find(const char *channel);
+struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
+void chanreg_user_del(struct chanreg *reg, struct chanreg_user *c_user);
 struct chanreg_user *chanreg_user_find(struct chanreg *reg, const char *accountname);
 struct chanreg_list *chanreg_get_access_channels(struct user_account *account, unsigned short min_access, unsigned int check_staff);
 unsigned int chanreg_check_access(struct chanreg *reg, struct user_account *account, unsigned short min_access, unsigned int check_staff);
