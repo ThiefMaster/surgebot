@@ -22,8 +22,8 @@ COMMAND(request);
 //normal functions
 static void channelrequest_success (struct cj_channel *chan, const char *key, char *ctx, unsigned int first_time);
 static void channelrequest_error (struct cj_channel *chan, const char *key, char *ctx, const char *reason);
-static void setChannelBlock(char *nick, char *channel);
-static void removeChannelFromActive(char *channel);
+static void setChannelBlock (char *nick, char *channel);
+static void removeChannelFromActiveRequests (char *channel);
 
 //timer functions
 static void channelrequest_success_tmr (struct module *self, char *chan);
@@ -48,8 +48,12 @@ MODULE_INIT
 
 MODULE_FINI
 {
-	stringlist_free(activeRequests);
 	dict_free(blockedChannels);
+
+	for(unsigned int i = 0; i < activeRequests->count; i++)
+		chanjoin_delchan(activeRequests->data[i], this, NULL);
+
+	stringlist_free(activeRequests);
 }
 
 COMMAND(request)
@@ -126,7 +130,7 @@ void channelrequest_success(struct cj_channel *chan, const char *key, char *ctx,
 	}
 
 	//remove running request
-	removeChannelFromActive(chan->name);
+	removeChannelFromActiveRequests(chan->name);
 
 	//delete channel from chanjoin module
 	timer_add(chan, "chanrequest_success_cleaner", now, (timer_f *)channelrequest_success_tmr, strdup(chan->name), 1, 0);
@@ -158,7 +162,7 @@ void channelrequest_error(struct cj_channel *chan, const char *key, char *ctx, c
 	setChannelBlock(ctx, chan->name);
 
 	//remove running request
-	removeChannelFromActive(chan->name);
+	removeChannelFromActiveRequests(chan->name);
 
 	free(ctx);
 }
@@ -180,7 +184,7 @@ static void setChannelBlock(char *nick, char *channel)
 	}
 }
 
-static void removeChannelFromActive(char *channel)
+static void removeChannelFromActiveRequests(char *channel)
 {
 	int pos = stringlist_find(activeRequests, channel);
 	if (pos >= 0) stringlist_del(activeRequests, pos);
