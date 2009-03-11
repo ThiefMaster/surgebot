@@ -62,7 +62,6 @@ static void chandict_db_read(struct dict *db_nodes, struct chanreg *reg)
 			const char *message = ((struct db_node *)rec->data)->data.string;
 			dict_insert(channel_entries, strdup(rec->key), strdup(message));
 		}
-
 	}
 }
 
@@ -99,7 +98,7 @@ IRC_HANDLER(privmsg)
 	if(!chanreg_module_active(cmod, argv[1]))
 		return;
 
-	
+
 	if(!(channel_entries = dict_find(entries, argv[1])))
 		return;
 
@@ -110,7 +109,7 @@ IRC_HANDLER(privmsg)
 
 	if(!node) //nothing found
 		return;
-	
+
 	irc_send("PRIVMSG %s :$b%s$b: %s", argv[1], node->key, (char *)node->data);
 }
 
@@ -168,7 +167,6 @@ COMMAND(chandict_list)
 {
 	struct dict *channel_entries;
 	struct table *table;
-	unsigned int row = 0;
 
 	CHANREG_MODULE_COMMAND(cmod);
 
@@ -181,6 +179,7 @@ COMMAND(chandict_list)
 	table = table_create(2, dict_size(channel_entries));
 	table_set_header(table, "Item", "Definition");
 
+	unsigned int row = 0;
 	dict_iter(node, channel_entries)
 	{
 		table->data[row][0] = node->key;
@@ -193,4 +192,3 @@ COMMAND(chandict_list)
 	table_free(table);
 	return 1;
 }
-
