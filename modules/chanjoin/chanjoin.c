@@ -105,7 +105,7 @@ static void chanjoin_conf_reload()
 	}
 }
 
-void chanjoin_addchan(const char *name, struct module *module, const char *key, chanjoin_success_f *success_func, chanjoin_error_f *error_func, void *ctx)
+void chanjoin_addchan(const char *name, struct module *module, const char *key, chanjoin_success_f *success_func, chanjoin_error_f *error_func, void *ctx, chanjoin_free_ctx_f *ctx_free_func)
 {
 	struct cj_channel *chan;
 	struct cj_channel_ref *ref;
@@ -134,6 +134,7 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 			ref->module = module;
 			ref->success_func = success_func;
 			ref->error_func = error_func;
+			ref->ctx_free_func = ctx_free_func;
 			ref->ctx = ctx;
 			ref->module_reloaded = 1;
 			found = 1;
@@ -150,6 +151,7 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 		ref->key = key ? strdup(key) : NULL;
 		ref->success_func = success_func;
 		ref->error_func = error_func;
+		ref->ctx_free_func = ctx_free_func;
 		ref->ctx = ctx;
 		cj_channel_ref_list_add(chan->refs, ref);
 	}
@@ -243,6 +245,8 @@ static void chanjoin_ref_free(struct cj_channel_ref *ref)
 	free(ref->module_name);
 	if(ref->key)
 		free(ref->key);
+	if(ref->ctx && ref->ctx_free_func)
+		ref->ctx_free_func(ref->ctx);
 	free(ref);
 }
 

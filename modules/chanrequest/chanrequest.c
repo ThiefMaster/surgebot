@@ -1,4 +1,4 @@
-#include "global.h"
+ #include "global.h"
 #include "module.h"
 #include "timer.h"
 #include "chanuser.h"
@@ -16,18 +16,15 @@ static struct module *this;
 static struct dict *blockedChannels;
 static struct stringlist *activeRequests;
 
-//COMMANDS
 COMMAND(request);
 
-//normal functions
-static void channelrequest_success (struct cj_channel *chan, const char *key, char *ctx, unsigned int first_time);
-static void channelrequest_error (struct cj_channel *chan, const char *key, char *ctx, const char *reason);
-static void setChannelBlock (char *nick, char *channel);
-static void removeChannelFromActiveRequests (char *channel);
-
-//timer functions
-static void channelrequest_success_tmr (struct module *self, char *chan);
-static void channelrequest_cleanup_blockedChannel_tmr (struct module *self, void *ctx);
+static void channelrequest_success(struct cj_channel *chan, const char *key, const char *ctx, unsigned int first_time);
+static void channelrequest_error(struct cj_channel *chan, const char *key, const char *ctx, const char *reason);
+static void setChannelBlock(const char *nick, const char *channel);
+static void removeChannelFromActiveRequests(char *channel);
+// Timer callbacks
+static void channelrequest_success_tmr(struct module *self, char *chan);
+static void channelrequest_cleanup_blockedChannel_tmr(struct module *self, void *ctx);
 
 MODULE_DEPENDS("chanjoin", "chanreg", NULL);
 
@@ -42,8 +39,8 @@ MODULE_INIT
 
 	activeRequests = stringlist_create();
 
-	//delete channel from chanjoin module
-	timer_add(this, "chanrequest_blockedChannel_cleaner", now+(15*60), (timer_f *)channelrequest_cleanup_blockedChannel_tmr, NULL, 0, 0);
+	// cleanup blocked channels
+	timer_add(this, "chanrequest_blockedChannel_cleaner", now + (15*60), (timer_f *)channelrequest_cleanup_blockedChannel_tmr, NULL, 0, 0);
 }
 
 MODULE_FINI
@@ -89,24 +86,24 @@ COMMAND(request)
 	reply("To register your channel with $N, $byou need to be opped$b in the channel.");
 
 	stringlist_add(activeRequests, strdup(channelname));
-	chanjoin_addchan(channelname, this, NULL, (chanjoin_success_f*)channelrequest_success, (chanjoin_error_f*)channelrequest_error, strdup(user->nick));
+	chanjoin_addchan(channelname, this, NULL, (chanjoin_success_f*)channelrequest_success, (chanjoin_error_f*)channelrequest_error, strdup(user->nick), free);
 
 	return 1;
 }
 
-void channelrequest_success(struct cj_channel *chan, const char *key, char *ctx, unsigned int first_time)
+void channelrequest_success(struct cj_channel *chan, const char *key, const char *ctx, unsigned int first_time)
 {
-	//find user
+	// find user
 	struct irc_user* user = user_find(ctx);
-	//find chanuser
+	// find chanuser
 	struct irc_chanuser* chanuser = channel_user_find(chan->channel, user);
 
-	if(!(chanuser->flags & MODE_OP)) //check for op
+	if(!(chanuser->flags & MODE_OP)) // check for op
 	{
 		irc_send("NOTICE %s :Sorry, you are not opped in %s", ctx, chan->name);
 		setChannelBlock(ctx, chan->name);
 	}
-	else if (0) //TODO: check for chanserv access
+	else if(0) // TODO: check for chanserv access
 	{
 		irc_send("NOTICE %s :Sorry you lack access to %s", ctx, chan->name);
 		setChannelBlock(ctx, chan->name);
@@ -120,40 +117,37 @@ void channelrequest_success(struct cj_channel *chan, const char *key, char *ctx,
 		{
 			struct stringbuffer *strbuff = stringbuffer_create();
 			stringbuffer_append_string(strbuff, account->name);
-			stringbuffer_append_string(strbuff, " (via REQUEST Command)");
+			stringbuffer_append_string(strbuff, " (via REQUEST command)");
 			struct chanreg *reg = chanreg_add(chan->name, NULL);
 			stringbuffer_free(strbuff);
 			reg->registrar = strdup(strbuff->string);
 			chanreg_user_add(reg, account->name, UL_OWNER);
-			irc_send("NOTICE %s :Concratulations! I successfully registered $b%s$b to you.", ctx, chan->name);
+			irc_send("NOTICE %s :Congratulations! $b%s$b has been successfully registered to you.", ctx, chan->name);
 		}
 	}
 
-	//remove running request
+	// remove running request
 	removeChannelFromActiveRequests(chan->name);
 
-	//delete channel from chanjoin module
+	// delete channel from chanjoin module
 	timer_add(chan, "chanrequest_success_cleaner", now, (timer_f *)channelrequest_success_tmr, strdup(chan->name), 1, 0);
-
-	//we can free the ctx here becouse the timer will prevent any call of our error function and so on.
-	free(ctx);
 }
 
-void channelrequest_error(struct cj_channel *chan, const char *key, char *ctx, const char *reason)
+void channelrequest_error(struct cj_channel *chan, const char *key, const char *ctx, const char *reason)
 {
 	irc_send("NOTICE %s :Sorry, i was not able to join %s!", ctx, chan->name);
 
-	if(!strcmp(reason, "keyed") || !strcmp(reason, "inviteonly")) //invite only / keys channel
+	if(!strcmp(reason, "keyed") || !strcmp(reason, "inviteonly")) // invite only / keyed channel
 	{
 		irc_send("NOTICE %s :Looks like you set a key for your channel or it's invite only.", ctx);
 		irc_send("NOTICE %s :Please invite me or add me to your channel userlist with access to use ChanServs INVITEME command.", ctx);
 	}
-	else if(!strcmp(reason, "limit")) //limit reached
+	else if(!strcmp(reason, "limit")) // limit reached
 	{
 		irc_send("NOTICE %s :Looks like your channel is full.", ctx);
 		irc_send("NOTICE %s :Please increase the limit or add me to your channel userlist with access to use ChanServs INVITEME command.", ctx);
 	}
-	else if(!strcmp(reason, "banned")) //banned channels
+	else if(!strcmp(reason, "banned")) // banned channels
 	{
 		irc_send("NOTICE %s :Looks like I'm banned in this channel.", ctx);
 		irc_send("NOTICE %s :Please add me to your channel userlist with access to use ChanServs UNBANME command (200).", ctx);
@@ -163,18 +157,16 @@ void channelrequest_error(struct cj_channel *chan, const char *key, char *ctx, c
 
 	//remove running request
 	removeChannelFromActiveRequests(chan->name);
-
-	free(ctx);
 }
 
-static void setChannelBlock(char *nick, char *channel)
+static void setChannelBlock(const char *nick, const char *channel)
 {
 	time_t *blockedUntil = dict_find(blockedChannels, channel);
 
 	if(blockedUntil) //check if we need to block the next request.
 	{
 		*blockedUntil = now + 5*60;
-		irc_send("NOTICE %s :You now have to wait %s until you may request this channel again.", nick, duration2string(*(blockedUntil) - now));
+		irc_send("NOTICE %s :You now have to wait %s until you may request this channel again.", nick, duration2string(*blockedUntil - now));
 	}
 	else //create a block records so we can see someone requested this chan allready
 	{
@@ -187,7 +179,8 @@ static void setChannelBlock(char *nick, char *channel)
 static void removeChannelFromActiveRequests(char *channel)
 {
 	int pos = stringlist_find(activeRequests, channel);
-	if (pos >= 0) stringlist_del(activeRequests, pos);
+	assert(pos >= 0);
+	stringlist_del(activeRequests, pos);
 }
 
 static void channelrequest_success_tmr(struct module *self, char *chan)
@@ -195,12 +188,13 @@ static void channelrequest_success_tmr(struct module *self, char *chan)
 	chanjoin_delchan(chan, this, NULL);
 }
 
-static void channelrequest_cleanup_blockedChannel_tmr (struct module *self, void *ctx)
+static void channelrequest_cleanup_blockedChannel_tmr(struct module *self, void *ctx)
 {
 	dict_iter(node, blockedChannels)
 	{
 		if(now > *((time_t *)node->data))
 			dict_delete(blockedChannels, node->key);
 	}
-	timer_add(this, "chanrequest_blockedChannel_cleaner", now+(15*60), (timer_f *)channelrequest_cleanup_blockedChannel_tmr, NULL, 0, 0);
+
+	timer_add(this, "chanrequest_blockedChannel_cleaner", now + (15*60), (timer_f *)channelrequest_cleanup_blockedChannel_tmr, NULL, 0, 0);
 }
