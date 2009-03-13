@@ -119,8 +119,8 @@ void channelrequest_success(struct cj_channel *chan, const char *key, const char
 			stringbuffer_append_string(strbuff, account->name);
 			stringbuffer_append_string(strbuff, " (via REQUEST command)");
 			struct chanreg *reg = chanreg_add(chan->name, NULL);
-			stringbuffer_free(strbuff);
 			reg->registrar = strdup(strbuff->string);
+			stringbuffer_free(strbuff);
 			chanreg_user_add(reg, account->name, UL_OWNER);
 			irc_send("NOTICE %s :Congratulations! $b%s$b has been successfully registered to you.", ctx, chan->name);
 		}
