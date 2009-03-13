@@ -5,6 +5,7 @@
 #include "irc.h"
 #include "irc_handler.h"
 #include "table.h"
+#include "modules/chandict/chandict.h"
 
 MODULE_DEPENDS("commands", "chanreg", NULL);
 
@@ -192,3 +193,34 @@ COMMAND(chandict_list)
 	table_free(table);
 	return 1;
 }
+
+struct dict *chandict_get_entries(const char* channel)
+{
+	return dict_find(entries, channel);
+}
+
+void chandict_add_entry(const char *channel, const char *entry, const char *data)
+{
+	struct dict *channel_entries;
+
+	if(!(channel_entries = dict_find(entries, channel)))
+	{
+		channel_entries = dict_create();
+		dict_set_free_funcs(channel_entries, free, free);
+		dict_insert(entries, strdup(channel), channel_entries);
+	}
+
+	dict_delete(channel_entries, entry);
+	dict_insert(channel_entries, strdup(entry), strdup(data));
+}
+
+void chandict_del_entry(const char *channel, const char *entry)
+{
+	struct dict *channel_entries;
+
+	if(!(channel_entries = dict_find(entries, channel))) //nothing for this channel
+		return;
+
+	dict_delete(channel_entries, entry);
+}
+
