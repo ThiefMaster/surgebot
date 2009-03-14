@@ -1,0 +1,25 @@
+Description							| Assigned to
+================================================================#=============
+ Adding TimeOuts to open DCCs from paste module			|
+								|
+----------------------------------------------------------------+-------------
+								|
+ Adding Quiz-Modul (+ converter for moxquizz questions?)	|
+								|
+----------------------------------------------------------------+-------------
+								|
+ Writing some proper help files					|
+	- include something like $C for command			|
+	- create some auto-index pages e.g. for /msg $N help	|
+								|
+----------------------------------------------------------------+-------------
+								|
+ Create/improve logging module					|
+	- define log levels					|
+	- ability to send certain messages to a staff channel	|
+								|
+----------------------------------------------------------------+-------------
+								|
+ Move some commands from the misc module to a toy modul		|
+								|
+----------------------------------------------------------------+-------------
