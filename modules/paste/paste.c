@@ -133,6 +133,8 @@ static void paste_listener_event(struct sock *sock, enum sock_event event, int e
 			return;
 		}
 
+		sock_write_fmt(paster->sock, "You are pasting to channel \002%s\002.\r\n", paster->channel);
+
 		debug("Accepted paste connection from %s for paster %s->%s", inet_ntoa(((struct sockaddr_in *)paster->sock->sockaddr_remote)->sin_addr), paster->owner, paster->channel);
 		sock_set_readbuf(paster->sock, 512, "\r\n");
 		sock_close(paster->listener);
