@@ -99,3 +99,8 @@
 	"When using the third argument, $bpurge$b, all settings and other data from the module will be deleted.",
 	"$uSee also:$u cmod list, cmod enable"
 );
+
+"global" = (
+	"Usage: /msg $N global <text>",
+	"Sends a message to all registered channels."
+);
