@@ -511,7 +511,7 @@ const char *cset_logfilemode_encoder(struct chanreg *reg, const char *old_value,
 static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, const char *reason)
 {
 	char *modechar;
-	char del_reason[512] = "";
+	char del_reason[512] = {0};
 
 	if((del_type != DEL_QUIT && del_type != DEL_PART) || !chanreg_module_active(cmod, user->channel->name))
 		return;
@@ -520,7 +520,7 @@ static void chanuser_del_hook(struct irc_chanuser *user, unsigned int del_type, 
 		snprintf(del_reason, sizeof(del_reason), " (%s)", reason);
 
 	modechar = get_mode_char(user);
-	chanlog(user->channel->name, "*** %s: %s%s (%s@%s)%s", (del_type == DEL_PART ? "Parts" : "Quits"),  modechar, user->user->nick, user->user->ident, user->user->host, del_reason ? del_reason : "");
+	chanlog(user->channel->name, "*** %s: %s%s (%s@%s)%s", (del_type == DEL_PART ? "Parts" : "Quits"),  modechar, user->user->nick, user->user->ident, user->user->host, del_reason);
 
 	if(!strcasecmp(user->user->nick, bot.nickname))
 		chanlog_del(user->channel->name);
