@@ -4,7 +4,7 @@
  *
  * This module will constantly keep track of the chanserv users in a channel but
  * only keep events when the EventLog channel module is enabled. This means it
- * needs to check regularly whether ChanServ is in the channel and whether he
+ * needs to check regularly whether ChanServ is in the channel and whether we
  * do have enough access to fetch events and unload the module in case either
  * does not apply (anymore).
  */
@@ -15,6 +15,7 @@ MODULE_DEPENDS("chanreg", "commands", "tools", "db", NULL);
 
 COMMAND(users);
 COMMAND(events);
+COMMAND(csaccess);
 IRC_HANDLER(join);
 IRC_HANDLER(part);
 IRC_HANDLER(notice);
@@ -41,15 +42,25 @@ static const struct column_desc event_table_cols[] = {
 MODULE_INIT
 {
 	curchan = NULL;
-	chanserv_channels_init();
+
+	chanserv_timer_add();
+	chanserv_channels = ptrlist_create();
+	ptrlist_set_free_func(chanserv_channels, (ptrlist_free_f*)chanserv_channel_free);
+
+	chanserv_accounts = dict_create();
+	dict_set_free_funcs(chanserv_accounts, NULL, (dict_free_f*)chanserv_account_free);
+	chanserv_access_requests = ptrlist_create();
+	ptrlist_set_free_func(chanserv_access_requests, (ptrlist_free_f*)chanserv_access_request_free);
 
 	this = self;
 	cmod = chanreg_module_reg(sz_chanserv_chanmod_events_name, 0, chanserv_db_read, chanserv_db_write, cmod_enabled, cmod_disabled);
 
 	chanserv_channels_populate();
+	chanserv_timer_add();
 
 	DEFINE_COMMAND(self, "events",	events,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
 	DEFINE_COMMAND(self, "users",	users,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
+	DEFINE_COMMAND(self, "csaccess",	csaccess, 3, 0, "group(admins)");
 
 	event_table = db_table_open(sz_chanserv_db_table, event_table_cols);
 	if(!event_table)
@@ -62,12 +73,16 @@ MODULE_INIT
 	reg_irc_handler("JOIN", join);
 
 	reg_channel_complete_hook(chanserv_channel_complete_hook);
+	reg_user_del_hook(chanserv_user_del);
 	chanserv_event_timer_add();
 }
 
 MODULE_FINI
 {
 	chanserv_event_timer_del();
+	chanserv_timer_del();
+
+	unreg_user_del_hook(chanserv_user_del);
 	unreg_channel_complete_hook(chanserv_channel_complete_hook);
 
 	unreg_irc_handler("JOIN", join);
@@ -80,7 +95,9 @@ MODULE_FINI
 	chanreg_module_writedb(cmod);
 	chanreg_module_unreg(cmod);
 
-	chanserv_channels_fini();
+	ptrlist_free(chanserv_access_requests);
+	ptrlist_free(chanserv_channels);
+	dict_free(chanserv_accounts);
 }
 
 const struct column_desc *chanserv_event_table_cols()
@@ -167,6 +184,23 @@ unsigned long parse_chanserv_duration(const char *duration)
 	return ret;
 }
 
+static void chanserv_access_callback(const char *channel, const char *nick, int access)
+{
+	irc_send("PRIVMSG #surgebot.test :%s has access %d in %s", nick, access, channel);
+}
+
+COMMAND(csaccess)
+{
+	if(!IsChannelName(argv[1]))
+	{
+		reply("Not a valid channelname.");
+		return 0;
+	}
+
+	chanserv_get_access_callback(argv[1], argv[2], chanserv_access_callback);
+	return 0;
+}
+
 COMMAND(events)
 {
 	CHANREG_MODULE_COMMAND(cmod);
@@ -201,17 +235,18 @@ COMMAND(users)
 	assert_return(cschan, 0);
 	assert_return(cschan->users->count, 0);
 
-	struct table *table = table_create(4, cschan->users->count);
-	table_set_header(table, "Access", "Account", "Last seen", "Status");
+	struct table *table = table_create(5, cschan->users->count);
+	table_set_header(table, "Access", "Account", "Last seen", "Status", "Nick(s)");
 
 	int i = 0;
+	struct stringbuffer *sbuf = stringbuffer_create();
 
 	dict_iter_rev(node, cschan->users)
 	{
 		struct chanserv_user *user = node->data;
 
 		table->data[i][0] = strtab(user->access);
-		table->data[i][1] = user->name;
+		table->data[i][1] = user->account->name;
 
 		if(user->last_seen == 0)
 			table->data[i][2] = "Here";
@@ -227,8 +262,27 @@ COMMAND(users)
 		else
 			table->data[i][3] = "Normal";
 
+		for(unsigned int i = 0; i < user->account->irc_users->count; i++)
+		{
+			struct irc_user *iuser = user->account->irc_users->data[i]->ptr;
+			if(!dict_find(channel->users, iuser->nick))
+				continue;
+
+			if(sbuf->len)
+				stringbuffer_append_string_n(sbuf, ", ", 2);
+
+			stringbuffer_append_string(sbuf, iuser->nick);
+		}
+		if(sbuf->len)
+			table->data[i][4] = strdupa(sbuf->string);
+		else
+			table->data[i][4] = "-";
+
+		stringbuffer_flush(sbuf);
 		i++;
 	}
+
+	stringbuffer_free(sbuf);
 
 	table_send(table, src->nick);
 	table_free(table);
@@ -268,16 +322,48 @@ IRC_HANDLER(part)
 
 IRC_HANDLER(notice)
 {
+	extern int errno;
 	char *str, *vec[8], *dup;
 	unsigned int count;
 
 	if(!src || strcasecmp(src->nick, sz_chanserv_botname) || strcasecmp(argv[1], bot.nickname) != 0)
 		return;
 
-	str = strip_codes(strdup(argv[2]));
-	dup = strdup(str);
+	str = strip_codes(strdupa(argv[2]));
+	dup = strdupa(str);
 
 	count = tokenize(str, vec, ArraySize(vec), ' ', 0);
+
+	// Three possible replies after requesting one's access
+	//	PainCake (PainCake) lacks access to #gamesurge.
+	//	PainCake (PainCake) has access 350 in #'.
+	//	You must be in #staff (or on its userlist) to use this command.
+	if(count >= 6 && !strncmp(dup + (vec[2] - vec[0]), "lacks access to", 15))
+	{
+		char *channel = strndup(vec[5], strlen(vec[5]) - 1);
+		chanserv_access_request_handle_raw(channel, vec[0], 0);
+		free(channel);
+		return;
+	}
+
+	else if(count >= 7 && !strncmp(dup + (vec[2] - vec[0]), "has access", 10))
+	{
+		char *channel;
+		if(count > 7) // Security override
+			channel = strdup(vec[6]);
+		else
+			channel = strndup(vec[6], strlen(vec[6]) - 1);
+
+		chanserv_access_request_handle_raw(channel, vec[0], atoi(vec[4]));
+		free(channel);
+		return;
+	}
+
+	else if(!strncmp(dup, "You must be in", 14))
+	{
+		chanserv_access_request_handle_raw(vec[4], NULL, -1);
+		return;
+	}
 
 	// "You lack access..." after requesting events
 	// -> Turn off eventlog module
@@ -303,7 +389,7 @@ IRC_HANDLER(notice)
 			if(chanreg_module_disable(cschan->reg, cmod, 0, CDR_DISABLED) == 0)
 				chanserv_report(cschan->reg->channel, "My access has been clvl'ed to less than 350. Module $b%s$b has been disabled.", cmod->name);
 		}
-		goto free_return;
+		return;
 	}
 
 	// First line of channel info
@@ -311,7 +397,7 @@ IRC_HANDLER(notice)
 	{
 		if((curchan = chanserv_channel_find(vec[0])))
 			curchan->process = CS_P_CHANINFO;
-		goto free_return;
+		return;
 	}
 
 	// First line of userlist is of the format "#channel users from level 1 to 500:"
@@ -322,12 +408,12 @@ IRC_HANDLER(notice)
 			curchan->process = CS_P_USERLIST;
 			dict_clear(curchan->users);
 		}
-		goto free_return;
+		return;
 	}
 
 	// First line of events
 	if(!strcmp(dup, "The following channel events were found:"))
-		goto free_return;
+		return;
 
 	// Last line of events
 	if((count == 3 && !strcmp(vec[0], "Found") && !strcmp(vec[2], "matches.")) || !strcmp(dup, "Nothing matched the criteria of your search."))
@@ -337,7 +423,7 @@ IRC_HANDLER(notice)
 			curchan->process = CS_P_NONE;
 			curchan = NULL;
 		}
-		goto free_return;
+		return;
 	}
 
 	// Line of events
@@ -353,16 +439,17 @@ IRC_HANDLER(notice)
 		// #') [Someone:Someone]: adduser *user 200
 		tmp = dup + 32; // 32 = length of "[??:??:?? ??/??/????] (ChanServ:"
 		if(!(tmp2 = strchr(tmp, ' ')))
-			goto free_return;
+			return;
 		channel = strndup(tmp, tmp2 - tmp - 1);
 
 		// Someone:Someone]: adduser *user 200
 		tmp = tmp2 + 2; // Point to issuer
-		if(!(tmp2 = strchr(tmp, ' ')))
+		if((tmp2 = strchr(tmp, ' ')) == NULL)
 		{
 			free(channel);
-			goto free_return;
+			return;
 		}
+
 		issuer = strndup(tmp, tmp2 - tmp - 2);
 
 		// adduser *user 200
@@ -372,12 +459,41 @@ IRC_HANDLER(notice)
 		free(channel);
 		free(issuer);
 		free(command);
-		goto free_return;
+		return;
 	}
 
+	// Line of names list
+	if(!strncmp(dup, "Users in", 8))
+	{
+		assert(count >= 4);
+
+		// First line?
+		if(!curchan)
+		{
+			char *channel = strndup(vec[2], vec[3] - vec[2] - 2);
+			if(!(curchan = chanserv_channel_find(channel)))
+			{
+				free(channel);
+				return;
+			}
+			free(channel);
+		}
+
+		curchan->process = CS_P_NAMES;
+		chanserv_user_parse_names(curchan, dup + (vec[3] - vec[0]));
+		return;
+	}
+
+	// Last line of names
+	if(!strncasecmp(dup, "End of names in", 15))
+	{
+		curchan->process = CS_P_NONE;
+		curchan = NULL;
+		return;
+	}
 
 	if(!curchan)
-		goto free_return;
+		return;
 
 	// In channel info
 	if(curchan->process == CS_P_CHANINFO)
@@ -390,18 +506,13 @@ IRC_HANDLER(notice)
 			else
 				irc_send(sz_chanserv_fetch_users, curchan->reg->channel);
 		}
-		goto free_return;
+		return;
 	}
 
 	// In userlist
 	if(curchan->process == CS_P_USERLIST)
 		if(chanserv_user_add(curchan, dup, count, vec) != 0)
 			curchan = NULL;
-
-free_return:
-	free(str);
-	free(dup);
-	return;
 }
 
 DB_SELECT_CB(show_events_cb)

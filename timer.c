@@ -15,7 +15,7 @@ void timer_fini()
 	dict_free(timers);
 }
 
-void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char debug)
+struct timer *timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char debug)
 {
 	struct timer *tmr = malloc(sizeof(struct timer));
 	tmr->id = next_timer_id;
@@ -32,6 +32,7 @@ void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *
 	dict_insert(timers, NULL, tmr);
 
 	next_timer_id++;
+	return tmr;
 }
 
 struct dict *timer_dict()

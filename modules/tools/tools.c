@@ -42,7 +42,10 @@ char *html_decode(char *str)
 	{
 		// Entity if below 10 chars
 		if(!(tmp2 = strchr(tmp, ';')))
-			break;
+		{
+			tmp++;
+			continue;
+		}
 
 		if((tmp2 - tmp) > 10)
 		{

@@ -4,6 +4,8 @@
 #include "modules/chanserv/chanserv.h"
 #include <time.h>
 
+typedef void (chanserv_access_f)(const char *channel, const char *nick, int access);
+
 struct chanserv_channel
 {
 	struct chanreg *reg;
@@ -18,13 +20,26 @@ struct chanserv_channel
 		CS_P_NONE,
 		CS_P_CHANINFO,
 		CS_P_USERLIST,
-		CS_P_EVENTS
+		CS_P_EVENTS,
+		CS_P_NAMES
 	} process;
 
 	unsigned int active : 1;
 };
 
+struct chanserv_access_request
+{
+	char *channel;
+	char *nick;
+	struct timer *timer;
+
+	int access; // -1 = error
+
+	chanserv_access_f *callback;
+};
+
 extern struct ptrlist *chanserv_channels;
+extern struct ptrlist *chanserv_access_requests;
 
 void chanserv_channels_init();
 void chanserv_channels_fini();
@@ -41,7 +56,11 @@ void chanserv_timer_add();
 void chanserv_timer_del();
 
 void chanserv_channel_complete_hook(struct irc_channel *channel);
-
 void chanserv_report(const char *channel, const char *format, ...);
+
+void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *);
+void chanserv_access_request_timer(void *bound, struct chanserv_access_request *request);
+void chanserv_access_request_handle_raw(const char *channel, const char *nick, int access);
+void chanserv_access_request_free(struct chanserv_access_request *);
 
 #endif // __CHANSERV_CHANNELS_H__

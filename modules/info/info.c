@@ -85,6 +85,7 @@ COMMAND(stats_timers)
 	else
 		reply("There are $b%d$b active timers.", i);
 
+	table->rows = dict_size(timers); // restore old row count so all rows get free()'d
 	table_free(table);
 	return 1;
 }

@@ -92,7 +92,7 @@ struct irc_user
 	char		*host;
 	char		*info;
 
-	struct dict	*channels;
+	struct dict *channels; // irc_chanuser
 	struct user_account	*account;
 };
 

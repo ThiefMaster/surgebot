@@ -2,21 +2,10 @@
 #include "ptrlist.h"
 
 struct ptrlist *chanserv_channels = NULL;
+struct ptrlist *chanserv_access_requests = NULL;
 
 static void chanserv_fetch_users(void *bound, struct chanserv_channel *cschan);
-
-void chanserv_channels_init()
-{
-	chanserv_timer_add();
-	chanserv_channels = ptrlist_create();
-	ptrlist_set_free_func(chanserv_channels, (ptrlist_free_f*)chanserv_channel_free);
-}
-
-void chanserv_channels_fini()
-{
-	ptrlist_free(chanserv_channels);
-	chanserv_timer_del();
-}
+static struct chanserv_channel *chanserv_channel_create_fetch(struct chanreg *reg);
 
 inline void chanserv_channels_populate()
 {
@@ -30,8 +19,20 @@ inline void chanserv_channels_populate()
 		struct irc_chanuser *cuser = node->data;
 		struct chanreg *reg = chanreg_find(cuser->channel->name);
 		if(reg)
-			chanserv_channel_create(reg);
+			chanserv_channel_create_fetch(reg);
 	}
+}
+
+static struct chanserv_channel *chanserv_channel_create_fetch(struct chanreg *reg)
+{
+	struct chanserv_channel *cschan;
+	assert_return((cschan = chanserv_channel_create(reg)), NULL);
+
+	chanserv_fetch_users(NULL, cschan);
+	if(chanreg_module_active(cmod, reg->channel))
+		chanserv_fetch_events(NULL, cschan);
+
+	return cschan;
 }
 
 struct chanserv_channel *chanserv_channel_create(struct chanreg *reg)
@@ -51,10 +52,6 @@ struct chanserv_channel *chanserv_channel_create(struct chanreg *reg)
 	ptrlist_set_free_func(cschan->events, (ptrlist_free_f*)chanserv_event_free);
 
 	ptrlist_add(chanserv_channels, 0, cschan);
-	chanserv_fetch_users(NULL, cschan);
-	if(chanreg_module_active(cmod, reg->channel))
-		chanserv_fetch_events(NULL, cschan);
-
 	return cschan;
 }
 
@@ -104,9 +101,7 @@ void chanserv_channel_complete_hook(struct irc_channel *channel)
 	if(!channel_user_find(channel, user))
 		return;
 
-	cschan = chanserv_channel_create(reg);
-	if(chanreg_module_active(cmod, reg->channel))
-		chanserv_fetch_events(NULL, cschan);
+	cschan = chanserv_channel_create_fetch(reg);
 }
 
 void chanserv_report(const char *channel, const char *format, ...)
@@ -145,6 +140,64 @@ int chanserv_db_write(struct database_object *dbo, struct chanreg *reg)
 	}
 
 	return 0;
+}
+
+void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *callback)
+{
+	struct chanserv_access_request *req = malloc(sizeof(struct chanserv_access_request));
+	memset(req, 0, sizeof(struct chanserv_access_request));
+
+	req->channel = strdup(channel);
+	req->callback = callback;
+	req->nick = strdup(nick);
+	req->access = -1;
+	req->timer = timer_add(NULL, "chanserv_get_access", now + 2, (timer_f*)chanserv_access_request_timer, req, 0, 0);
+
+	ptrlist_add(chanserv_access_requests, 0, req);
+	irc_send(sz_chanserv_get_access, channel, nick);
+}
+
+// This function is required if for any reason whatsoever, ChanServ does not reply
+// since chanserv_access_request_handle_raw and thus the callback wouldn't be called otherwise
+void chanserv_access_request_timer(void *bound, struct chanserv_access_request *request)
+{
+	if(request->callback)
+		request->callback(request->channel, request->nick, request->access);
+
+	ptrlist_del_ptr(chanserv_access_requests, request);
+}
+
+void chanserv_access_request_handle_raw(const char *channel, const char *nick, int access)
+{
+	for(unsigned int i = 0; i < chanserv_access_requests->count; i++)
+	{
+		struct chanserv_access_request *req = chanserv_access_requests->data[i]->ptr;
+		// Already triggered
+		if(req->callback == NULL)
+			continue;
+
+		if(strcasecmp(req->channel, channel) != 0)
+			continue;
+
+		// This means if we have a channel but no nick, apply to all matching requests
+		if(nick != NULL && strcasecmp(nick, req->nick) != 0)
+			continue;
+
+		req->access = access;
+		req->callback(req->channel, req->nick, req->access);
+		// Trigger timer
+		req->timer->time = now;
+
+		// To avoid being called again by the timer, unset the callback
+		req->callback = NULL;
+	}
+}
+
+void chanserv_access_request_free(struct chanserv_access_request *req)
+{
+	free(req->channel);
+	free(req->nick);
+	free(req);
 }
 
 void chanserv_timer_add()

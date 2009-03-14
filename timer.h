@@ -32,7 +32,7 @@ void timer_fini();
 
 struct dict *timer_dict();
 
-void timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char debug);
+struct timer *timer_add(void *bound, const char *name, time_t time, timer_f *func, void *data, unsigned int free_data, unsigned char debug);
 unsigned int timer_exists(void *bound, const char *name, time_t time, timer_f *func, void *data, long flags);
 void timer_del(void *bound, const char *name, time_t time, timer_f *func, void *data, long flags);
 void timer_poll();

@@ -1,8 +1,8 @@
 #ifndef __CHANSERV_H__
 #define __CHANSERV_H__
 
-#include "module.h"
 #include "global.h"
+#include "module.h"
 #include "irc_handler.h"
 #include "dict.h"
 #include "tokenize.h"
@@ -13,6 +13,7 @@
 #include "timer.h"
 #include "table.h"
 #include <time.h>
+#include <string.h>
 
 // Module's dependencies' headers
 #include "modules/chanreg/chanreg.h"
@@ -34,8 +35,10 @@ static const unsigned int	 u_chanserv_fetch_events_amount		= 1024;
 static const unsigned int	 u_chanserv_fetch_events_interval	= 60;
 static const char * const	sz_chanserv_fetch_events			= "ChanServ %s events %u";
 static const char * const	sz_chanserv_fetch_info				= "ChanServ %s info";
+static const char * const	sz_chanserv_fetch_names				= "ChanServ %s names";
 static const char * const	sz_chanserv_fetch_users				= "ChanServ %s users";
 static const unsigned int	 u_chanserv_fetch_users_interval	= 60 * 60;
+static const char * const	sz_chanserv_get_access				= "ChanServ %s a %s";
 static const char * const	sz_chanserv_users_timer_name		= "chanserv_update_users";
 
 const struct column_desc *chanserv_event_table_cols();
