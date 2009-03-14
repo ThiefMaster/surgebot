@@ -46,6 +46,7 @@ COMMAND(cmod_enable);
 COMMAND(cmod_disable);
 COMMAND(rejoin);
 COMMAND(move);
+COMMAND(global);
 static void chanreg_conf_reload();
 static void chanreg_db_read(struct database *db);
 static int chanreg_db_write(struct database *db);
@@ -93,8 +94,9 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "cmod info",	cmod_info,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "cmod enable",	cmod_enable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
 	DEFINE_COMMAND(self, "cmod disable",	cmod_disable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "rejoin",		rejoin,		1, 0, "group(admins)");
-	DEFINE_COMMAND(self, "move",		move,		3, 0, "group(admins)");
+	DEFINE_COMMAND(self, "rejoin",		rejoin,		1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "move",		move,		3, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "global",		global,		2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "group(admins)");
 
 	reg_conf_reload_func(chanreg_conf_reload);
 	chanreg_conf_reload();
@@ -1570,6 +1572,16 @@ COMMAND(move)
 	return 0;
 }
 
+COMMAND(global)
+{
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *dat = node->data;
+		if(dat->active)
+			irc_send("PRIVMSG %s :[$bGLOBAL$b from $b%s$b] %s", node->key, src->nick, argline + (argv[1] - argv[0]));
+	}
+	return 1;
+}
 // Validators
 
 int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value)
