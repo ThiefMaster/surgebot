@@ -5,7 +5,7 @@
 #include "timer.h"
 #include "stringbuffer.h"
 #include "db.h"
-#include <libpq-fe.h>
+#include <postgresql/libpq-fe.h>
 
 MODULE_DEPENDS(NULL);
 
