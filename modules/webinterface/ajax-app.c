@@ -9,6 +9,10 @@
 #include "modules/chanserv/chanserv.h"
 #endif
 
+#ifdef WITH_MODULE_chandict
+#include "modules/chandict/chandict.h"
+#endif
+
 #include "account.h"
 #include "session.h"
 #include "rules.h"
@@ -69,6 +73,9 @@ HTTP_HANDLER(ajax_index_handler);
 #ifdef WITH_MODULE_chanserv
 HTTP_HANDLER(ajax_events_handler);
 #endif
+#ifdef WITH_MODULE_chandict
+HTTP_HANDLER(ajax_chandict_handler);
+#endif
 HTTP_HANDLER(ajax_raw_handler);
 HTTP_HANDLER(ajax_channels_handler);
 HTTP_HANDLER(ajax_channel_handler);
@@ -87,6 +94,9 @@ static struct http_handler handlers[] = {
 #ifdef WITH_MODULE_chanserv
 	{ "/ajax/events/*", ajax_events_handler },
 #endif
+#ifdef WITH_MODULE_chandict
+	{ "/ajax/chandict/*", ajax_chandict_handler },
+#endif
 	{ "/ajax/raw/*", ajax_raw_handler },
 	{ "/ajax/channels/*", ajax_channels_handler },
 	{ "/ajax/channel/*", ajax_channel_handler },
@@ -104,6 +114,9 @@ static struct http_handler handlers[] = {
 static struct dict *menu_items;
 #ifdef WITH_MODULE_chanserv
 static unsigned int events_rule = 0;
+#endif
+#ifdef WITH_MODULE_chandict
+static unsigned int chandict_rule = 0;
 #endif
 static unsigned int raw_rule = 0;
 static unsigned int channels_rule = 0;
@@ -127,6 +140,9 @@ void ajaxapp_init()
 #ifdef WITH_MODULE_chanserv
 	events_rule = menu_add("events", "ChanServ Events", "loggedin()");
 #endif
+#ifdef WITH_MODULE_chandict
+	chandict_rule = menu_add("chandict", "Channel Dictionary", "loggedin()");
+#endif
 	raw_rule = menu_add("raw", "Raw commands", "group(admins)");
 	channels_rule = menu_add("channels", "Channels", "group(helpers) || group(admins)");
 	menu_add("logout", "Logout", "loggedin()");
@@ -148,6 +164,9 @@ void ajaxapp_fini()
 	menu_del("index");
 #ifdef WITH_MODULE_chanserv
 	menu_del("events");
+#endif
+#ifdef WITH_MODULE_chandict
+	menu_del("chandict");
 #endif
 	menu_del("raw");
 	menu_del("channels");
@@ -299,6 +318,99 @@ HTTP_HANDLER(ajax_events_handler)
 
 	dict_free(post_vars);
 	http_request_detach(client, NULL);
+}
+#endif
+
+#ifdef WITH_MODULE_chandict
+HTTP_HANDLER(ajax_chandict_handler)
+{
+	REQUIRE_SESSION
+	CHECK_RULE(chandict_rule)
+	char *channel, *key, *str;
+	struct chanreg *chanreg;
+	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
+
+	if(!(channel = dict_find(post_vars, "channel")))
+	{
+		struct json_object *list, *response = json_object_new_object();
+		json_object_object_add(response, "success", json_object_new_boolean(1));
+		list = json_object_new_array();
+		// list channels where user has 1+ access
+		struct chanreg_list *channels = chanreg_get_access_channels(session->account, 1, 1);
+		for(unsigned int i = 0; i < channels->count; i++)
+		{
+			struct json_object *entry = json_object_new_object();
+			json_object_object_add(entry, "name", json_object_new_string(channels->data[i]->channel));
+			json_object_object_add(entry, "moduleActive", json_object_new_boolean(stringlist_find(channels->data[i]->active_modules, "Dictionary") != -1));
+			json_object_array_add(list, entry);
+		}
+		chanreg_list_free(channels);
+		json_object_object_add(response, "channels", list);
+		http_reply_header("Content-Type", "text/javascript");
+		http_reply("%s", json_object_to_json_string(response));
+		json_object_put(response);
+		dict_free(post_vars);
+		return;
+	}
+
+	if(!(chanreg = chanreg_find(channel)) || !chanreg_check_access(chanreg, session->account, 1, 1)) // 1+ access for viewing
+	{
+		struct json_object *response = json_object_new_object();
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "error", json_object_new_string("accessDenied"));
+		http_reply_header("Content-Type", "text/javascript");
+		http_reply("%s", json_object_to_json_string(response));
+		json_object_put(response);
+		dict_free(post_vars);
+		return;
+	}
+
+	struct dict *entries = chandict_get_entries(chanreg->channel);
+
+	if((key = dict_find(post_vars, "add")) && (str = dict_find(post_vars, "definition")) &&
+	   chanreg_check_access(chanreg, session->account, 300, 1)) // add definition
+	{
+		chandict_add_entry(chanreg->channel, key, str);
+	}
+	else if(entries && (key = dict_find(post_vars, "delete")) &&
+		chanreg_check_access(chanreg, session->account, 300, 1)) // delete definition
+	{
+		dict_iter(node, entries)
+		{
+			if((unsigned long)node->key == (unsigned long)strtoul(key, NULL, 16))
+			{
+				chandict_del_entry(chanreg->channel, node->key);
+				break;
+			}
+		}
+	}
+
+	struct json_object *response, *definitions;
+	response = json_object_new_object();
+	json_object_object_add(response, "success", json_object_new_boolean(1));
+	json_object_object_add(response, "channel", json_object_new_string(chanreg->channel));
+	json_object_object_add(response, "readOnly", json_object_new_boolean(!chanreg_check_access(chanreg, session->account, 300, 1)));
+	json_object_object_add(response, "definitionCount", json_object_new_int(entries ? dict_size(entries) : 0));
+	definitions = json_object_new_array();
+	if(entries)
+	{
+		dict_iter(node, entries)
+		{
+			struct json_object *definition = json_object_new_object();
+			char ptr[32];
+			snprintf(ptr, sizeof(ptr), "%p", node->key);
+			json_object_object_add(definition, "name", json_object_new_string(node->key));
+			json_object_object_add(definition, "value", json_object_new_string(node->data));
+			json_object_object_add(definition, "ptr", json_object_new_string(ptr));
+			json_object_array_add(definitions, definition);
+		}
+	}
+	json_object_object_add(response, "definitions", definitions);
+	http_reply_header("Content-Type", "text/javascript");
+	http_reply("%s", json_object_to_json_string(response));
+	json_object_put(response);
+
+	dict_free(post_vars);
 }
 #endif
 

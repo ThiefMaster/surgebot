@@ -13,6 +13,9 @@ MODULE_DEPENDS("httpd", "tools", "parser",
 #ifdef WITH_MODULE_chanserv
 		"chanserv",
 #endif
+#ifdef WITH_MODULE_chandict
+		"chandict",
+#endif
 		NULL);
 
 MODULE_INIT
