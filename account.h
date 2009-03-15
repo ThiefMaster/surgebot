@@ -15,6 +15,7 @@ struct user_account *account_find(const char *name);
 void account_del(struct user_account *account);
 
 struct user_account *account_find_smart(struct irc_source *src, const char *name);
+struct user_account *account_find_bynick(const char *nick);
 
 void account_user_add(struct user_account *account, struct irc_user *user);
 void account_user_del(struct user_account *account, struct irc_user *user);

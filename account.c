@@ -190,6 +190,16 @@ struct user_account *account_find_smart(struct irc_source *src, const char *name
 
 }
 
+struct user_account *account_find_bynick(const char *nick)
+{
+	struct irc_user *user;
+
+	if(!(user = user_find(nick)))
+		return NULL;
+
+	return user->account;
+}
+
 void account_user_add(struct user_account *account, struct irc_user *user)
 {
 	assert(dict_find(account->users, user->nick) == NULL);
