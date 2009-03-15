@@ -228,9 +228,10 @@ COMMAND(events)
 COMMAND(users)
 {
 	struct chanreg *reg;
+
 	if(!(reg = chanreg_find(channelname)))
 	{
-		reply("$b%s$b is not registered with %s", channelname, sz_chanserv_botname);
+		reply("$b%s$b is not registered with %s.", channelname, sz_chanserv_botname);
 		return 0;
 	}
 
@@ -468,7 +469,9 @@ IRC_HANDLER(notice)
 	// Line of names list
 	if(!strncmp(dup, "Users in", 8))
 	{
-		assert(count >= 4);
+		// No users
+		if(count < 4)
+			return;
 
 		// First line?
 		if(!curchan)
@@ -490,8 +493,11 @@ IRC_HANDLER(notice)
 	// Last line of names
 	if(!strncasecmp(dup, "End of names in", 15))
 	{
-		curchan->process = CS_P_NONE;
-		curchan = NULL;
+		if(curchan)
+		{
+			curchan->process = CS_P_NONE;
+			curchan = NULL;
+		}
 		return;
 	}
 
