@@ -71,6 +71,9 @@ MODULE_FINI
 	for(unsigned int i = 0; i < activeRequests->count; i++)
 		chanjoin_delchan(activeRequests->data[i], this, NULL);
 
+	timer_del_boundname(this, "chanrequest_blockedChannel_cleaner");
+	timer_del_boundname(this, "chanrequest_success_cleaner");
+
 	stringlist_free(activeRequests);
 }
 
@@ -148,6 +151,10 @@ void chanrequest_chanjoin_success(struct cj_channel *chan, const char *key, cons
 			{
 				registerChannelToNick(chan->name, ctx);
 			}
+		}
+		else
+		{
+			irc_send("NOTICE %s :Sorry, but you must be in $b%s$b to request it.", ctx, chan->name);
 		}
 	}
 
