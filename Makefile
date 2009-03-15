@@ -15,30 +15,30 @@ TMPDIR = .tmp
 all: $(TMPDIR) module-config.h $(BIN) $(MODULES)
 
 clean:
-	@echo "   \033[38;5;154mCLEAN\033[0m"
+	@printf "   \033[38;5;154mCLEAN\033[0m\n"
 	@rm -f $(BIN) $(TMPDIR)/*.d $(TMPDIR)/*.o modules/*.so module-config.h
 	@for i in $(MODULES); do make -s -f Makefile.module MODULE=$$i clean ; done
 
 # rule for creating final binary
 $(BIN): $(OBJ)
-	@echo "   \033[38;5;69mLD\033[0m        $@"
+	@printf "   \033[38;5;69mLD\033[0m        $@\n"
 	@$(CC) $(LDFLAGS) $(LIBS) $(OBJ) -o $(BIN)
 
 # rule for creating object files
 $(OBJ) : $(TMPDIR)/%.o : %.c
-	@echo "   \033[38;5;33mCC\033[0m        $(<:.c=.o)"
+	@printf "   \033[38;5;33mCC\033[0m        $(<:.c=.o)\n"
 	@$(CC) $(CFLAGS) -std=gnu99 -MMD -MF $(TMPDIR)/$(<:.c=.d) -MT $@ -o $@ -c $<
 	@cp -f $(TMPDIR)/$*.d $(TMPDIR)/$*.d.tmp
 	@sed -e 's/.*://' -e 's/\\$$//' < $(TMPDIR)/$*.d.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TMPDIR)/$*.d
 	@rm -f $(TMPDIR)/$*.d.tmp
 
 module-config.h: modules.build
-	@echo "   \033[38;5;208mMODCONF\033[0m"
+	@printf "   \033[38;5;208mMODCONF\033[0m\n"
 	@rm -f module-config.h
 	@echo "#ifndef MODULE_CONFIG_H" >> module-config.h
-	@echo "#define MODULE_CONFIG_H\n" >> module-config.h
+	@echo "#define MODULE_CONFIG_H" >> module-config.h
 	@for i in $(MODULES); do echo "#define WITH_MODULE_$$i" >> module-config.h ; done
-	@echo "\n#endif" >> module-config.h
+	@echo "#endif" >> module-config.h
 
 $(TMPDIR):
 	@mkdir $(TMPDIR)
