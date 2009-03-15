@@ -135,9 +135,9 @@ void chanrequest_chanjoin_success(struct cj_channel *chan, const char *key, cons
 			irc_send("NOTICE %s :Either ChanServ is currently down or something is borken. Maybe you should contact bot staff.", ctx);
 		}
 	}
-	else // no  +z => +op is enougth => register
+	else // no +z => op is enough => register
 	{
-		if((user = user_find(ctx)) && channel_user_find(chan->channel, user))
+		if((user = user_find(ctx)) && (chanuser = channel_user_find(chan->channel, user)))
 		{
 			if(!(chanuser->flags & MODE_OP)) // check for op
 			{
