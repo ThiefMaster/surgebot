@@ -23,3 +23,10 @@ Description							| Assigned to
  Move some commands from the misc module to a toy modul		|
 								|
 ----------------------------------------------------------------+-------------
+								|
+ Remove color output if running from IDE			|
+	- Makefile						|
+	- BOT Output (see logging modul)			|
+								|
+----------------------------------------------------------------+-------------
+
