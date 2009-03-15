@@ -19,6 +19,7 @@ MODULE_DEPENDS("chanreg", "commands", "tools", "db", NULL);
 COMMAND(users);
 COMMAND(events);
 COMMAND(csaccess);
+PARSER_FUNC(chanserv);
 IRC_HANDLER(join);
 IRC_HANDLER(part);
 IRC_HANDLER(notice);
@@ -64,6 +65,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "events",	events,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
 	DEFINE_COMMAND(self, "users",	users,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
 	DEFINE_COMMAND(self, "csaccess",	csaccess, 3, 0, "group(admins)");
+	REG_COMMAND_RULE("chanserv", chanserv);
 
 	event_table = db_table_open(sz_chanserv_db_table, event_table_cols);
 	if(!event_table)
@@ -91,6 +93,7 @@ MODULE_FINI
 	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("PART", part);
 	unreg_irc_handler("NOTICE", notice);
+	command_rule_unreg("access");
 
 	if(event_table)
 		db_table_close(event_table);
@@ -189,7 +192,94 @@ unsigned long parse_chanserv_duration(const char *duration)
 
 static void chanserv_access_callback(const char *channel, const char *nick, int access)
 {
-	irc_send("PRIVMSG #surgebot.test :%s has access %d in %s", nick, access, channel);
+	struct stringbuffer *sbuf = stringbuffer_create();
+
+	if(access == CHANSERV_TIMEOUT)
+		stringbuffer_append_printf(sbuf, "Channel %s is not registered.", channel);
+	else if(access == CHANSERV_ACCESS_DENIED)
+		stringbuffer_append_printf(sbuf, "I lack access to %s and can't check the access for nick %s.", channel, nick);
+	else if(!access)
+		stringbuffer_append_printf(sbuf, "%s lacks access to %s.", nick, channel);
+	else
+		stringbuffer_append_printf(sbuf, "%s has access %d in %s", nick, access, channel);
+
+	irc_send("PRIVMSG #surgebot.test :%s", sbuf->string);
+	stringbuffer_free(sbuf);
+}
+
+static inline unsigned char chanserv_is_valid_access(int access)
+{
+	return access >= 0 && access <= 500;
+}
+
+PARSER_FUNC(chanserv)
+{
+	int res;
+	struct command_rule_context *cr_ctx = ctx;
+	struct chanserv_channel *cschan = NULL;
+	char *pos, *access_string;
+	unsigned int access;
+
+	// If no argument given, there must be a channel with ChanServ in it
+	if(arg == NULL)
+	{
+		if(cr_ctx->channel != NULL && chanserv_channel_find(cr_ctx->channel->name))
+			return RET_TRUE;
+
+		return RET_FALSE;
+	}
+
+	// There is at least one argument, see if there are more
+	if((pos = strchr(arg, ',')) != NULL)
+	{
+		char *channel = trim(strndup(arg, pos - arg));
+
+		// Not a channel or no access level given
+		if(!IsChannelName(channel) || *++pos == '\0')
+		{
+			log_append(LOG_ERROR, "Invalid channel or no access level given.");
+			free(channel);
+			return RET_NONE;
+		}
+
+		if(!(cschan = chanserv_channel_find(channel)))
+		{
+			free(channel);
+			return RET_FALSE;
+		}
+		// Not needed anymore
+		free(channel);
+		access_string = trim(strdup(pos));
+	}
+	else
+	{
+		// One argument, associate channel
+		if(!(cschan = chanserv_channel_find(cr_ctx->channel->name)))
+		{
+			log_append(LOG_ERROR, "ChanServ channel %s does not exist.", cr_ctx->channel->name);
+			return RET_NONE;
+		}
+		access_string = trim(strdup(arg));
+	}
+
+	if(!aredigits(access_string) || !chanserv_is_valid_access(access = atoi(access_string)))
+	{
+		log_append(LOG_ERROR, "Invalid access level.");
+		free(access_string);
+		return RET_NONE;
+	}
+
+	dict_iter(node, cschan->users)
+	{
+		struct chanserv_user *user = node->data;
+		if(user->access < access)
+			continue;
+
+		struct chanserv_account *account = user->account;
+		if(ptrlist_find(account->irc_users, cr_ctx->user) > -1)
+			return RET_TRUE;
+	}
+	return RET_FALSE;
 }
 
 COMMAND(csaccess)
@@ -365,7 +455,7 @@ IRC_HANDLER(notice)
 
 	else if(!strncmp(dup, "You must be in", 14))
 	{
-		chanserv_access_request_handle_raw(vec[4], NULL, -1);
+		chanserv_access_request_handle_raw(vec[4], NULL, CHANSERV_ACCESS_DENIED);
 		return;
 	}
 

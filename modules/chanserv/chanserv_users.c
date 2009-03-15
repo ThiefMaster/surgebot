@@ -93,7 +93,7 @@ static void chanserv_user_parse_names_item(struct chanserv_channel *cschan, cons
 	assert_goto((user = user_find(nick)), free_vars);
 
 	// See if this nick needs to be added
-	if(ptrlist_find(account->irc_users, user) == (unsigned int)-1)
+	if(ptrlist_find(account->irc_users, user) == -1)
 		ptrlist_add(account->irc_users, 0, user);
 
 free_vars:

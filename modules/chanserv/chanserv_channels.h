@@ -27,13 +27,16 @@ struct chanserv_channel
 	unsigned int active : 1;
 };
 
+#define CHANSERV_TIMEOUT		-1
+#define CHANSERV_ACCESS_DENIED	-2
+
 struct chanserv_access_request
 {
 	char *channel;
 	char *nick;
 	struct timer *timer;
 
-	int access; // -1 = error
+	int access; // 0 - 500 or above constants for errors
 
 	chanserv_access_f *callback;
 };

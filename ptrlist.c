@@ -47,7 +47,7 @@ unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr)
 	return pos;
 }
 
-unsigned int ptrlist_find(struct ptrlist *list, void *ptr)
+int ptrlist_find(struct ptrlist *list, const void *ptr)
 {
 	for(unsigned int i = 0; i < list->count; i++)
 		if(list->data[i]->ptr == ptr)

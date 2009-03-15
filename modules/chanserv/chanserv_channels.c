@@ -153,8 +153,8 @@ void chanserv_get_access_callback(const char *channel, const char *nick, chanser
 	req->channel = strdup(channel);
 	req->callback = callback;
 	req->nick = strdup(nick);
-	req->access = -1;
-	req->timer = timer_add(NULL, "chanserv_get_access", now + 2, (timer_f*)chanserv_access_request_timer, req, 0, 0);
+	req->access = CHANSERV_TIMEOUT;
+	req->timer = timer_add(NULL, "chanserv_get_access", now + 1, (timer_f*)chanserv_access_request_timer, req, 0, 0);
 
 	ptrlist_add(chanserv_access_requests, 0, req);
 	irc_send(sz_chanserv_get_access, channel, nick);
