@@ -268,6 +268,8 @@ PARSER_FUNC(chanserv)
 		free(access_string);
 		return RET_NONE;
 	}
+	// Not needed anymore
+	free(access_string);
 
 	dict_iter(node, cschan->users)
 	{
