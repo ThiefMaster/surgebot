@@ -53,7 +53,7 @@ MODULE_INIT
 	blockedChannels = dict_create();
 	dict_set_free_funcs(blockedChannels, free, free);
 
-	DEFINE_COMMAND(self, "request",	request, 1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "true");
+	DEFINE_COMMAND(self, "request",	request, 1, CMD_LAZY_ACCEPT_CHANNEL, "true");
 
 	activeRequests = stringlist_create();
 
@@ -76,7 +76,13 @@ MODULE_FINI
 
 COMMAND(request)
 {
-	struct chanreg *reg;
+	if(!(user->account))
+	{
+		reply("If you want me to join your channel, you first need to register.");
+		reply("In order to do so, take a look at $b/msg $N HELP register$b");
+		reply("If you do already have an account, see $b/msg $N HELP auth$b");
+		return 0;
+	}
 
 	if(!channelname)
 	{
@@ -84,6 +90,7 @@ COMMAND(request)
 		return 0;
 	}
 
+	struct chanreg *reg;
 	if((reg = chanreg_find(channelname)))
 	{
 		reply("$b%s$b is already registered.", reg->channel);
@@ -103,8 +110,6 @@ COMMAND(request)
 	}
 
 	reply("Thanks for requesting $N. I will join $b%s$b now and check your access.", channelname);
-	reply("To register your channel with $N, you need to be $bopped$b in $b%s$b", channelname);
-	reply("Also, if $b%s$b is a registered channel, you need at least $b%d$b chanserv access.", channelname, chanrequest_conf.minAccess);
 
 	stringlist_add(activeRequests, strdup(channelname));
 	chanjoin_addchan(channelname, this, NULL, (chanjoin_success_f*)chanrequest_chanjoin_success, (chanjoin_error_f*)chanrequest_chanjoin_error, strdup(user->nick), free);
@@ -160,17 +165,17 @@ static void chanrequest_chanjoin_error(struct cj_channel *chan, const char *key,
 	if(!strcmp(reason, "keyed") || !strcmp(reason, "inviteonly")) // invite only / keyed channel
 	{
 		irc_send("NOTICE %s :Looks like you set a $bkey$b for your channel or it's $binvite only.$b", ctx);
-		irc_send("NOTICE %s :Please invite me or add me to your channel userlist with access to use ChanServs INVITEME command.", ctx);
+		irc_send("NOTICE %s :Please invite me or add me to your channel userlist with access to use ChanServ's INVITEME command.", ctx);
 	}
 	else if(!strcmp(reason, "limit")) // limit reached
 	{
 		irc_send("NOTICE %s :Looks like your channel $bis full.$b", ctx);
-		irc_send("NOTICE %s :Please increase the limit or add me to your channel userlist with access to use ChanServs INVITEME command.", ctx);
+		irc_send("NOTICE %s :Please increase the limit or add me to your channel userlist with access to use ChanServ's INVITEME command.", ctx);
 	}
 	else if(!strcmp(reason, "banned")) // banned channels
 	{
 		irc_send("NOTICE %s :Looks like I'm banned in this channel.", ctx);
-		irc_send("NOTICE %s :Please add me to your channel userlist with access to use ChanServs UNBANME command (200).", ctx);
+		irc_send("NOTICE %s :Please add me to your channel userlist with access to use ChanServ's UNBANME command (200).", ctx);
 	}
 
 	setChannelBlock(ctx, chan->name);
