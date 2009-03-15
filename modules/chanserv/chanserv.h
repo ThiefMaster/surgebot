@@ -44,7 +44,4 @@ static const char * const	sz_chanserv_users_timer_name		= "chanserv_update_users
 const struct column_desc *chanserv_event_table_cols();
 unsigned long parse_chanserv_duration(const char *);
 
-struct chanreg_module *cmod;
-struct module *this;
-
 #endif // __CHANSERV_H__

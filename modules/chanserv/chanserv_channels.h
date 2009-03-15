@@ -43,7 +43,7 @@ extern struct ptrlist *chanserv_access_requests;
 
 void chanserv_channels_init();
 void chanserv_channels_fini();
-inline void chanserv_channels_populate();
+void chanserv_channels_populate();
 
 void chanserv_db_read(struct dict *db_nodes, struct chanreg *reg);
 int chanserv_db_write(struct database_object *dbo, struct chanreg *reg);

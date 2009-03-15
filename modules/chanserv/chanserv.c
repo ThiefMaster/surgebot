@@ -11,6 +11,9 @@
 
 #include "modules/chanserv/chanserv.h"
 
+struct module *this;
+struct chanreg_module *cmod;
+
 MODULE_DEPENDS("chanreg", "commands", "tools", "db", NULL);
 
 COMMAND(users);

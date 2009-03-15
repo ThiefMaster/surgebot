@@ -7,7 +7,10 @@
 
 extern struct db_table *event_table;
 
-inline void chanserv_event_add(struct tm calendar, const char *channel, const char *issuer, const char *command)
+extern struct module *this;
+extern struct chanreg_module *cmod;
+
+void chanserv_event_add(struct tm calendar, const char *channel, const char *issuer, const char *command)
 {
 	time_t stamp;
 	char *tmp, source[513] = {0}, account[513] = {0};

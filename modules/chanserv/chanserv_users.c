@@ -6,7 +6,7 @@
 
 struct dict *chanserv_accounts;
 
-inline int chanserv_user_add(struct chanserv_channel *cschan, const char *line, int argc, char **argv)
+int chanserv_user_add(struct chanserv_channel *cschan, const char *line, int argc, char **argv)
 {
 	int access;
 	struct chanserv_user *cs_user;

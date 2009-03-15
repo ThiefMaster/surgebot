@@ -4,10 +4,13 @@
 struct ptrlist *chanserv_channels = NULL;
 struct ptrlist *chanserv_access_requests = NULL;
 
+extern struct module *this;
+extern struct chanreg_module *cmod;
+
 static void chanserv_fetch_users(void *bound, struct chanserv_channel *cschan);
 static struct chanserv_channel *chanserv_channel_create_fetch(struct chanreg *reg);
 
-inline void chanserv_channels_populate()
+void chanserv_channels_populate()
 {
 	struct irc_user *user;
 	// Find ChanServ

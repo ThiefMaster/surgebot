@@ -9,7 +9,7 @@ struct chanserv_event
 	char *command;
 };
 
-inline void chanserv_event_add(struct tm calendar, const char *channel, const char *issuer, const char *command);
+void chanserv_event_add(struct tm calendar, const char *channel, const char *issuer, const char *command);
 void chanserv_event_timer(void *, void *);
 void chanserv_event_free(struct chanserv_event *);
 void chanserv_fetch_events(void *bound, struct chanserv_channel *cschan);
