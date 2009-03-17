@@ -1,0 +1,54 @@
+"*" = (
+	"$b$N help system$b",
+	"$N is meant to be a bot providing you several services for clans, fun, etc.",
+	"It is still being worked on but while we are doing so feel free to suggest new features which you'd like this bot to offer.",
+
+	"$b$N$b command categories:",
+	"{HELP_CATEGORY_LIST}",
+
+	"Some general information:",
+	"    [text]    - Something optional",
+	"    <text>    - Something needed",
+);
+
+"*GENERAL" = {
+	"help.help" = {
+		"description" = "The HELP command";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} [command | command category]",
+			"This command will display the help for [command] or [command category]"
+		);
+		"see_also" = (
+			"account.register",
+			"account.auth"
+		);
+	};
+};
+
+"*ACCOUNT" = {
+	"*" = (
+		"$b$N$b uses accounts to identify users.",
+
+		"$b$N$b account commands:",
+		"{HELP_COMMAND_LIST}",
+
+		"$b$N$b account sub categories:",
+		"{HELP_CATEGORY_LIST}",
+	);
+
+	"account.auth" = {
+		"description" = "Command to authenticate to the bot";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <accountname> <password>",
+			"Authenticates yourself to the specified account"
+		);
+		"see_also" = (
+			"account.register",
+			"account.auth"
+		);
+	};
+
+	"*SUBCATEGORY" = {
+		"*" = "Just an example sub category";
+	};
+};
