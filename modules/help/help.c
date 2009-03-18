@@ -524,8 +524,6 @@ COMMAND(help)
 
 		if(entry)
 		{
-			reply("Found help entry for binding $b%s$b (%s.%s):", binding->name, binding->module->name, binding->cmd->name);
-			//dump_help_entry(src, entry, 0);
 			send_help(src, entry->parent, entry, binding, entry->text, "{HELP_BINDING}", help_replacer_binding, NULL);
 			return 1;
 		}
