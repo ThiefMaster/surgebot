@@ -620,6 +620,7 @@ static void module_loaded(struct module *module)
 			assert_continue(binding->cmd);
 			if(!binding->comp_rule)
 				binding->comp_rule = command_rule_compile(binding->rule ? binding->rule : binding->cmd->rule);
+			ptrlist_add(binding->cmd->bindings, 0, binding);
 			binding->cmd->bind_count++;
 		}
 	}
@@ -722,6 +723,7 @@ struct command *command_add(struct module *module, const char *name, command_f *
 	command->min_argc = min_argc;
 	command->flags    = flags;
 	command->rule     = strdup(rule);
+	command->bindings = ptrlist_create();
 
 	dict_insert(command_list, key, command);
 	return command;
@@ -745,6 +747,7 @@ struct command *command_find(struct module *module, const char *name)
 static void command_del(struct command *command)
 {
 	dict_delete(command_list, command->key);
+	ptrlist_free(command->bindings);
 	free(command->name);
 	free(command->rule);
 	free(command);
@@ -784,7 +787,10 @@ struct cmd_binding *binding_add(const char *name, const char *module_name, const
 	}
 
 	if(binding->cmd)
+	{
 		binding->cmd->bind_count++;
+		ptrlist_add(binding->cmd->bindings, 0, binding);
+	}
 
 	dict_insert(binding_list, binding->name, binding);
 	return binding;
@@ -844,7 +850,10 @@ void binding_del(struct cmd_binding *binding)
 {
 	dict_delete(binding_list, binding->name);
 	if(binding->cmd)
+	{
 		binding->cmd->bind_count--;
+		ptrlist_del_ptr(binding->cmd->bindings, binding);
+	}
 	free(binding->name);
 	free(binding->module_name);
 	free(binding->cmd_name);

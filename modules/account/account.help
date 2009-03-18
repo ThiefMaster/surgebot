@@ -1,74 +1,169 @@
-"register" = (
-	"Usage: /msg $N register <account> <password>",
-	"Registers an account to you.",
-	"$uSee also:$u auth"
-);
+"*ACCOUNT" = {
+	"*" = (
+		"$b$N$b uses accounts to identify users.",
 
-"auth" = (
-	"Usage: /msg $N auth <account> <password>",
-	"Authenticates yourself to the specified account.",
-	"$uSee also:$u register"
-);
+		"{HELP_COMMAND_LIST}",
+		"{HELP_CATEGORY_LIST}"
+	);
 
-"pass" = (
-	"Usage: /msg $N pass <oldpass> <newpass>",
-	"Changes your account password."
-);
+	"register" = {
+		"description" = "Registers a new account.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <account> <password>",
+			"Registers an account to you."
+		);
+		"see_also" = (
+			"account.register",
+			"account.auth"
+		);
+	};
 
-"unregister" = (
-	"Usage: /msg $N unregister <password>",
-	"Unregisters your account.",
-	"$bWarning:$b This cannot be undone; all access/permissions/settings assigned to your account will be lost.",
-	"$uSee also:$u register"
-);
+	"auth" = {
+		"description" = "Authenticates yourself to an existing account.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <account> <password>",
+			"Authenticates yourself to the specified account."
+		);
+		"see_also" = (
+			"account.register",
+			"account.auth",
+			"account.loginmask"
+		);
+	};
 
-"accountinfo" = (
-	"Usage: /msg $N accountinfo [nick|*account]",
-	"Displays information about the specified account.",
-	"If someone is authed, you can use <nick>, otherwise you have to use <*account>.",
-	"$uSee also:$u access"
-);
+	"pass" = {
+		"description" = "Changes your account password.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <old-password> <new-password>",
+			"Changes your account password."
+		);
+	};
 
-"group list" = (
-	"Usage: /msg $N group list",
-	"Lists all existing groups.",
-	"$uSee also:$u group info, group create, group remote"
-);
+	"unregister" = {
+		"description" = "Permanently unregisters your account.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <password>",
+			"Unregisters your account.",
+			"$bWarning:$b This cannot be undone; all access/permissions/settings assigned to your account will be $blost$b."
+		);
+		"see_also" = (
+			"account.register"
+		);
+	};
 
-"group info" = (
-	"Usage: /msg $N group info <groupname>",
-	"Displays information about a certain group.",
-	"$uSee also:$u group list"
-);
+	"accountinfo" = {
+		"description" = "Displays information about an account.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} [nick|*account]",
+			"Displays information about the specified account.",
+			"If someone is authed, you can use his nick, otherwise you have to use *account."
+		);
+		"see_also" = (
+			"chanreg.access"
+		);
+	};
 
-"group create" = (
-	"Usage: /msg $N group create <groupname>",
-	"Creates a new group.",
-	"$uSee also:$u group remove, group list"
-);
+	"loginmask" = {
+		"description" = "Sets an ident@host mask for automatical login.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} loginmask [mask]",
+			"Used to set an ident@host mask which will allow you to authenticate to your account automatically without using a password.",
+			"If no mask is provided, your current login mask will be displayed.",
+			"This must not be *@* for security reasons but has to match against *@*.",
+			"You can use * as mask to delete your current login mask."
+		);
+		"see_also" = (
+			"account.auth"
+		);
+	};
 
-"group remove" = (
-	"Usage: /msg $N group remove <groupname>",
-	"Deletes an existing group.",
-	"$uSee also:$u group create, group list"
-);
+	// Sub category for group management
+	"*GROUPS" = {
+		"*" = (
+			"Group management (staff only)",
+			"{HELP_COMMAND_LIST}"
+		);
 
-"group addmember" = (
-	"Usage: /msg $N group addmember <groupname> <nick|*account>",
-	"Adds a group member.",
-	"$uSee also:$u group delmember"
-);
+		"group list" = {
+			"description" = "Lists all existing groups.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING}",
+				"Lists all existing groups."
+			);
+			"see_also" = (
+				"account.group list",
+				"account.group info",
+				"account.group create",
+				"account.group remove"
+			);
+		};
 
-"group delmember" = (
-	"Usage: /msg $N group delmember <groupname> <nick|*account>",
-	"Removes a group member.",
-	"$uSee also:$u group addmember"
-);
+		"group info" = {
+			"description" = "Displays information about a group.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <group>",
+				"Displays information about the specified group."
+			);
+			"see_also" = (
+				"account.group list",
+				"account.group info",
+				"account.group create",
+				"account.group remove"
+			);
+		};
 
-"loginmask" = (
-	"Usage: /msg $N loginmask [mask]",
-	"Used to set an ident@host mask which will allow you to authenticate to your account automatically without using a password.",
-	"If no mask is provided, your current ident@host will be used.",
-	"This must not be *@* for security reasons but has to match against *@*.",
-	"You can use * as mask to delete your current login mask."
-);
+		"group create" = {
+			"description" = "Creates a new group.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <group>",
+				"Creates a new group."
+			);
+			"see_also" = (
+				"account.group list",
+				"account.group info",
+				"account.group create",
+				"account.group remove"
+			);
+		};
+
+		"group remove" = {
+			"description" = "Deletes a group.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <group>",
+				"Deletes the specified group."
+			);
+			"see_also" = (
+				"account.group list",
+				"account.group info",
+				"account.group create",
+				"account.group remove",
+			);
+		};
+
+		"group addmember" = {
+			"description" = "Adds someone to a group.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <group> <nick|*account>",
+				"Adds the specified user to the specified group."
+			);
+			"see_also" = (
+				"account.group addmember",
+				"account.group delmember"
+			);
+		};
+
+		"group delmember" = {
+			"description" = "Removes someone from a group.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <group> <nick|*account>",
+				"Removes the specified user from the specified group."
+			);
+			"see_also" = (
+				"account.group addmember",
+				"account.group delmember"
+			);
+		};
+	};
+};
+
+// vim: ft=cfg

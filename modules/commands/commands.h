@@ -2,6 +2,7 @@
 #define COMMANDS_H
 
 #include "command_rule.h"
+#include "ptrlist.h"
 
 #define COMMAND(CMD)	static int __command_ ## CMD(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, unsigned int argc, char **argv, const char *argline)
 typedef int (command_f)(struct irc_source *src, struct irc_user *user, struct irc_channel *channel, const char *channelname, unsigned int argc, char **argv, const char *argline);
@@ -30,6 +31,7 @@ struct command
 	char		*rule;
 
 	unsigned int	bind_count;
+	struct ptrlist	*bindings;
 };
 
 struct cmd_binding
