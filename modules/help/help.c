@@ -357,6 +357,8 @@ static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_ca
 				continue;
 			stringbuffer_append_string(sbuf, "    ");
 			stringbuffer_append_string(sbuf, binding->name);
+			stringbuffer_append_string(sbuf, "  -  ");
+			stringbuffer_append_string(sbuf, entry->description);
 			stringbuffer_append_char(sbuf, '\n');
 			break;
 		}
