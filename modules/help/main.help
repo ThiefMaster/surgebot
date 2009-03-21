@@ -5,12 +5,19 @@
 
 	"{HELP_CATEGORY_LIST}",
 
-	"Some general information:",
-	"    [text]    - optional argument",
-	"    <text>    - required argument",
+	"$uSome general information about command parameters:$u",
+	"    $b[text]$b    - optional argument",
+	"    $b<text>$b    - required argument",
 );
 
 "*GENERAL" = {
+	"*" = (
+		"General commands for $b$N$b",
+
+		"{HELP_COMMAND_LIST}",
+		"{HELP_CATEGORY_LIST}"
+	);
+
 	"help" = {
 		"description" = "The HELP command";
 		"help" = (
@@ -20,4 +27,40 @@
 	};
 };
 
+"*ACCOUNT" = {
+	"*" = (
+		"$b$N$b uses accounts to identify users.",
+
+		"{HELP_COMMAND_LIST}",
+		"{HELP_CATEGORY_LIST}"
+	);
+};
+
+"*CHANNEL" = {
+	"*" = (
+		"$b$N$b is channel bot, so you can see all comannds and categories",
+		"depending on channels here",
+
+		"{HELP_COMMAND_LIST}",
+		"{HELP_CATEGORY_LIST}"
+	);
+};
+
+"*STAFF" = {
+	"*" = (
+		"Staff commands for $b$N$b",
+
+		"{HELP_COMMAND_LIST}",
+		"{HELP_CATEGORY_LIST}"
+	);
+};
+
+"*MODULE" = {
+	"*" = (
+		"$b$N$b has many modules. Here you can see each module",
+
+		// we want to list CATEGORIES only in here!
+		"{HELP_CATEGORY_LIST}"
+	);
+};
 // vim: ft=cfg

@@ -1,11 +1,4 @@
 "*ACCOUNT" = {
-	"*" = (
-		"$b$N$b uses accounts to identify users.",
-
-		"{HELP_COMMAND_LIST}",
-		"{HELP_CATEGORY_LIST}"
-	);
-
 	"register" = {
 		"description" = "Registers a new account.";
 		"help" = (

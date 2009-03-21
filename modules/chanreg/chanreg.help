@@ -1,106 +1,263 @@
-"cregister" = (
-	"Usage: /msg $N cregister <#channel> <nick|*account>",
-	"Registers a channel and gives owner (500) access to the specified user.",
-	"$uSee also:$u cunregister, stats chanreg"
-);
+"*CHANNEL" = {
+	"cregister" = {
+		"description" = "Registers a channel.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account>",
+			"Registers a channel and gives owner (500) access to the specified user."
+		);
+		"see_also" = (
+			"chanreg.cunregister",
+			"chanreg.stats chanreg"
+		);
+	};
 
-"cunregister" = (
-	"Usage: /msg $N cunregister <#channel>",
-	"Unregisters a channel. Note: Channel settings and the userlist $bcannot$b be recovered after unregistration.",
-	"$uSee also:$u cregister, stats chanreg"
-);
+	"cunregister" = {
+		"description" = "Unregisters a channel.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+			"Unregisters a channel. Note: Channel settings and the userlist $bcannot$b be recovered after unregistration."
+		);
+		"see_also" = (
+			"chanreg.cregister",
+			"chanreg.stats chanreg"
+		);
+	};
 
-"stats chanreg" = (
-	"Usage: /msg $N stats chanreg",
-	"Displays a list of all registered channels.",
-	"$uSee also:$u cregister, cunregister"
-);
+	"stats chanreg" = {
+		"description" = "Displays a list of all registered channels.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} chanreg",
+			"Displays a list of all registered channels."
+		);
+		"see_also" = (
+			"chanreg.cregister",
+			"chanreg.cunregister"
+		);
+	};
+
+	"adduser" = {
+		"description" = "Adds a user to the channel userlist.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account> <level>",
+			"Adds a user to the channel userlist with the specified access level.",
+			"The level may be anything from 1 to 500, but only staff may add users with level 500 (owner) and you can only add users with less access than you have."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"deluser" = {
+		"description" = "Removes a user to the channel userlist.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account>",
+			"Removes a user to the channel userlist. Note that you can only delete users who have less access than you."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"clvl" = {
+		"description" = "Modifies access of a channel user.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account> <level>",
+			"Modifies access of a channel user with the same restrictions like when adding new users.",
+			"Additionally, you cannot change the access of someone with more or equal access than you."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"giveownership" = {
+		"description" = "Transfers ownership of the channel.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account> [FORCE]",
+			"Transfers ownership of the channel from you to another user on the userlist. Your own access will be changed at least to coowner (or higher if the new owner had more than 400 access).",
+			"Staff may use FORCE to transfer ownership to someone not on the userlist."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"access" = {
+		"description" = "Displays information about a channel user.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> [nick|*account]",
+			"Displays information about a channel user. If you omit the nick/account, information about your own access will be returned."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"users" = {
+		"description" = "Displays the userlist.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+			"Displays the userlist of a channel."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"suspend" = {
+		"description" = "Disables the user's access in the channel.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account>",
+			"Disables the user's access in the channel temporarily until it is restored with the unsuspend command."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"unsuspend" = {
+		"description" = "Restores the access of a suspended user.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <nick|*account>",
+			"Restores the access of a suspended user."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"cinfo" = {
+		"description" = "Display various information";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+			"Display various information about a registered channel."
+		);
+	};
 
 
-"adduser" = (
-	"Usage: /msg $N adduser <#channel> <nick|*account> <level>",
-	"Adds a user to the channel userlist with the specified access level.",
-	"The level may be anything from 1 to 500, but only staff may add users with level 500 (owner) and you can only add users with less access than you have.",
-	"$uSee also:$u clvl, deluser, giveownership, access, users"
-);
+	"cset" = {
+		"description" = "Set channel options.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel> [<[module.]setting> [value]]",
+			"Sets various options of a channel. If a setting exists in multiple modules, you must use the full name including the module.",
+			"When used with no arguments the command will show a list of available settings and their values.",
+			"When used with a single argument, it will display the value of this setting."
+		);
+	};
 
-"deluser" = (
-	"Usage: /msg $N deluser <#channel> <nick|*account>",
-	"Removes a user to the channel userlist. Note that you can only delete users who have less access than you.",
-	"$uSee also:$u adduser, clvl, giveownership, suspend, access, users"
-);
+	"*MODULES" = {
+		"*" = (
+			"$b$N$b has many channel modules. Each module provides a uniq feature",
 
-"clvl" = (
-	"Usage: /msg $N clvl <#channel> <nick|*account> <level>",
-	"Modifies access of a channel user with the same restrictions like when adding new users.",
-	"Additionally, you cannot change the access of someone with more or equal access than you.",
-	"$uSee also:$u adduser, deluser, giveownership, access, users"
-);
+			"{HELP_COMMAND_LIST}",
+			"{HELP_CATEGORY_LIST}"
+		);
 
-"giveownership" = (
-	"Usage: /msg $N giveownership <#channel> <nick|*account> [FORCE]",
-	"Transfers ownership of the channel from you to another user on the userlist. Your own access will be changed at least to coowner (or higher if the new owner had more than 400 access).",
-	"Staff may use FORCE to transfer ownership to someone not on the userlist.",
-	"$uSee also:$u adduser, clvl, deluser, access, users"
-);
+		"cmod list" = {
+			"description" = "Lists all channel modules.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+				"Displays a list of available/enabled channel modules."
+			);
+			"see_also" = (
+				"chanreg.cmod list",
+				"chanreg.cmod enable",
+				"chanreg.cmod disable"
+			);
+		};
 
-"suspend" = (
-	"Usage: /msg $N suspend <#channel> <nick|*account>",
-	"Disables the user's access in the channel temporarily until it is restored with the unsuspend command.",
-	"$uSee also:$u deluser, unsuspend, access, users"
-);
+		"cmod enable" = {
+			"description" = "Enables a channel module.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <module>",
+				"Enables a channel module. Note that certain modules may only be enabled by staff."
+			);
+			"see_also" = (
+				"chanreg.cmod list",
+				"chanreg.cmod enable",
+				"chanreg.cmod disable"
+			);
+		};
 
-"unsuspend" = (
-	"Usage: /msg $N unsuspend <#channel> <nick|*account>",
-	"Restores the access of a suspended user.",
-	"$uSee also:$u deluser, suspend, access, users"
-);
-
-"access" = (
-	"Usage: /msg $N access <#channel> [nick|*account]",
-	"Displays information about a channel user. If you omit the nick/account, information about your own access will be returned.",
-	"$uSee also:$u adduser, clvl, deluser, giveownership, users"
-);
-
-"users" = (
-	"Usage: /msg $N users <#channel>",
-	"Displays the userlist of a channel.",
-	"$uSee also:$u adduser, clvl, deluser, giveownership, access"
-);
-
-
-"cset" = (
-	"Usage: /msg $N cset <#channel> [<[module.]setting> [value]]",
-	"Sets various options of a channel. If a setting exists in multiple modules, you must use the full name including the module.",
-	"When used with no arguments the command will show a list of available settings and their values.",
-	"When used with a single argument, it will display the value of this setting."
-);
-
-"cinfo" = (
-	"Usage: /msg $N cinfo <#channel>",
-	"Display various information about a registered channel."
-);
-
-"cmod list" = (
-	"Usage: /msg $N cmod list <#channel>",
-	"Displays a list of available/enabled channel modules.",
-	"$uSee also:$u cmod enable, cmod disable"
-);
-
-"cmod enable" = (
-	"Usage: /msg $N cmod enable <#channel> <module>",
-	"Enables a channel module. Note that certain modules may only be enabled by staff.",
-	"$uSee also:$u cmod list, cmod disable"
-);
-
-"cmod disable" = (
-	"Usage: /msg $N cmod disable <#channel> <module> [purge]",
-	"Disables a channel module. Note that certain modules may only be enabled by staff.",
-	"When using the third argument, $bpurge$b, all settings and other data from the module will be deleted.",
-	"$uSee also:$u cmod list, cmod enable"
-);
-
-"global" = (
-	"Usage: /msg $N global <text>",
-	"Sends a message to all registered channels."
-);
+		"cmod disable" = {
+			"description" = "Disables a channel module.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <module> [purge]",
+				"Disables a channel module. Note that certain modules may only be enabled by staff.",
+				"When using the third argument, $bpurge$b, all settings and other data from the module will be deleted."
+			);
+			"see_also" = (
+				"chanreg.cmod list",
+				"chanreg.cmod enable",
+				"chanreg.cmod disable"
+			);
+		};
+	};
+};
+/*
+"*STAFF" = {
+	"global" = {
+		"description" = "Sends a global";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <text>",
+			"Sends a message to all registered channels."
+		);
+	};
+};
+*/

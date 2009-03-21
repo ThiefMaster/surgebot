@@ -4,23 +4,25 @@ Description							| Assigned to
 								|
 ----------------------------------------------------------------+-------------
 								|
- Adding Quiz-Modul (+ converter for moxquizz questions?)	|
+ Adding Quiz-Modul (+ converter for moxquizz questions?)	| 
 								|
 ----------------------------------------------------------------+-------------
 								|
  Writing some proper help files					|
-	- include something like $C for command			|
-	- create some auto-index pages e.g. for /msg $N help	|
+	- add descriptions to categories			| ThiefMaster
+	- add parmeter to {HELP_* functions to define		| ThiefMaster
+	  output in helpfiles 					|
+	- rewrite help files					| Izlots
 								|
 ----------------------------------------------------------------+-------------
 								|
- Create/improve logging module					|
+ Create/improve logging module					| 
 	- define log levels					|
 	- ability to send certain messages to a staff channel	|
 								|
 ----------------------------------------------------------------+-------------
 								|
- Move some commands from the misc module to a toy modul		|
+ Move some commands from the misc module to a toy modul		| 
 								|
 ----------------------------------------------------------------+-------------
 								|
