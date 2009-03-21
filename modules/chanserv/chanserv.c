@@ -60,7 +60,6 @@ MODULE_INIT
 	cmod = chanreg_module_reg(sz_chanserv_chanmod_events_name, 0, chanserv_db_read, chanserv_db_write, cmod_enabled, cmod_disabled);
 
 	chanserv_channels_populate();
-	chanserv_timer_add();
 
 	DEFINE_COMMAND(self, "events",	events,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
 	DEFINE_COMMAND(self, "users",	users,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
@@ -79,6 +78,8 @@ MODULE_INIT
 
 	reg_channel_complete_hook(chanserv_channel_complete_hook);
 	reg_user_del_hook(chanserv_user_del);
+	reg_chanreg_add_hook(chanserv_chanreg_add);
+	reg_chanreg_del_hook(chanserv_chanreg_del);
 	chanserv_event_timer_add();
 }
 
@@ -86,9 +87,12 @@ MODULE_FINI
 {
 	chanserv_event_timer_del();
 	chanserv_timer_del();
+	timer_del_boundname(NULL, "chanserv_get_access");
 
 	unreg_user_del_hook(chanserv_user_del);
 	unreg_channel_complete_hook(chanserv_channel_complete_hook);
+	unreg_chanreg_add_hook(chanserv_chanreg_add);
+	unreg_chanreg_del_hook(chanserv_chanreg_del);
 
 	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("PART", part);
@@ -522,6 +526,30 @@ IRC_HANDLER(notice)
 		return;
 	}
 
+	// Line of names list
+	if(!strncmp(dup, "Users in", 8))
+	{
+		// No users
+		if(count < 4)
+			return;
+
+		// First line?
+		if(!curchan)
+		{
+			char *channel = strndup(vec[2], vec[3] - vec[2] - 2);
+			if(!(curchan = chanserv_channel_find(channel)))
+			{
+				free(channel);
+				return;
+			}
+			free(channel);
+		}
+
+		curchan->process = CS_P_NAMES;
+		chanserv_user_parse_names(curchan, dup + (vec[3] - vec[0]));
+		return;
+	}
+
 	// Line of events
 	struct tm calendar;
 	memset(&calendar, 0, sizeof(calendar));
@@ -558,41 +586,6 @@ IRC_HANDLER(notice)
 		return;
 	}
 
-	// Line of names list
-	if(!strncmp(dup, "Users in", 8))
-	{
-		// No users
-		if(count < 4)
-			return;
-
-		// First line?
-		if(!curchan)
-		{
-			char *channel = strndup(vec[2], vec[3] - vec[2] - 2);
-			if(!(curchan = chanserv_channel_find(channel)))
-			{
-				free(channel);
-				return;
-			}
-			free(channel);
-		}
-
-		curchan->process = CS_P_NAMES;
-		chanserv_user_parse_names(curchan, dup + (vec[3] - vec[0]));
-		return;
-	}
-
-	// Last line of names
-	if(!strncasecmp(dup, "End of names in", 15))
-	{
-		if(curchan)
-		{
-			curchan->process = CS_P_NONE;
-			curchan = NULL;
-		}
-		return;
-	}
-
 	if(!curchan)
 		return;
 
@@ -614,6 +607,13 @@ IRC_HANDLER(notice)
 	if(curchan->process == CS_P_USERLIST)
 		if(chanserv_user_add(curchan, dup, count, vec) != 0)
 			curchan = NULL;
+
+	// Last line of names
+	if(!strncasecmp(dup, "End of names in", 15))
+	{
+		curchan->process = CS_P_NONE;
+		curchan = NULL;
+	}
 }
 
 DB_SELECT_CB(show_events_cb)

@@ -60,6 +60,8 @@ void chanserv_timer_del();
 
 void chanserv_channel_complete_hook(struct irc_channel *channel);
 void chanserv_report(const char *channel, const char *format, ...);
+void chanserv_chanreg_add(struct chanreg *reg);
+void chanserv_chanreg_del(struct chanreg *reg);
 
 void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *);
 void chanserv_access_request_timer(void *bound, struct chanserv_access_request *request);

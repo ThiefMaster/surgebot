@@ -93,7 +93,6 @@ void chanserv_channel_complete_hook(struct irc_channel *channel)
 {
 	struct chanreg *reg;
 	struct irc_user *user;
-	struct chanserv_channel *cschan;
 
 	if(!(reg = chanreg_find(channel->name)))
 		return;
@@ -104,7 +103,7 @@ void chanserv_channel_complete_hook(struct irc_channel *channel)
 	if(!channel_user_find(channel, user))
 		return;
 
-	cschan = chanserv_channel_create_fetch(reg);
+	chanserv_channel_create_fetch(reg);
 }
 
 void chanserv_report(const char *channel, const char *format, ...)
@@ -116,6 +115,32 @@ void chanserv_report(const char *channel, const char *format, ...)
 	vsnprintf(buf, sizeof(buf), format, args);
 	irc_send("NOTICE @%s :%s", channel, buf);
 	va_end(args);
+}
+
+void chanserv_chanreg_add(struct chanreg *reg)
+{
+	struct irc_user *user;
+	struct irc_channel *channel;
+
+	if(!(user = user_find(sz_chanserv_botname)))
+		return;
+
+	if(!(channel = channel_find(reg->channel)))
+		return;
+
+	if(!channel_user_find(channel, user))
+		return;
+
+	chanserv_channel_create_fetch(reg);
+}
+
+void chanserv_chanreg_del(struct chanreg *reg)
+{
+	struct chanserv_channel *cschan;
+	if(!(cschan = chanserv_channel_find(reg->channel)))
+		return;
+
+	ptrlist_del_ptr(chanserv_channels, cschan);
 }
 
 void chanserv_db_read(struct dict *db_nodes, struct chanreg *reg)
@@ -193,6 +218,8 @@ void chanserv_access_request_handle_raw(const char *channel, const char *nick, i
 
 		// To avoid being called again by the timer, unset the callback
 		req->callback = NULL;
+
+		// There may be several requests for the same channel, don't break from the loop
 	}
 }
 

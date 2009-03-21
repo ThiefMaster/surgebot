@@ -152,4 +152,7 @@ const char *null_none(struct chanreg *reg, const char *value);
 const char *asterisk_null(struct chanreg *reg, const char *old_value, const char *value);
 const char *access_encoder(struct chanreg *reg, const char *old_Value, const char *value);
 
+DECLARE_HOOKABLE(chanreg_del, (struct chanreg *reg));
+DECLARE_HOOKABLE(chanreg_add, (struct chanreg *reg));
+
 #endif

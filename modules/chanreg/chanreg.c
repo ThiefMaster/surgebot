@@ -22,8 +22,10 @@ static struct
 	char *staff_rule;
 } chanreg_conf;
 
-IMPLEMENT_LIST(chanreg_list, struct chanreg *)
-IMPLEMENT_LIST(chanreg_user_list, struct chanreg_user *)
+IMPLEMENT_LIST(chanreg_list, struct chanreg *);
+IMPLEMENT_LIST(chanreg_user_list, struct chanreg_user *);
+IMPLEMENT_HOOKABLE(chanreg_add);
+IMPLEMENT_HOOKABLE(chanreg_del);
 
 PARSER_FUNC(chanuser);
 PARSER_FUNC(privchan);
@@ -296,6 +298,8 @@ struct chanreg *chanreg_add(const char *channel, const struct stringlist *module
 
 	chanreg_join(reg);
 	dict_insert(chanregs, reg->channel, reg);
+
+	CALL_HOOKS(chanreg_add, (reg));
 	return reg;
 }
 
@@ -373,6 +377,8 @@ unsigned int chanreg_check_access(struct chanreg *reg, struct user_account *acco
 
 static void chanreg_free(struct chanreg *reg)
 {
+	CALL_HOOKS(chanreg_del, (reg));
+
 	if(reg->active && !reloading_module)
 		chanjoin_delchan(reg->channel, this, NULL);
 
