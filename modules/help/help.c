@@ -260,59 +260,51 @@ static void module_unloaded(struct module *module)
 // Helper function to dump help entry
 static void dump_help_entry(struct irc_source *src, struct help_entry *entry, unsigned int indent_len)
 {
-	char *indent = malloc(2*indent_len + 1);
-	memset(indent, ' ', 2*indent_len);
-	indent[2*indent_len] = '\0';
+	unsigned int indent = 2*indent_len;
 
-	reply("%s$uModule:$u %s", indent, entry->module->name);
-	reply("%s$uDescription:$u %s", indent, entry->description);
-	reply("%s$uText:$u", indent);
+	reply("%*s$uModule:$u %s", indent, " ", entry->module->name);
+	reply("%*s$uDescription:$u %s", indent, " ", entry->description);
+	reply("%*s$uText:$u", indent, " ");
 	for(unsigned int i = 0; i < entry->text->count; i++)
-		reply("%s  %s", indent, entry->text->data[i]);
-	reply("%s$uSee also:$u", indent);
+		reply("%*s  %s", indent, " ", entry->text->data[i]);
+	reply("%*s$uSee also:$u", indent, " ");
 	if(!entry->see_also)
-		reply("%s  (none)", indent);
+		reply("%*s  (none)", indent, " ");
 	else
 	{
 		for(unsigned int i = 0; i < entry->see_also->count; i++)
-			reply("%s  %s", indent, entry->see_also->data[i]);
+			reply("%*s  %s", indent, " ", entry->see_also->data[i]);
 	}
-
-	free(indent);
 }
 
 // Helper function to dump help category
 static void dump_help_category(struct irc_source *src, struct help_category *category, unsigned int indent_len)
 {
-	char *indent = malloc(2*indent_len + 1);
-	memset(indent, ' ', 2*indent_len);
-	indent[2*indent_len] = '\0';
+	unsigned int indent = 2*indent_len;
 
-	reply("%s$uDescription:$u", indent);
+	reply("%*s$uDescription:$u", indent, " ");
 	if(!category->description)
-		reply("%s  (none)", indent);
+		reply("%*s  (none)", indent, " ");
 	else
 	{
 		for(unsigned int i = 0; i < category->description->count; i++)
-			reply("%s  %s", indent, category->description->data[i]);
+			reply("%*s  %s", indent, " ", category->description->data[i]);
 	}
 
-	reply("%s$uEntries:$u (%d)", indent, dict_size(category->entries));
+	reply("%*s$uEntries:$u (%d)", indent, " ", dict_size(category->entries));
 	dict_iter(node, category->entries)
 	{
-		reply("%s  $b%s$b:", indent, node->key);
+		reply("%*s  $b%s$b:", indent, " ", node->key);
 		dump_help_entry(src, node->data, indent_len + 2);
 	}
 
-	reply("%s$uSubcategories:$u (%d)", indent, dict_size(category->subcategories));
+	reply("%*s$uSubcategories:$u (%d)", indent, " ", dict_size(category->subcategories));
 	dict_iter(node, category->subcategories)
 	{
 		struct help_category *subcat = node->data;
-		reply("%s  $uSubcategory:$u %s", indent, node->key);
+		reply("%*s  $uSubcategory:$u %s", indent, " ", node->key);
 		dump_help_category(src, subcat, indent_len + 2);
 	}
-
-	free(indent);
 }
 
 COMMAND(helpdebug)
@@ -330,7 +322,7 @@ static void help_replacer_category_list(struct stringbuffer *sbuf, struct help_c
 	dict_iter(node, category->subcategories)
 	{
 		struct help_category *subcat = node->data;
-		stringbuffer_append_string(sbuf, "  ");
+		stringbuffer_append_string(sbuf, "    ");
 		stringbuffer_append_string(sbuf, subcat->full_name);
 		stringbuffer_append_char(sbuf, '\n');
 	}
@@ -363,7 +355,7 @@ static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_ca
 			// Prefer a binding named like the comman or use the newest binding if no preferred binding was found.
 			if(strcasecmp(binding->name, entry->name) && i < cmd->bindings->count - 1)
 				continue;
-			stringbuffer_append_string(sbuf, "  ");
+			stringbuffer_append_string(sbuf, "    ");
 			stringbuffer_append_string(sbuf, binding->name);
 			stringbuffer_append_char(sbuf, '\n');
 			break;
@@ -467,8 +459,9 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 
 			if(!cmd->bindings->count)
 			{
+				log_append(LOG_ERROR, "Found command %s with bind_count=%u but bindings->count=%u", cmd->name, cmd->bind_count, cmd->bindings->count);
 				free(mod_name);
-				assert_continue(cmd->bindings->count);
+				continue;
 			}
 
 			for(unsigned int i = 0; i < cmd->bindings->count; i++)
