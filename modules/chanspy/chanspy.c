@@ -520,7 +520,7 @@ static struct chanspy *spy_add(const char *name, const char *channel, const char
 	}
 
 	if(*channel != '<' && strcmp(channel, "*"))
-		chanjoin_addchan(channel, this, name, cj_success, cj_error, spy, NULL);
+		chanjoin_addchan(channel, this, name, cj_success, cj_error, spy, NULL, 0);
 
 	if(*spy->target == '>')
 	{
@@ -901,7 +901,7 @@ COMMAND(chanspy_rejoin)
 		if(!strcasecmp(spy->channel, argv[1]))
 		{
 			found = 1;
-			chanjoin_addchan(spy->channel, this, spy->name, cj_success, cj_error, spy, NULL);
+			chanjoin_addchan(spy->channel, this, spy->name, cj_success, cj_error, spy, NULL, 0);
 		}
 	}
 

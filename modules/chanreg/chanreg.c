@@ -670,7 +670,7 @@ static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const 
 
 static void chanreg_join(struct chanreg *creg)
 {
-	chanjoin_addchan(creg->channel, this, NULL, cj_success, cj_error, creg, NULL);
+	chanjoin_addchan(creg->channel, this, NULL, cj_success, cj_error, creg, NULL, 0);
 }
 
 static int sort_channels(const void *a_, const void *b_)

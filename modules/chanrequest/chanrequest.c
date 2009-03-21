@@ -25,9 +25,9 @@ static struct dict *blockedChannels;
 static struct stringlist *activeRequests;
 
 static struct {
-	unsigned int	blockTime;
-	unsigned int	cleanInterval;
-	int				minAccess;
+	unsigned int blockTime;
+	unsigned int cleanInterval;
+	int minAccess;
 } chanrequest_conf;
 
 // the command(s) the module provides
@@ -128,7 +128,7 @@ COMMAND(request)
 	stringlist_add(activeRequests, strdup(channelname));
 	reply("Thanks for requesting $N. I will join $b%s$b now and check your access.", channelname);
 
-	chanjoin_addchan(channelname, this, NULL, (chanjoin_success_f*)chanrequest_chanjoin_success, (chanjoin_error_f*)chanrequest_chanjoin_error, strdup(user->nick), free);
+	chanjoin_addchan(channelname, this, NULL, (chanjoin_success_f*)chanrequest_chanjoin_success, (chanjoin_error_f*)chanrequest_chanjoin_error, strdup(user->nick), free, 1);
 
 	return 1;
 }

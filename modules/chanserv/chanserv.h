@@ -38,7 +38,7 @@ static const char * const	sz_chanserv_fetch_info				= "ChanServ %s info";
 static const char * const	sz_chanserv_fetch_names				= "ChanServ %s names";
 static const char * const	sz_chanserv_fetch_users				= "ChanServ %s users";
 static const unsigned int	 u_chanserv_fetch_users_interval	= 60 * 60;
-static const char * const	sz_chanserv_get_access				= "ChanServ %s a %s";
+static const char * const	sz_chanserv_get_access				= "ChanServ %s access %s";
 static const char * const	sz_chanserv_users_timer_name		= "chanserv_update_users";
 
 const struct column_desc *chanserv_event_table_cols();

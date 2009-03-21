@@ -105,7 +105,7 @@ static void chanjoin_conf_reload()
 	}
 }
 
-void chanjoin_addchan(const char *name, struct module *module, const char *key, chanjoin_success_f *success_func, chanjoin_error_f *error_func, void *ctx, chanjoin_free_ctx_f *ctx_free_func)
+void chanjoin_addchan(const char *name, struct module *module, const char *key, chanjoin_success_f *success_func, chanjoin_error_f *error_func, void *ctx, chanjoin_free_ctx_f *ctx_free_func, unsigned int rejoin_once)
 {
 	struct cj_channel *chan;
 	struct cj_channel_ref *ref;
@@ -118,6 +118,8 @@ void chanjoin_addchan(const char *name, struct module *module, const char *key, 
 		chan->name = strdup(name);
 		chan->channel = channel_find(name);
 		chan->refs = cj_channel_ref_list_create();
+		if(rejoin_once)
+			chan->tries = chanjoin_conf.max_tries - 1;
 		dict_insert(cj_channels, chan->name, chan);
 	}
 
