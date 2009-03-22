@@ -458,8 +458,9 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 		while((key = va_arg(args, const char *)))
 		{
 			help_replacer_func *func = va_arg(args, help_replacer_func *);
-			char *key_start = strstr(line, key);
-			if(key_start && key_start != line && *(--key_start) == '{')
+			char *key_start;
+
+			while((key_start = strstr(line, key)) && key_start != line && *(--key_start) == '{')
 			{
 				struct stringbuffer *sbuf;
 				char *key_end = key_start + 1 + strlen(key);

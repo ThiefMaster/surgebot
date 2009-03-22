@@ -64,7 +64,7 @@
 	"*" = (
 		"$b$N$b has many modules. Here you can see each module",
 		"To enable a module see: $b/msg $N {HELP_COMMAND:help.help} {HELP_COMMAND:chanreg.cmod enable}$b",
-	
+
 		// we want to list CATEGORIES only in here!
 		"{HELP_CATEGORY_LIST}"
 	);
