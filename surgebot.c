@@ -59,19 +59,24 @@ static void signal_init()
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = sig_exit;
-	sigaction(SIGQUIT, &sa, NULL);
-	sa.sa_handler = sig_exit;
-	sigaction(SIGINT, &sa, NULL);
-	sa.sa_handler = sig_exit;
-	sigaction(SIGTERM, &sa, NULL);
+
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &sa, NULL);
+
 	sa.sa_handler = sig_rehash;
 	sigaction(SIGHUP, &sa, NULL);
+
+	// Reset handler after calling it so the program creates a core dump after a SEGV
+	// and always exists after a second SIGINT etc.
+	sa.sa_flags = SA_RESETHAND;
+
 	sa.sa_handler = sig_segv;
-	sa.sa_flags = SA_RESETHAND; // reset handler after calling it so the program creates a core dump
 	sigaction(SIGSEGV, &sa, NULL);
+
+	sa.sa_handler = sig_exit;
+	sigaction(SIGQUIT, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
 }
 
 static int bot_init()
