@@ -1,6 +1,7 @@
 #ifndef CHANREG_H
 #define CHANREG_H
 
+#include "hook.h"
 #include "list.h"
 #include "stringlist.h"
 #include "database.h"
