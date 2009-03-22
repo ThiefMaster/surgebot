@@ -203,7 +203,7 @@
 
 	"*MODULES" = {
 		"*" = (
-			"$b$N$b has many channel modules. Each module provides a uniq feature",
+			"$b$N$b has many channel modules. Each module provides unique features.",
 
 			"{HELP_COMMAND_LIST}",
 			"{HELP_CATEGORY_LIST}"
