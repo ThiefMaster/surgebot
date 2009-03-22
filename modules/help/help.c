@@ -36,7 +36,7 @@ static struct help_category *help_root;
 static struct ptrlist *help_entries;
 static struct stringlist *default_cat_description;
 
-typedef void (help_replacer_func)(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding);
+typedef void (help_replacer_func)(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg);
 
 // module functions
 static struct help_category *help_category_create_or_find(const char *name, struct help_category *parent);
@@ -329,10 +329,10 @@ COMMAND(helpdebug)
 	return 1;
 }
 
-static void help_replacer_category_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding)
+static void help_replacer_category_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
 {
 	if(dict_size(category->subcategories))
-		stringbuffer_append_string(sbuf, "$uSubcategories:$u\n");
+		stringbuffer_append_printf(sbuf, "%s\n", (arg ? arg : "$uSubcategories:$u"));
 
 	size_t longest_name = 0;
 	dict_iter(node, category->subcategories)
@@ -359,10 +359,10 @@ static void help_replacer_category_list(struct stringbuffer *sbuf, struct help_c
 	}
 }
 
-static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding)
+static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
 {
 	if(dict_size(category->entries))
-		stringbuffer_append_string(sbuf, "$uCommands:$u\n");
+		stringbuffer_append_printf(sbuf, "%s\n", (arg ? arg : "$uCommands:$u"));
 
 	dict_iter(node, category->entries)
 	{
@@ -393,9 +393,55 @@ static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_ca
 	}
 }
 
-static void help_replacer_binding(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding)
+static void help_replacer_binding(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
 {
 	stringbuffer_append_string(sbuf, binding->name);
+}
+
+static void help_replacer_command(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
+{
+	char *cmd_name, *mod_name;
+	struct module *module;
+	struct command *cmd;
+
+	if(!arg)
+		return;
+
+	mod_name = arg;
+	if((cmd_name = strchr(mod_name, '.')) == NULL || *(cmd_name + 1) == '\0')
+	{
+		stringbuffer_append_string(sbuf, "!Error!");
+		return;
+	}
+
+	*cmd_name++ = '\0';
+	if(!(module = module_find(mod_name)))
+	{
+		log_append(LOG_WARNING, "HELP_COMMAND: Module '%s' not found", mod_name);
+		return;
+	}
+
+	if(!(cmd = command_find(module, cmd_name)))
+	{
+		log_append(LOG_WARNING, "HELP_COMMAND: Command '%s' not found in module '%s'", cmd_name, module->name);
+		return;
+	}
+
+	if(!cmd->bind_count)
+	{
+		stringbuffer_append_printf(sbuf, "(%s.%s)", module->name, cmd->name);
+		return;
+	}
+
+	for(unsigned int i = 0; i < cmd->bindings->count; i++)
+	{
+		struct cmd_binding *binding = cmd->bindings->data[i]->ptr;
+		// Prefer a binding named like the command or use the newest binding if no preferred binding was found.
+		if(strcasecmp(binding->name, cmd->name) && i < cmd->bindings->count - 1)
+			continue;
+		stringbuffer_append_string(sbuf, binding->name);
+		break;
+	}
 }
 
 // ... = [key, callback] pairs for replacements, then NULL
@@ -413,14 +459,39 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 		{
 			help_replacer_func *func = va_arg(args, help_replacer_func *);
 			char *key_start = strstr(line, key);
-			if(key_start)
+			if(key_start && key_start != line && *(--key_start) == '{')
 			{
-				char *key_end = key_start + strlen(key);
-				struct stringbuffer *sbuf = stringbuffer_create();
+				struct stringbuffer *sbuf;
+				char *key_end = key_start + 1 + strlen(key);
+				char *arg = NULL;
 
+				if(*key_end == '}')
+					key_end++;
+				else if(*key_end == ':' && *(key_end + 1))
+				{
+					char *arg_start = key_end + 1;
+					key_end = strchr(arg_start, '}');
+					if(!key_end)
+					{
+						log_append(LOG_WARNING, "Found invalid help replacer: {%s:%s", key, arg_start);
+						continue;
+					}
+
+					arg = strndup(arg_start, key_end - arg_start);
+					key_end++;
+				}
+				else
+				{
+					log_append(LOG_WARNING, "Found invalid help replacer: {%s%c", key, *key_end);
+					continue;
+				}
+
+				sbuf = stringbuffer_create();
 				stringbuffer_append_string_n(sbuf, line, key_start - line);
-				func(sbuf, category, entry, binding);
+				func(sbuf, category, entry, binding, arg);
 				stringbuffer_append_string(sbuf, key_end);
+				if(arg)
+					free(arg);
 
 				char *str = sbuf->string;
 				while(str && *str)
@@ -525,8 +596,9 @@ COMMAND(help)
 		if(!help_root->description)
 			reply("No help available.");
 		else
-			send_help(src, help_root, NULL, NULL, help_root->description, "{HELP_CATEGORY_LIST}", help_replacer_category_list,
-										      "{HELP_COMMAND_LIST}", help_replacer_command_list,
+			send_help(src, help_root, NULL, NULL, help_root->description, "HELP_CATEGORY_LIST", help_replacer_category_list,
+										      "HELP_COMMAND_LIST", help_replacer_command_list,
+										      "HELP_COMMAND", help_replacer_command,
 										      NULL);
 		return 1;
 	}
@@ -547,7 +619,9 @@ COMMAND(help)
 
 		if(entry)
 		{
-			send_help(src, entry->parent, entry, binding, entry->text, "{HELP_BINDING}", help_replacer_binding, NULL);
+			send_help(src, entry->parent, entry, binding, entry->text, "HELP_BINDING", help_replacer_binding,
+										   "HELP_COMMAND", help_replacer_command,
+										   NULL);
 			return 1;
 		}
 	}
@@ -568,8 +642,9 @@ COMMAND(help)
 	}
 
 	send_help(src, cat, NULL, NULL, cat->description ? cat->description : default_cat_description,
-		  "{HELP_CATEGORY_LIST}", help_replacer_category_list,
-		  "{HELP_COMMAND_LIST}", help_replacer_command_list,
+		  "HELP_CATEGORY_LIST", help_replacer_category_list,
+		  "HELP_COMMAND_LIST", help_replacer_command_list,
+		  "HELP_COMMAND", help_replacer_command,
 		  NULL);
 	return 1;
 }
