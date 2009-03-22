@@ -1,6 +1,7 @@
 #include "global.h"
 #include "module.h"
 #include "modules/chanreg/chanreg.h"
+#include "modules/help/help.h"
 #include "modules/tools/tools.h"
 #include "modules/http/http.h"
 #include "chanuser.h"
@@ -17,7 +18,7 @@ static const unsigned int refresh_delay = 600;
 // Amount of requests to keep
 static const unsigned int max_requests = 0;
 
-MODULE_DEPENDS("http", "tools", "chanreg", NULL);
+MODULE_DEPENDS("http", "tools", "chanreg", "help", NULL);
 
 struct youtube_target
 {
@@ -72,6 +73,8 @@ MODULE_INIT
 
 	if(refresh_delay > 0)
 		youtube_timer_add();
+
+	help_load(self, "youtube.help");
 }
 
 MODULE_FINI

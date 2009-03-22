@@ -1,7 +1,17 @@
+/*
+ * Helpfile for GREETING MODULE
+ * 
+ * Last changed at: 2009-03-22
+ * Last changed by: Izlots
+ */
+
 "*MODULE" = {
         "*GREETING" = {
+		"*" = "User greetings";
 		"*" = (
-			"This module provides a user greeting feature",
+			"$b$uGreeting Module:$b$u",
+			"This module provides a user greeting feature. You can add multiple lines of",
+			"user greetings which will be sent to every user joining your channel.",
 
 			"{HELP_COMMAND_LIST}",
 			"{HELP_CATEGORY_LIST}"
@@ -9,12 +19,12 @@
 
 
 		"greeting" = {
-			"description" = "setup greeting";
+			"description" = "Sets the greeting(s).";
 			"help" = (
-				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> [index [text|*]]",
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <index <text|*>>",
 				"Sets/Removes a greeting or shows the current greetings.",
 				"Without arguments, all greetings are displayed.",
-				"With one argument, the index of a greeting, only this greeting will be displayed.",
+				"With one argument, the index of a greeting, only this greeting is displayed.",
 				"To set/change a greeting, simply put the text after the index.",
 				"To remove a greeting, set it to $b*$b."
 			);

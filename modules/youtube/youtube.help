@@ -1,0 +1,17 @@
+/*
+ * Helpfile for YOUTUBE MODULE
+ *
+ * Last changed at: 2009-03-22
+ * Last changed by: Izlots
+ */
+
+"*MODULE" = {
+        "*YOUTUBE" = {
+		"*" = "Displays YouTube titles";
+		"*" = (
+			"$b$uYouTube Module:$b$u",
+			"If you enable this module in a channel, $b$N$b will check your channel",
+			"for a youtube link. If the bot sees a link, it will post the its title."
+		);
+	};
+};
