@@ -28,6 +28,7 @@
 };
 
 "*ACCOUNT" = {
+	"*" = "Account management";
 	"*" = (
 		"$b$N$b uses accounts to identify users.",
 

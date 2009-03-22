@@ -15,6 +15,7 @@ struct help_category
 {
 	char *name;
 	char *full_name;
+	char *short_desc;
 	struct stringlist *description;
 	struct dict *entries;
 	struct dict *subcategories;
@@ -35,7 +36,7 @@ static struct help_category *help_root;
 static struct ptrlist *help_entries;
 static struct stringlist *default_cat_description;
 
-typedef void (help_replacer_func)(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *entry, struct cmd_binding *binding);
+typedef void (help_replacer_func)(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding);
 
 // module functions
 static struct help_category *help_category_create_or_find(const char *name, struct help_category *parent);
@@ -121,6 +122,8 @@ static void help_category_free(struct help_category *category)
 	dict_free(category->entries);
 	dict_free(category->subcategories);
 
+	if(category->short_desc)
+		free(category->short_desc);
 	if(category->description)
 		stringlist_free(category->description);
 
@@ -170,19 +173,31 @@ static void help_load_category(struct module *module, struct dict *entries, stru
 
 		if(*key == '*' && key[1] == '\0') // index
 		{
-			if(helpfile_node->type != DB_STRINGLIST)
+			if(helpfile_node->type == DB_STRING)
 			{
-				log_append(LOG_WARNING, "Found description entry which is not a stringlist.");
+				if(parent->short_desc)
+				{
+					log_append(LOG_WARNING, "Found additional shortdesc entry for category '%s'", parent->name);
+					continue;
+				}
+
+				parent->short_desc = strdup(helpfile_node->data.string);
+			}
+			else if(helpfile_node->type == DB_STRINGLIST)
+			{
+				if(parent->description)
+				{
+					log_append(LOG_WARNING, "Found additional description entry for category '%s'", parent->name);
+					continue;
+				}
+
+				parent->description = stringlist_copy(helpfile_node->data.slist);
+			}
+			else
+			{
+				log_append(LOG_WARNING, "Found description entry which is not a stringlist/string.");
 				continue;
 			}
-
-			if(parent->description)
-			{
-				log_append(LOG_WARNING, "Found additional description entry for category '%s'", parent->name);
-				continue;
-			}
-
-			parent->description = stringlist_copy(helpfile_node->data.slist);
 		}
 		else if(*key == '*') // subcategory
 		{
@@ -314,21 +329,37 @@ COMMAND(helpdebug)
 	return 1;
 }
 
-static void help_replacer_category_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *entry, struct cmd_binding *binding)
+static void help_replacer_category_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding)
 {
 	if(dict_size(category->subcategories))
 		stringbuffer_append_string(sbuf, "$uSubcategories:$u\n");
 
+	size_t longest_name = 0;
 	dict_iter(node, category->subcategories)
 	{
 		struct help_category *subcat = node->data;
-		stringbuffer_append_string(sbuf, "    ");
-		stringbuffer_append_string(sbuf, subcat->full_name);
-		stringbuffer_append_char(sbuf, '\n');
+		size_t len = strlen(subcat->full_name);
+		if(len > longest_name)
+			longest_name = len;
+	}
+
+	dict_iter(node, category->subcategories)
+	{
+		struct help_category *subcat = node->data;
+		if(subcat->short_desc)
+		{
+			stringbuffer_append_printf(sbuf, "    %-*s    %s\n", longest_name, subcat->full_name, subcat->short_desc);
+		}
+		else
+		{
+			stringbuffer_append_string(sbuf, "    ");
+			stringbuffer_append_string(sbuf, subcat->full_name);
+			stringbuffer_append_char(sbuf, '\n');
+		}
 	}
 }
 
-static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *entry, struct cmd_binding *binding)
+static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding)
 {
 	if(dict_size(category->entries))
 		stringbuffer_append_string(sbuf, "$uCommands:$u\n");
@@ -352,25 +383,22 @@ static void help_replacer_command_list(struct stringbuffer *sbuf, struct help_ca
 		for(unsigned int i = 0; i < cmd->bindings->count; i++)
 		{
 			struct cmd_binding *binding = cmd->bindings->data[i]->ptr;
-			// Prefer a binding named like the comman or use the newest binding if no preferred binding was found.
+			// Prefer a binding named like the command or use the newest binding if no preferred binding was found.
 			if(strcasecmp(binding->name, entry->name) && i < cmd->bindings->count - 1)
 				continue;
-			stringbuffer_append_string(sbuf, "    ");
-			stringbuffer_append_string(sbuf, binding->name);
-			stringbuffer_append_string(sbuf, "  -  ");
-			stringbuffer_append_string(sbuf, entry->description);
+			stringbuffer_append_printf(sbuf, "    %-18s  %s", binding->name, entry->description);
 			stringbuffer_append_char(sbuf, '\n');
 			break;
 		}
 	}
 }
 
-static void help_replacer_binding(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *entry, struct cmd_binding *binding)
+static void help_replacer_binding(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding)
 {
 	stringbuffer_append_string(sbuf, binding->name);
 }
 
-// ... = [key, callback, arg] pairs for replacements, then NULL
+// ... = [key, callback] pairs for replacements, then NULL
 static void send_help(struct irc_source *src, struct help_category *category, struct help_entry *entry, struct cmd_binding *binding, struct stringlist *text, ...)
 {
 	va_list args;
