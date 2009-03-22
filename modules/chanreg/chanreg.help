@@ -250,7 +250,7 @@
 		};
 	};
 };
-/*
+
 "*STAFF" = {
 	"global" = {
 		"description" = "Sends a global";
@@ -260,4 +260,3 @@
 		);
 	};
 };
-*/

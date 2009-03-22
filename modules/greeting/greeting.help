@@ -1,7 +1,7 @@
 "*MODULE" = {
         "*GREETING" = {
 		"*" = (
-			"This module provides a user greeting feature,",
+			"This module provides a user greeting feature",
 
 			"{HELP_COMMAND_LIST}",
 			"{HELP_CATEGORY_LIST}"
@@ -9,7 +9,7 @@
 
 
 		"greeting" = {
-			"description" = "This module provides a user greeting feature";
+			"description" = "setup greeting";
 			"help" = (
 				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> [index [text|*]]",
 				"Sets/Removes a greeting or shows the current greetings.",

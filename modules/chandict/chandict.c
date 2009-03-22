@@ -2,12 +2,13 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/chanreg/chanreg.h"
+#include "modules/help/help.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "table.h"
 #include "modules/chandict/chandict.h"
 
-MODULE_DEPENDS("commands", "chanreg", NULL);
+MODULE_DEPENDS("commands", "chanreg", "help", NULL);
 
 COMMAND(chandict_add);
 COMMAND(chandict_del);
@@ -36,6 +37,8 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "chandict add",	chandict_add,	3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "chandict del",	chandict_del,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "chandict list",	chandict_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+
+	help_load(this, "chandict.help");
 }
 
 MODULE_FINI

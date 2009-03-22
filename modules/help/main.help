@@ -6,11 +6,12 @@
 	"{HELP_CATEGORY_LIST}",
 
 	"$uSome general information about command parameters:$u",
-	"    $b[text]$b    - optional argument",
-	"    $b<text>$b    - required argument",
+	"    $b[text]$b    This is an optional argument",
+	"    $b<text>$b    This is a required argument",
 );
 
 "*GENERAL" = {
+	"*" = "General help";
 	"*" = (
 		"General commands for $b$N$b",
 
@@ -38,6 +39,7 @@
 };
 
 "*CHANNEL" = {
+	"*" = "Channel management";
 	"*" = (
 		"$b$N$b is channel bot, so you can see all comannds and categories",
 		"depending on channels here",
@@ -48,6 +50,7 @@
 };
 
 "*STAFF" = {
+	"*" = "Bot staff only commands";
 	"*" = (
 		"Staff commands for $b$N$b",
 
@@ -57,6 +60,7 @@
 };
 
 "*MODULE" = {
+	"*" = "Help for several modules";
 	"*" = (
 		"$b$N$b has many modules. Here you can see each module",
 

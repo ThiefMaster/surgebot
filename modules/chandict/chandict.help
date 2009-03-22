@@ -1,0 +1,62 @@
+"*MODULE" = {
+        "*DICTIONARY" = {
+                "*" = (
+                        "Define your own dict for a channel.",
+			"You can query the dictionary by typing $b'? word'$b inside the channel.",
+			"This module can be used to provide a lot of information to channel users.",
+
+                        "{HELP_COMMAND_LIST}",
+                        "{HELP_CATEGORY_LIST}"
+			
+                );
+
+
+                "chandict add" = {
+                        "description" = "Add an word to the channel dictionary";
+                        "help" = (
+                                "$bUsage:$b /msg $N {HELP_BINDING} [#channel] [word] [text]",
+				"Adds 'word' to #channels dictonary. 'text' is the text you want",
+				"$N to display for this word."
+                        );
+			"see_also" = (
+				"chandict.chandict add",
+				"chandict.chandict del",
+				"chandict.chandict list"
+			);
+                };
+
+                "chandict del" = {
+                        "description" = "Del an word to the channel dictionary";
+                        "help" = (
+                                "$bUsage:$b /msg $N {HELP_BINDING} [#channel] [word]",
+				"Deletes 'word' from #channels dictonary."
+                        );
+			"see_also" = (
+				"chandict.chandict add",
+				"chandict.chandict del",
+				"chandict.chandict list"
+			);
+                };
+
+                "chandict list" = {
+                        "description" = "List the content from the channel dictionary";
+                        "help" = (
+                                "$bUsage:$b /msg $N {HELP_BINDING} [#channel]",
+				"Lists all entries in #channels dictonary."
+                        );
+			"see_also" = (
+				"chandict.chandict add",
+				"chandict.chandict del",
+				"chandict.chandict list"
+			);
+                };
+        };
+};
+
+
+/*
+        DEFINE_COMMAND(self, "chandict add",    chandict_add,   3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+        DEFINE_COMMAND(self, "chandict del",    chandict_del,   2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+        DEFINE_COMMAND(self, "chandict list",   chandict_list,  1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+*/
+
