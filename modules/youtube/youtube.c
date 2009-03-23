@@ -260,7 +260,7 @@ static void youtube_report(struct youtube_request *req)
 		if(!target->responded)
 		{
 			target->responded = 1;
-			irc_send("PRIVMSG %s :YouTube [%s] $b%s$b", target->target, req->id, req->response);
+			irc_send("PRIVMSG %s :YouTube [$b%s$b]: %s", target->target, req->id, req->response);
 		}
 	}
 }

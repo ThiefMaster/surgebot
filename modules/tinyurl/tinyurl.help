@@ -1,0 +1,17 @@
+/*
+ * Helpfile for TINYURL MODULE
+ *
+ * Last changed at: 2009-03-22
+ * Last changed by: Izlots
+ */
+
+"*MODULE" = {
+        "*TINYURL" = {
+		"*" = "Displays the real URLs of tinyurl.com links";
+		"*" = (
+			"$b$uTinyURL Module:$b$u",
+			"If you enable this module in a channel, $b$N$b will check your channel",
+			"for tinyurl.com links. If the bot sees a link, it will post the real link."
+		);
+	};
+};

@@ -11,7 +11,7 @@
 		"*" = (
 			"$b$uYouTube Module:$b$u",
 			"If you enable this module in a channel, $b$N$b will check your channel",
-			"for a youtube link. If the bot sees a link, it will post the its title."
+			"for youtube links. If the bot sees a link, it will post the video's title."
 		);
 	};
 };

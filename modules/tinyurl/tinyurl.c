@@ -10,8 +10,9 @@
 #include "timer.h"
 #include "modules/http/http.h"
 #include "modules/chanreg/chanreg.h"
+#include "modules/help/help.h"
 
-MODULE_DEPENDS("http", "chanreg", NULL);
+MODULE_DEPENDS("http", "chanreg", "help", NULL);
 
 struct tinyurl {
 	char *alias;
@@ -40,11 +41,13 @@ IRC_HANDLER(privmsg);
 
 MODULE_INIT
 {
-	cmod = chanreg_module_reg("TinyUrl", 0, NULL, NULL, NULL, NULL);
+	cmod = chanreg_module_reg("TinyURL", 0, NULL, NULL, NULL, NULL);
 	reg_irc_handler("PRIVMSG", privmsg);
 
 	tinyurls = dict_create();
 	dict_set_free_funcs(tinyurls, NULL, (dict_free_f*)tinyurl_free);
+
+        help_load(self, "tinyurl.help");
 }
 
 MODULE_FINI
@@ -137,7 +140,7 @@ static void tinyurl_send(struct tinyurl *tinyurl)
 {
 	while(tinyurl->channels->count)
 	{
-		irc_send("PRIVMSG %s :Tinyurl [$b%s$b] %s", tinyurl->channels->data[0], tinyurl->alias, tinyurl->target);
+		irc_send("PRIVMSG %s :TinyURL [$b%s$b]: %s", tinyurl->channels->data[0], tinyurl->alias, tinyurl->target);
 		stringlist_del(tinyurl->channels, 0);
 	}
 }
@@ -185,7 +188,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	if(http->status == 200)
 	{
 		for(unsigned int i = 0; i < tinyurl->channels->count; i++)
-			irc_send("PRIVMSG %s :TinyUrl [$b%s$b] does not exist.", tinyurl->channels->data[i], tinyurl->alias);
+			irc_send("PRIVMSG %s :TinyURL [$b%s$b] does not exist.", tinyurl->channels->data[i], tinyurl->alias);
 
 		return;
 	}
