@@ -452,8 +452,8 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 
 	for(unsigned int i = 0; i < text->count; i++)
 	{
-		unsigned int found = 0;
 		char *line = text->data[i];
+		struct stringbuffer *sbuf = stringbuffer_create();
 		va_start(args, text);
 		while((key = va_arg(args, const char *)))
 		{
@@ -462,7 +462,6 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 
 			while((key_start = strstr(line, key)) && key_start != line && *(--key_start) == '{')
 			{
-				struct stringbuffer *sbuf;
 				char *key_end = key_start + 1 + strlen(key);
 				char *arg = NULL;
 
@@ -487,31 +486,27 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 					continue;
 				}
 
-				sbuf = stringbuffer_create();
 				stringbuffer_append_string_n(sbuf, line, key_start - line);
 				func(sbuf, category, entry, binding, arg);
-				stringbuffer_append_string(sbuf, key_end);
 				if(arg)
 					free(arg);
-
-				char *str = sbuf->string;
-				while(str && *str)
-				{
-					char *linebreak = strchr(str, '\n');
-					if(linebreak)
-						*linebreak = '\0';
-					reply("%s", str);
-					str = linebreak ? linebreak + 1 : NULL;
-				}
-				stringbuffer_free(sbuf);
-				found = 1;
-				break;
+				line = key_end;
 			}
 		}
 		va_end(args);
 
-		if(!found)
-			reply("%s", line);
+		// Add remaining line
+		stringbuffer_append_string(sbuf, line);
+		char *str = sbuf->string;
+		while(str && *str)
+		{
+			char *linebreak = strchr(str, '\n');
+			if(linebreak)
+				*linebreak = '\0';
+			reply("%s", str);
+			str = linebreak ? linebreak + 1 : NULL;
+		}
+		stringbuffer_free(sbuf);
 	}
 
 	if(binding && entry && entry->see_also) // show "see also" list
