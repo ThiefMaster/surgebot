@@ -8,7 +8,7 @@
 	"$uSome general information about commands and their parameters:$u",
 	"    You can also use $b{HELP_CONF_STR:bot/trigger}command$b in a channel instead of using",
 	"    $b/msg $N [#channel] <command>$b.",
-	"$o",
+	"",
 	"    $b[text]$b    This is an optional argument",
 	"    $b<text>$b    This is a required argument",
 );
