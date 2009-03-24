@@ -444,6 +444,18 @@ static void help_replacer_command(struct stringbuffer *sbuf, struct help_categor
 	}
 }
 
+static void help_replacer_conf_str(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
+{
+	const char *value;
+
+	if(!arg)
+		return;
+
+	value = conf_get(arg, DB_STRING);
+	if(value)
+		stringbuffer_append_string(sbuf, value);
+}
+
 // ... = [key, callback] pairs for replacements, then NULL
 static void send_help(struct irc_source *src, struct help_category *category, struct help_entry *entry, struct cmd_binding *binding, struct stringlist *text, ...)
 {
@@ -453,6 +465,13 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 	for(unsigned int i = 0; i < text->count; i++)
 	{
 		char *line = text->data[i];
+
+		if(!*line) // empty string -> send line containing a hard space
+		{
+			reply("\xa0");
+			continue;
+		}
+
 		struct stringbuffer *sbuf = stringbuffer_create();
 		va_start(args, text);
 		while((key = va_arg(args, const char *)))
@@ -503,7 +522,8 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 			char *linebreak = strchr(str, '\n');
 			if(linebreak)
 				*linebreak = '\0';
-			reply("%s", str);
+			if(*str) // no need to send empty lines
+				reply("%s", str);
 			str = linebreak ? linebreak + 1 : NULL;
 		}
 		stringbuffer_free(sbuf);
@@ -595,6 +615,7 @@ COMMAND(help)
 			send_help(src, help_root, NULL, NULL, help_root->description, "HELP_CATEGORY_LIST", help_replacer_category_list,
 										      "HELP_COMMAND_LIST", help_replacer_command_list,
 										      "HELP_COMMAND", help_replacer_command,
+										      "HELP_CONF_STR", help_replacer_conf_str,
 										      NULL);
 		return 1;
 	}
@@ -617,6 +638,7 @@ COMMAND(help)
 		{
 			send_help(src, entry->parent, entry, binding, entry->text, "HELP_BINDING", help_replacer_binding,
 										   "HELP_COMMAND", help_replacer_command,
+										   "HELP_CONF_STR", help_replacer_conf_str,
 										   NULL);
 			return 1;
 		}
@@ -641,6 +663,7 @@ COMMAND(help)
 		  "HELP_CATEGORY_LIST", help_replacer_category_list,
 		  "HELP_COMMAND_LIST", help_replacer_command_list,
 		  "HELP_COMMAND", help_replacer_command,
+		  "HELP_CONF_STR", help_replacer_conf_str,
 		  NULL);
 	return 1;
 }

@@ -2,10 +2,13 @@
 	"$b$N help system$b",
 	"$N is meant to be a bot providing you several services for clans, fun, etc.",
 	"It is still being worked on but while we are doing so feel free to suggest new features which you'd like this bot to offer.",
-
+	"",
 	"{HELP_CATEGORY_LIST}",
-
-	"$uSome general information about command parameters:$u",
+	"",
+	"$uSome general information about commands and their parameters:$u",
+	"    You can also use $b{HELP_CONF_STR:bot/trigger}command$b in a channel instead of using",
+	"    $b/msg $N [#channel] <command>$b.",
+	"$o",
 	"    $b[text]$b    This is an optional argument",
 	"    $b<text>$b    This is a required argument",
 );
