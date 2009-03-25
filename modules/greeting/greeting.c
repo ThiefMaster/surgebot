@@ -120,7 +120,7 @@ COMMAND(greeting)
 				else
 					channel_greetings->data[idx][0] = '\0';
 
-				if(channel_greetings->count == 0)
+				if(channel_greetings && channel_greetings->count == 0)
 				{
 					dict_delete(greetings, reg->channel);
 					channel_greetings = NULL;
