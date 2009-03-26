@@ -69,4 +69,8 @@
 	"results" = "2";
 };
 
+"greeting" = {
+	"max_amount" = "10";
+};
+
 // vim: ft=cfg

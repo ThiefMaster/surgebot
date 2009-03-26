@@ -6,18 +6,27 @@
 #include "irc.h"
 #include "irc_handler.h"
 #include "stringlist.h"
+#include "conf.h"
 
 MODULE_DEPENDS("commands", "chanreg", "help", NULL);
+
+static struct
+{
+	unsigned long max_greetings;
+} greeting_conf;
 
 COMMAND(greeting);
 IRC_HANDLER(join);
 static void greeting_db_read(struct dict *db_nodes, struct chanreg *reg);
 static int greeting_db_write(struct database_object *dbo, struct chanreg *reg);
 static int greeting_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+static void greeting_conf_reload(void);
 
 static struct module *this;
 static struct chanreg_module *cmod;
 static struct dict *greetings;
+
+static const unsigned long conf_max_greetings = 10;
 
 MODULE_INIT
 {
@@ -33,11 +42,15 @@ MODULE_INIT
 
 	reg_irc_handler("JOIN", join);
 
+	reg_conf_reload_func(greeting_conf_reload);
+	greeting_conf_reload();
+
 	DEFINE_COMMAND(self, "greeting", greeting, 1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(400)");
 }
 
 MODULE_FINI
 {
+	unreg_conf_reload_func(greeting_conf_reload);
 	unreg_irc_handler("JOIN", join);
 
 	chanreg_module_writedb(cmod);
@@ -135,7 +148,15 @@ COMMAND(greeting)
 				}
 
 				if(idx == channel_greetings->count) // new greeting
-					stringlist_add(channel_greetings, untokenize(argc - 2, argv + 2, " "));
+				{
+					if(greeting_conf.max_greetings && idx >= greeting_conf.max_greetings)
+					{
+						reply("Only $b%lu$b greetings are allowed per channel.", greeting_conf.max_greetings);
+						return 0;
+					}
+					else
+						stringlist_add(channel_greetings, untokenize(argc - 2, argv + 2, " "));
+				}
 				else // change existing greeting
 				{
 					free(channel_greetings->data[idx]);
@@ -162,4 +183,11 @@ COMMAND(greeting)
 		reply("  [%d] %s", (i + 1), (*channel_greetings->data[i] ? channel_greetings->data[i] : "(None)"));
 	reply("Found $b%d$b greeting%s.", channel_greetings->count, (channel_greetings->count != 1 ? "s" : ""));
 	return 1;
+}
+
+static void greeting_conf_reload(void)
+{
+	char *str;
+
+	greeting_conf.max_greetings = ((str = conf_get("greeting/max_amount", DB_STRING)) && aredigits(str) ? strtoul(str, NULL, 10) : 10);
 }

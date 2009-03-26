@@ -40,13 +40,14 @@ char *html_decode(char *str)
 
 	while((tmp = strchr(tmp, '&')))
 	{
-		// Entity if below 10 chars
+		// Entity ends in ; ...
 		if(!(tmp2 = strchr(tmp, ';')))
 		{
 			tmp++;
 			continue;
 		}
 
+		// ... and has at most 10 characters (we only need some limit)
 		if((tmp2 - tmp) > 10)
 		{
 			tmp = tmp2 + 1;

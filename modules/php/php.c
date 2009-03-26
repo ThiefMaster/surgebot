@@ -202,7 +202,7 @@ static void php_report(struct php_cache *cache, const char *target)
 	irc_send("%s %s :$b%s$b - %s (http://www.php.net/%s)", method, target, cache->func_name, cache->description, cache->func_name);
 
 	for(unsigned int i = 0; i < cache->synopsis->count; i++)
-		irc_send("%s %s :$uSynopsis$u: %s", method, target, cache->synopsis->data[i]);
+		irc_send("%s %s :$uSynopsis$u: %s", method, target, html_decode(cache->synopsis->data[i]));
 }
 
 static void read_func(struct HTTPRequest *http, const char *buf, unsigned int len)

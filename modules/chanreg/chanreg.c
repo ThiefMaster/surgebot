@@ -1614,7 +1614,7 @@ int access_validator(struct chanreg *reg, struct irc_source *src, const char *va
 
 	if(number > 3 || ((number = atoi(str)) > 500))
 	{
-		reply("The access level must not exceed 500. To deactive, disable the channel module.");
+		reply("The access level must not exceed 500.");
 		return 0;
 	}
 
