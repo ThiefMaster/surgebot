@@ -2,6 +2,7 @@
 #include "module.h"
 #include "modules/chanreg/chanreg.h"
 #include "modules/commands/commands.h"
+#include "modules/help/help.h"
 #include "modules/tools/tools.h"
 #include "modules/http/http.h"
 #include "chanuser.h"
@@ -10,7 +11,7 @@
 #include "irc.h"
 #include "conf.h"
 
-MODULE_DEPENDS("tools", "commands", "http", "chanreg", NULL);
+MODULE_DEPENDS("tools", "commands", "http", "chanreg", "help", NULL);
 
 static struct
 {
@@ -57,6 +58,8 @@ MODULE_INIT
 
 	memset(&google_conf, 0, sizeof(google_conf));
 	google_readconf();
+
+	help_load(self, "google.help");
 }
 
 MODULE_FINI
