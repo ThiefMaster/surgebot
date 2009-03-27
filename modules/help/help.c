@@ -19,6 +19,7 @@ struct help_category
 	struct stringlist *description;
 	struct dict *entries;
 	struct dict *subcategories;
+	struct ptrlist *used_by;
 };
 
 struct help_entry
@@ -63,6 +64,7 @@ MODULE_INIT
 
 	help_entries = ptrlist_create();
 	help_root = help_category_create_or_find("*", NULL); // root category
+	ptrlist_add(help_root->used_by, 0, this);
 	reg_module_load_func(NULL, module_unloaded);
 
 	help_load(this, "main.help");
@@ -109,6 +111,8 @@ static struct help_category *help_category_create_or_find(const char *name, stru
 	category->subcategories = dict_create();
 	dict_set_free_funcs(category->subcategories, NULL, (dict_free_f *)help_category_free);
 
+	category->used_by = ptrlist_create();
+
 	if(parent)
 		dict_insert(parent->subcategories, category->name, category);
 	debug("Created help category %s in %s", name, parent ? parent->name : "(root)");
@@ -121,6 +125,7 @@ static void help_category_free(struct help_category *category)
 	free(category->full_name);
 	dict_free(category->entries);
 	dict_free(category->subcategories);
+	ptrlist_free(category->used_by);
 
 	if(category->short_desc)
 		free(category->short_desc);
@@ -208,6 +213,7 @@ static void help_load_category(struct module *module, struct dict *entries, stru
 			}
 
 			struct help_category *subcat = help_category_create_or_find(key + 1, parent);
+			ptrlist_add(subcat->used_by, 0, module);
 			help_load_category(module, helpfile_node->data.object, subcat);
 		}
 		else // help entry
@@ -246,13 +252,14 @@ void help_load(struct module *module, const char *file)
 
 static void free_module_help(struct help_category *category, struct module *module)
 {
-	debug("Freeing module helps (category: %s, subcategories: %d, entries: %d)", category->name, dict_size(category->subcategories), dict_size(category->entries));
+	debug("Freeing module helps (category: %s, subcategories: %d, entries: %d, modrefs: %d)", category->name, dict_size(category->subcategories), dict_size(category->entries), category->used_by->count);
 	dict_iter(node, category->subcategories)
 	{
 		struct help_category *subcat = node->data;
 		free_module_help(subcat, module);
-		debug("Subcategories/Entries remaining in category %s: %d/%d", subcat->name, dict_size(subcat->subcategories), dict_size(subcat->entries));
-		if(dict_size(subcat->entries) == 0 && dict_size(subcat->subcategories) == 0)
+		ptrlist_del_ptr(subcat->used_by, module);
+		debug("Subcategories/Entries/Modrefs remaining in category %s: %d/%d/%d", subcat->name, dict_size(subcat->subcategories), dict_size(subcat->entries), subcat->used_by->count);
+		if(dict_size(subcat->entries) == 0 && dict_size(subcat->subcategories) == 0 && subcat->used_by->count == 0)
 		{
 			debug("Deleting empty category %s from %s", subcat->name, category->name);
 			dict_delete(category->subcategories, subcat->name);
@@ -319,6 +326,13 @@ static void dump_help_category(struct irc_source *src, struct help_category *cat
 		struct help_category *subcat = node->data;
 		reply("%*s  $uSubcategory:$u %s", indent, " ", node->key);
 		dump_help_category(src, subcat, indent_len + 2);
+	}
+
+	reply("%*s$uUsed by:$u (%d)", indent, " ", category->used_by->count);
+	for(unsigned int i = 0; i < category->used_by->count; i++)
+	{
+		struct module *module = category->used_by->data[i]->ptr;
+		reply("%*s  %s", indent, " ", module->name);
 	}
 }
 
