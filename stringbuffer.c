@@ -51,6 +51,33 @@ void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str)
 	stringbuffer_append_string_n(sbuf, str, strlen(str));
 }
 
+void stringbuffer_erase(struct stringbuffer *sbuf, unsigned int start, unsigned int len)
+{
+	// Starting boundary beyond end of string
+	if(start >= sbuf->len)
+		return;
+
+	len = min(sbuf->len - start + 1, len);
+	memmove(sbuf->string + start, sbuf->string + start + len, sbuf->len - start - len + 1);
+	sbuf->len -= len;
+}
+void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const char *str, size_t n)
+{
+	if(pos >= (sbuf->len - 1))
+		return;
+
+	while(sbuf->size < (sbuf->len + n))
+	{
+		sbuf->size <<= 1;
+		sbuf->string = realloc(sbuf->string, sbuf->size + 1);
+	}
+
+	// Move text at position to the back
+	memmove(sbuf->string + pos + n, sbuf->string + pos, sbuf->len - pos + 1);
+	memcpy(sbuf->string + pos, str, n);
+	sbuf->len += n;
+}
+
 void stringbuffer_append_vprintf(struct stringbuffer *sbuf, const char *fmt, va_list args)
 {
 	va_list working;
@@ -164,11 +191,8 @@ char *stringbuffer_shiftspn(struct stringbuffer *sbuf, const char *delim_list, u
 
 void stringbuffer_flush(struct stringbuffer *sbuf)
 {
-	free(sbuf->string);
+	memset(sbuf->string, 0, sbuf->len);
 	sbuf->len = 0;
-	sbuf->size = 8;
-	sbuf->string = malloc(sbuf->size + 1);
-	sbuf->string[0] = '\0';
 }
 
 char *stringbuffer_flush_return(struct stringbuffer *sbuf, size_t len)
