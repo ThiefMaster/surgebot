@@ -61,6 +61,7 @@ void stringbuffer_erase(struct stringbuffer *sbuf, unsigned int start, unsigned 
 	memmove(sbuf->string + start, sbuf->string + start + len, sbuf->len - start - len + 1);
 	sbuf->len -= len;
 }
+
 void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const char *str, size_t n)
 {
 	if(pos >= (sbuf->len - 1))
@@ -76,6 +77,11 @@ void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const ch
 	memmove(sbuf->string + pos + n, sbuf->string + pos, sbuf->len - pos + 1);
 	memcpy(sbuf->string + pos, str, n);
 	sbuf->len += n;
+}
+
+void stringbuffer_insert(struct stringbuffer *sbuf, unsigned int pos, const char *str)
+{
+	stringbuffer_insert_n(sbuf, pos, str, strlen(str));
 }
 
 void stringbuffer_append_vprintf(struct stringbuffer *sbuf, const char *fmt, va_list args)

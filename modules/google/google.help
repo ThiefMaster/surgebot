@@ -10,18 +10,21 @@
 		"*" = "Search on Google via IRC";
 		"*" = (
 			"$b$uGoogle Module:$b$u",
-			"If you enable this module in a channel, the $b{HELP_CONF_STR:bot/trigger} {HELP_COMMAND:google.google}$b command will",
+			"If you enable this module in a channel, the $b{HELP_CONF_STR:bot/trigger}{HELP_COMMAND:google.google}$b command will",
 			"become available. Using this command users will be able to search and $b$N$b will",
 			"post the results into the channel. You can set the access requiered for this",
-			"using $b/msg $N {HELP_COMMAND:chanreg.cset} Google.MinAccess <access>$b"
+			"using $b/msg $N {HELP_COMMAND:chanreg.cset} <#channel> Google.MinAccess <access>$b",
+
+                        "{HELP_COMMAND_LIST}",
+                        "{HELP_CATEGORY_LIST}"
 		);
-		"google.google" = {
+		"google" = {
 			"description" = "Searches Google for given string";
 			"help" = (
-				"$bUsage:$b /msg $N {HELP_BINDING} [channel] <search string>",
+				"$bUsage:$b /msg $N {HELP_BINDING} <search string>",
 				"Searches for given string and sends you the results.",
 				"If you search in a channel using the $b{HELP_CONF_STR:bot/trigger}{HELP_BINDING}$b command",
-				"the result will be sent into the channel."
+				"the result will be sent to the channel."
 			);
 		};
 	};

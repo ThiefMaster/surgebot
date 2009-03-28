@@ -486,14 +486,17 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 			continue;
 		}
 
-		struct stringbuffer *sbuf = stringbuffer_create();
+		struct stringbuffer *linebuf = stringbuffer_create();
+		struct stringbuffer *funcres = stringbuffer_create();
+		stringbuffer_append_string(linebuf, line);
 		va_start(args, text);
 		while((key = va_arg(args, const char *)))
 		{
 			help_replacer_func *func = va_arg(args, help_replacer_func *);
-			char *key_start;
+			char *key_start, *line_start;
 
-			while((key_start = strstr(line, key)) && key_start != line && *(--key_start) == '{')
+			line_start = linebuf->string;
+			while((key_start = strstr(line_start, key)) && key_start != line_start && *(--key_start) == '{')
 			{
 				char *key_end = key_start + 1 + strlen(key);
 				char *arg = NULL;
@@ -519,18 +522,19 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 					continue;
 				}
 
-				stringbuffer_append_string_n(sbuf, line, key_start - line);
-				func(sbuf, category, entry, binding, arg);
+				stringbuffer_erase(linebuf, key_start - linebuf->string, key_end - key_start);
+				func(funcres, category, entry, binding, arg);
+				stringbuffer_insert(linebuf, key_start - linebuf->string, funcres->string);
+				stringbuffer_flush(funcres);
 				if(arg)
 					free(arg);
-				line = key_end;
+				line_start = linebuf->string + (key_end - key_start);
 			}
 		}
 		va_end(args);
+		stringbuffer_free(funcres);
 
-		// Add remaining line
-		stringbuffer_append_string(sbuf, line);
-		char *str = sbuf->string;
+		char *str = linebuf->string;
 		while(str && *str)
 		{
 			char *linebreak = strchr(str, '\n');
@@ -540,7 +544,7 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 				reply("%s", str);
 			str = linebreak ? linebreak + 1 : NULL;
 		}
-		stringbuffer_free(sbuf);
+		stringbuffer_free(linebuf);
 	}
 
 	if(binding && entry && entry->see_also) // show "see also" list

@@ -20,6 +20,7 @@ void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str);
 
 void stringbuffer_erase(struct stringbuffer *sbuf, unsigned int start, unsigned int len);
 void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const char *str, size_t n);
+void stringbuffer_insert(struct stringbuffer *sbuf, unsigned int pos, const char *str);
 
 char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned char require_token);
 char *stringbuffer_shiftspn(struct stringbuffer *sbuf, const char *delim_list, unsigned char require_token);
