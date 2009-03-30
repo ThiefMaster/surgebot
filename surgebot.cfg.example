@@ -73,4 +73,10 @@
 	"max_amount" = "10";
 };
 
+"timers" = {
+	"max_timers" = "3";
+	"max_lines" = "5";
+	"min_interval" = "30";
+};
+
 // vim: ft=cfg

@@ -443,4 +443,3 @@ unsigned char file_exists(const char *file)
 	struct stat statbuf;
 	return (stat(file, &statbuf) == 0);
 }
-
