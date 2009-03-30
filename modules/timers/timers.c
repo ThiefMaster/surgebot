@@ -222,6 +222,7 @@ COMMAND(timer_msg)
 		reply("Timer line $b%d$b deleted.", index + 1);
 		return 1;
 	}
+
 	char *line = untokenize(argc - 3, argv + 3, " ");
 	// Index already exists, replace it
 	if((unsigned int)index < timer->lines->count)
@@ -271,7 +272,10 @@ static void user_timer_func(struct user_timer_channel *channel, struct user_time
 	for(unsigned int i = 0; i < timer->lines->count; i++)
 	{
 		if(*timer->lines->data[i])
+		{
+			// Lines prefixed with a resetting format code so people can't make the bot execute arbitrary commands
 			irc_send("PRIVMSG %s :\017%s", channel->channel, timer->lines->data[i]);
+		}
 	}
 	user_timer_add_timer(channel, timer);
 }
@@ -332,7 +336,9 @@ static void user_timer_db_read(struct database *db)
 				continue;
 
 			struct user_timer *timer = user_timer_create(channel, subnode->key, interval);
-			timer->lines = stringlist_copy(slist);
+			// timer->lines is already an allocated stringlist, copy items one by one
+			for(unsigned int i = 0; i < slist->count; i++)
+				stringlist_add(timer->lines, slist->data[i]);
 
 			// Here again, if there are lines, we need to add the core timer
 			if(timer->lines->count)
@@ -393,6 +399,7 @@ static struct user_timer_channel *user_timer_channel_find(const char *channel)
 static void user_timer_channel_free(struct user_timer_channel *channel)
 {
 	dict_free(channel->timers);
+	free(channel->channel);
 	free(channel);
 }
 
@@ -416,8 +423,9 @@ static struct user_timer *user_timer_create(struct user_timer_channel *channel, 
 static void user_timer_free(struct user_timer *timer)
 {
 	user_timer_del_timer(timer);
-	free(timer->name);
+
 	stringlist_free(timer->lines);
+	free(timer->name);
 	free(timer);
 }
 
