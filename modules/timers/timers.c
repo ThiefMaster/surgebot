@@ -143,16 +143,21 @@ COMMAND(timer_add)
 	{
 		reply("Timer $b%s$b already exists.", argv[1]);
 		if(timer->interval != interval)
+		{
 			reply("Setting new interval of $b%lu$b seconds.", interval);
-		return 1;
+			timer->interval = interval;
+			return 1;
+		}
+		return 0;
 	}
 
-	if(!timer && !(timer = user_timer_create(timer_chan, argv[1], interval)))
+	if(timer_conf.max_timers && timer_chan->timers->count >= timer_conf.max_timers)
 	{
 		reply("The maximum of allowed timers is already reached. You may not add any more.");
 		return 0;
 	}
 
+	user_timer_create(timer_chan, argv[1], interval);
 	reply("Timer $b%s$b has been created and will be executed every $b%lu$b seconds.", argv[1], interval);
 	return 1;
 }
@@ -176,8 +181,24 @@ COMMAND(timer_msg)
 		reply("There is no timer called $b%s$b.", argv[1]);
 		return 0;
 	}
+
+	// No timer line given, display all lines
+	if(argc <= 2)
+	{
+		reply("$uTimer $b%s$b (Every %lu seconds):", timer->name, timer->interval);
+		for(unsigned int i = 0; i < timer->lines->count; i++)
+		{
+			// Skip empty line
+			if(!*timer->lines->data[i])
+				continue;
+
+			reply("$b%3u$b: %s", i + 1, timer->lines->data[i]);
+		}
+		return 0;
+	}
+
 	int index = atoi(argv[2]) - 1;
-	if(index < 0 || (unsigned int)index > timer->lines->count)
+	if(index < 0 || (unsigned int)index >= timer->lines->count)
 	{
 		unsigned int max_index = timer->lines->count + 1;
 		if(timer_conf.max_lines && index >= 0 && (unsigned int)index >= timer_conf.max_lines)
@@ -186,6 +207,7 @@ COMMAND(timer_msg)
 		reply("The message index needs to be between $b1$b and $b%u$b.", max_index);
 		return 0;
 	}
+
 	// Valid index
 	// No third argument, show corresponding message
 	if(argc <= 3)
@@ -341,7 +363,7 @@ static void user_timer_db_read(struct database *db)
 			struct user_timer *timer = user_timer_create(channel, subnode->key, interval);
 			// timer->lines is already an allocated stringlist, copy items one by one
 			for(unsigned int i = 0; i < slist->count; i++)
-				stringlist_add(timer->lines, slist->data[i]);
+				stringlist_add(timer->lines, strdup(slist->data[i]));
 
 			// Here again, if there are lines, we need to add the core timer
 			if(timer->lines->count)
@@ -408,9 +430,6 @@ static void user_timer_channel_free(struct user_timer_channel *channel)
 
 static struct user_timer *user_timer_create(struct user_timer_channel *channel, const char *name, unsigned long interval)
 {
-	if(timer_conf.max_timers && channel->timers->count >= timer_conf.max_timers)
-		return NULL;
-
 	debug("Creating new custom timer %s", name);
 	struct user_timer *timer = malloc(sizeof(struct user_timer));
 	memset(timer, 0, sizeof(struct user_timer));

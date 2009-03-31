@@ -33,7 +33,8 @@
 			"help" = (
 				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <timername> <line> [text]",
 				"With all parameters given, sets the specified line of timer $utimername$u to the given text.",
-				"Omitting the text will show what the line is currently set to."
+				"Omitting the text will show what the line is currently set to.",
+				"Setting the text to $b*$b will delete the line."
 			);
 			"see_also" = (
 				"timers.timer add",
