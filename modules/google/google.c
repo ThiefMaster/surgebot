@@ -159,7 +159,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			return;
 		}
 
-		read_buf = strndup(tmp, tmp2 - tmp + 1);
+		read_buf = strndup(tmp, tmp2 - tmp);
 		result = html_decode(strip_html_tags(read_buf));
 		google_msg(obj, "[$b%s$b] %s", obj->nick, result);
 		free(read_buf);

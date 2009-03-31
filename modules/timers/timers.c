@@ -4,10 +4,11 @@
 #include "timer.h"
 #include "irc.h"
 #include "conf.h"
+#include "modules/help/help.h"
 #include "modules/commands/commands.h"
 #include <time.h>
 
-MODULE_DEPENDS("commands", NULL);
+MODULE_DEPENDS("commands", "help", NULL);
 
 static const char * const timer_name = "custom_timer";
 
@@ -67,6 +68,8 @@ MODULE_INIT
 
 	reg_conf_reload_func(user_timer_conf_reload);
 	user_timer_conf_reload();
+
+	help_load(self, "timers.help");
 }
 
 MODULE_FINI
@@ -108,7 +111,7 @@ COMMAND(timer_list)
 			reply("$b%3u$b: %s", i + 1, timer->lines->data[i]);
 		}
 	}
-	reply("$b%u$b timer(s).", timer_chan->timers->count);
+	reply("$b%u$b timer%s.", timer_chan->timers->count, timer_chan->timers->count == 1 ? "" : "s");
 	return 0;
 }
 

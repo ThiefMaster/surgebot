@@ -1,0 +1,58 @@
+"*MODULE" = {
+	"*TIMERS" = {
+		"*" = "Custom timers configurable for every channel";
+
+		"timer add" = {
+			"description" = "Adds a new timer.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <timername> <interval>",
+				"Adds a timer with name $utimername$u that will be executed every $uinterval$u seconds."
+			);
+			"see_also" = (
+				"timers.timer msg",
+				"timers.timer list",
+				"timers.timer del"
+			);
+		};
+
+		"timer list" = {
+			"description" = "Lists all timers that have been added in your channel.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+				"Displays all currently active timers in your channel."
+			);
+			"see_also" = (
+				"timers.timer add",
+				"timers.timer msg",
+				"timers.timer del"
+			);
+		};
+
+		"timer msg" = {
+			"description" = "Shows, adds new or modifies existing timer lines that shall be sent.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <timername> <line> [text]",
+				"With all parameters given, sets the specified line of timer $utimername$u to the given text.",
+				"Omitting the text will show what the line is currently set to."
+			);
+			"see_also" = (
+				"timers.timer add",
+				"timers.timer list",
+				"timers.timer del"
+			);
+		};
+
+		"timer del" = {
+			"description" = "Deletes an existing timer.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <timername>",
+				"Deletes the timer called $utimername$u"
+			);
+			"see_also" = (
+				"timers.timer add",
+				"timers.timer msg",
+				"timers.timer list"
+			);
+		};
+	};
+};

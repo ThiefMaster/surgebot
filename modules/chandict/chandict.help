@@ -6,57 +6,55 @@
  */
 
 "*MODULE" = {
-        "*DICTIONARY" = {
+	"*DICTIONARY" = {
 		"*" = "Custom channel dictionary";
-                "*" = (
+		"*" = (
 			"$b$uDictionary Module:$b$u",
-                        "This module adds a custom dictionary to your channel.",
+			"This module adds a custom dictionary to your channel.",
 			"You can query the dictionary by typing $b'? word'$b inside the channel.",
 			"It can be used to provide information to channel users.",
 
-                        "{HELP_COMMAND_LIST}",
-                        "{HELP_CATEGORY_LIST}"
-			
-                );
+			"{HELP_COMMAND_LIST}",
+			"{HELP_CATEGORY_LIST}"
+		);
 
-
-                "chandict add" = {
-                        "description" = "Adds a word to the channel dictionary.";
-                        "help" = (
-                                "$bUsage:$b /msg $N {HELP_BINDING} <#channel> <word> <text>",
+		"chandict add" = {
+			"description" = "Adds a word to the channel dictionary.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <word> <text>",
 				"Adds a definition for the specified word to the dictionary.",
-                        );
+			);
 			"see_also" = (
 				"chandict.chandict add",
 				"chandict.chandict del",
 				"chandict.chandict list"
 			);
-                };
+		};
 
-                "chandict del" = {
-                        "description" = "Deletes a word from the channel dictionary.";
-                        "help" = (
-                                "$bUsage:$b /msg $N {HELP_BINDING} <#channel> <word>",
+		"chandict del" = {
+			"description" = "Deletes a word from the channel dictionary.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <word>",
 				"Deletes the specified word from the dictionary."
-                        );
+			);
 			"see_also" = (
 				"chandict.chandict add",
 				"chandict.chandict del",
 				"chandict.chandict list"
 			);
-                };
+		};
 
-                "chandict list" = {
-                        "description" = "Lists all entries of the channel dictionary.";
-                        "help" = (
-                                "$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+		"chandict list" = {
+			"description" = "Lists all entries of the channel dictionary.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
 				"Lists all entries of the dictionary."
-                        );
+			);
 			"see_also" = (
 				"chandict.chandict add",
 				"chandict.chandict del",
 				"chandict.chandict list"
 			);
-                };
-        };
+		};
+	};
 };
