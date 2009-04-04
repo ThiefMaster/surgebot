@@ -155,15 +155,31 @@ COMMAND(timer_add)
 		{
 			if(timer->lines->count == 1)
 			{
-				free(timer->lines->data[0]);
-				timer->lines->data[0] = untokenize(argc - 3, argv + 3, " ");
-				reply("$b%3d$b: %s", 1, timer->lines->data[0]);
+				if(argc == 4 && !strcmp("*", argv[3]))
+				{
+					stringlist_del(timer->lines, 0);
+					reply("Timer line $b1$b deleted.");
+				}
+				else
+				{
+					free(timer->lines->data[0]);
+					timer->lines->data[0] = untokenize(argc - 3, argv + 3, " ");
+					reply("$b%3d$b: %s", 1, timer->lines->data[0]);
+				}
 			}
 			else if(timer->lines->count == 0)
 			{
-				stringlist_add(timer->lines, untokenize(argc - 3, argv + 3, " "));
-				reply("$b%3d$b: %s", 1, timer->lines->data[0]);
-				user_timer_add_timer(timer_chan, timer);
+				if(argc == 4 && !strcmp("*", argv[3]))
+				{
+					reply("This timer has no lines that could be deleted.");
+					return changed;
+				}
+				else
+				{
+					stringlist_add(timer->lines, untokenize(argc - 3, argv + 3, " "));
+					reply("$b%3d$b: %s", 1, timer->lines->data[0]);
+					user_timer_add_timer(timer_chan, timer);
+				}
 			}
 			else // timer->lines->count > 1
 			{
