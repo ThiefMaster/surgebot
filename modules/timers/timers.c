@@ -141,24 +141,58 @@ COMMAND(timer_add)
 	struct user_timer *timer = dict_find(timer_chan->timers, argv[1]);
 	if(timer)
 	{
+		unsigned short changed = 0;
+
 		reply("Timer $b%s$b already exists.", argv[1]);
 		if(timer->interval != interval)
 		{
 			reply("Setting new interval of $b%lu$b seconds.", interval);
 			timer->interval = interval;
-			return 1;
+			changed = 1;
 		}
-		return 0;
+
+		if(argc > 3)
+		{
+			if(timer->lines->count == 1)
+			{
+				free(timer->lines->data[0]);
+				timer->lines->data[0] = untokenize(argc - 3, argv + 3, " ");
+				reply("$b%3d$b: %s", 1, timer->lines->data[0]);
+			}
+			else if(timer->lines->count == 0)
+			{
+				stringlist_add(timer->lines, untokenize(argc - 3, argv + 3, " "));
+				reply("$b%3d$b: %s", 1, timer->lines->data[0]);
+				user_timer_add_timer(timer_chan, timer);
+			}
+			else // timer->lines->count > 1
+			{
+				reply("This timer has a multi-line message which cannot be changed by this command.");
+			}
+
+			changed = 1;
+		}
+
+		return changed;
 	}
 
 	if(timer_conf.max_timers && timer_chan->timers->count >= timer_conf.max_timers)
 	{
-		reply("The maximum of allowed timers is already reached. You may not add any more.");
+		reply("The maximum number of allowed timers ($b%lu$b) is already reached. You may not add any more.", timer_conf.max_timers);
 		return 0;
 	}
 
-	user_timer_create(timer_chan, argv[1], interval);
+	timer = user_timer_create(timer_chan, argv[1], interval);
 	reply("Timer $b%s$b has been created and will be executed every $b%lu$b seconds.", argv[1], interval);
+
+	if(argc > 3)
+	{
+		stringlist_add(timer->lines, untokenize(argc - 3, argv + 3, " "));
+		reply("$b%3d$b: %s", 1, timer->lines->data[0]);
+		assert_return(timer->lines->count == 1, 1);
+		user_timer_add_timer(timer_chan, timer);
+	}
+
 	return 1;
 }
 
@@ -169,12 +203,14 @@ COMMAND(timer_msg)
 		reply("No channel provided.");
 		return 0;
 	}
+
 	struct user_timer_channel *timer_chan = user_timer_channel_find(channel->name);
 	if(!timer_chan)
 	{
 		reply("No timers have been added for this channel yet.");
 		return 0;
 	}
+
 	struct user_timer *timer = dict_find(timer_chan->timers, argv[1]);
 	if(!timer)
 	{
@@ -198,7 +234,7 @@ COMMAND(timer_msg)
 	}
 
 	int index = atoi(argv[2]) - 1;
-	if(index < 0 || (unsigned int)index >= timer->lines->count)
+	if(index < 0 || (unsigned int)index > timer->lines->count)
 	{
 		unsigned int max_index = timer->lines->count + 1;
 		if(timer_conf.max_lines && index >= 0 && (unsigned int)index >= timer_conf.max_lines)

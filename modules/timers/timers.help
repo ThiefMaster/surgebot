@@ -5,8 +5,10 @@
 		"timer add" = {
 			"description" = "Adds a new timer.";
 			"help" = (
-				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <timername> <interval>",
-				"Adds a timer with name $utimername$u that will be executed every $uinterval$u seconds."
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <timername> <interval> [text]",
+				"Adds a timer with name $utimername$u that will be executed every $uinterval$u seconds.",
+				"If you specify [text], line 1 of the timer will be set to the specified text.",
+				"To edit the text or add additional lines, use the $b{HELP_COMMAND:timers.timer msg}$b command."
 			);
 			"see_also" = (
 				"timers.timer msg",
