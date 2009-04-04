@@ -159,6 +159,9 @@ COMMAND(timer_add)
 				{
 					stringlist_del(timer->lines, 0);
 					reply("Timer line $b1$b deleted.");
+
+					if(!timer->lines->count)
+						user_timer_del_timer(timer);
 				}
 				else
 				{
