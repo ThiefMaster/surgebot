@@ -53,12 +53,12 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 	{
 		case SOCK_IPV4:
 			domain_type = AF_INET;
-			proto_type = IPPROTO_TCP;
+			proto_type = (type & SOCK_UDP) ? IPPROTO_UDP : IPPROTO_TCP;
 			break;
 
 		case SOCK_IPV6:
 			domain_type = AF_INET6;
-			proto_type = IPPROTO_TCP;
+			proto_type = (type & SOCK_UDP) ? IPPROTO_UDP : IPPROTO_TCP;
 			break;
 
 		case SOCK_UNIX:
@@ -90,7 +90,13 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 	}
 #endif
 
-	if((fd = socket(domain_type, SOCK_STREAM, proto_type)) < 0)
+	if((type & (SOCK_SSL|SOCK_UDP)) == (SOCK_SSL|SOCK_UDP))
+	{
+		log_append(LOG_ERROR, "Could not create SSL socket: SSL needs TCP");
+		return NULL;
+	}
+
+	if((fd = socket(domain_type, (type & SOCK_UDP) ? SOCK_DGRAM : SOCK_STREAM, proto_type)) < 0)
 	{
 		log_append(LOG_ERROR, "Could not create socket with domain type %d: %s (%d)", domain_type, strerror(errno), errno);
 		return NULL;
@@ -172,6 +178,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		}
 
 		sock->sockaddr_local = (struct sockaddr*)sin;
+		sock->socklen_local = sizeof(struct sockaddr_in);
 		return 0;
 	}
 	else if(sock->flags & SOCK_IPV6)
@@ -201,6 +208,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		}
 
 		sock->sockaddr_local = (struct sockaddr*) sin;
+		sock->socklen_local = sizeof(struct sockaddr_in6);
 		return 0;
 	}
 	else if(sock->flags & SOCK_UNIX)
@@ -222,6 +230,7 @@ int sock_bind(struct sock *sock, const char *addr, unsigned int port)
 		}
 
 		sock->sockaddr_local = (struct sockaddr*)sun;
+		sock->socklen_local = sizeof(struct sockaddr_un);
 		return 0;
 	}
 
@@ -253,17 +262,22 @@ int sock_connect(struct sock *sock, const char *addr, unsigned int port)
 		sin->sin_port = htons(port);
 		memcpy(&sin->sin_addr, hp->h_addr, sizeof(struct in_addr));
 
-		if(connect(sock->fd, (struct sockaddr*)sin, sizeof(struct sockaddr_in)) < 0 && errno != EINPROGRESS)
+		if(!(sock->flags & SOCK_UDP))
 		{
-			log_append(LOG_WARNING, "Could not connect to %s/%u (IPv4): %s (%d)", addr, port, strerror(errno), errno);
-			free(sin);
-			free(sock);
-			return -2;
+			if(connect(sock->fd, (struct sockaddr*)sin, sizeof(struct sockaddr_in)) < 0 && errno != EINPROGRESS)
+			{
+				log_append(LOG_WARNING, "Could not connect to %s/%u (IPv4): %s (%d)", addr, port, strerror(errno), errno);
+				free(sin);
+				free(sock);
+				return -2;
+			}
 		}
 
 		sock_list_add(sock_list, sock);
 
 		sock->sockaddr_remote = (struct sockaddr*)sin;
+		sock->socklen_remote = sizeof(struct sockaddr_in);
+
 		sock->flags |= SOCK_CONNECT;
 		return 0;
 	}
@@ -285,17 +299,22 @@ int sock_connect(struct sock *sock, const char *addr, unsigned int port)
 		sin->sin6_port = htons(port);
 		memcpy(&sin->sin6_addr, hp->h_addr, sizeof(struct in6_addr));
 
-		if(connect(sock->fd, (struct sockaddr*)sin, sizeof(struct sockaddr_in6)) < 0 && errno != EINPROGRESS)
+		if(!(sock->flags & SOCK_UDP))
 		{
-			log_append(LOG_WARNING, "Could not connect to %s/%u (IPv6): %s (%d)", addr, port, strerror(errno), errno);
-			free(sin);
-			free(sock);
-			return -2;
+			if(connect(sock->fd, (struct sockaddr*)sin, sizeof(struct sockaddr_in6)) < 0 && errno != EINPROGRESS)
+			{
+				log_append(LOG_WARNING, "Could not connect to %s/%u (IPv6): %s (%d)", addr, port, strerror(errno), errno);
+				free(sin);
+				free(sock);
+				return -2;
+			}
 		}
 
 		sock_list_add(sock_list, sock);
 
 		sock->sockaddr_remote = (struct sockaddr*)sin;
+		sock->socklen_remote = sizeof(struct sockaddr_in6);
+
 		sock->flags |= SOCK_CONNECT;
 		return 0;
 	}
@@ -309,17 +328,22 @@ int sock_connect(struct sock *sock, const char *addr, unsigned int port)
 		sun->sun_family = AF_UNIX;
 		strncpy(sun->sun_path, addr, sizeof(sun->sun_path));
 
-		if(connect(sock->fd, (struct sockaddr*)sun, sizeof(struct sockaddr_un)) < 0 && errno != EINPROGRESS)
+		if(!(sock->flags & SOCK_UDP))
 		{
-			log_append(LOG_WARNING, "Could not connect to %s (Unix): %s (%d)", addr, strerror(errno), errno);
-			free(sun);
-			free(sock);
-			return -2;
+			if(connect(sock->fd, (struct sockaddr*)sun, sizeof(struct sockaddr_un)) < 0 && errno != EINPROGRESS)
+			{
+				log_append(LOG_WARNING, "Could not connect to %s (Unix): %s (%d)", addr, strerror(errno), errno);
+				free(sun);
+				free(sock);
+				return -2;
+			}
 		}
 
 		sock_list_add(sock_list, sock);
 
 		sock->sockaddr_remote = (struct sockaddr*)sun;
+		sock->socklen_remote = sizeof(struct sockaddr_un);
+
 		sock->flags |= SOCK_CONNECT;
 		return 0;
 	}
@@ -334,6 +358,12 @@ int sock_listen(struct sock *sock, const char *ssl_pem)
 
 	if(sock->sockaddr_local == NULL)
 		return -1;
+
+	if(sock->flags & SOCK_UDP)
+	{
+		sock_list_add(sock_list, sock);
+		return 0;
+	}
 
 #ifdef HAVE_SSL
 	if((sock->flags & SOCK_SSL) && ssl_pem)
@@ -408,8 +438,10 @@ struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_
 		new_sock = malloc(sizeof(struct sock));
 		memset(new_sock, 0, sizeof(struct sock));
 		new_sock->sockaddr_local = malloc(sizeof(struct sockaddr_in));
+		new_sock->socklen_local = sizeof(struct sockaddr_in);
 		memcpy(new_sock->sockaddr_local, sock->sockaddr_local, sizeof(struct sockaddr_in));
 		new_sock->sockaddr_remote = (struct sockaddr*)sin;
+		new_sock->socklen_remote = sizeof(struct sockaddr_in);
 		new_sock->event_func = event_func;
 		new_sock->read_func = read_func;
 		new_sock->flags = SOCK_IPV4;
@@ -458,8 +490,10 @@ struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_
 		new_sock = malloc(sizeof(struct sock));
 		memset(new_sock, 0, sizeof(struct sock));
 		new_sock->sockaddr_local = malloc(sizeof(struct sockaddr_in6));
+		new_sock->socklen_local = sizeof(struct sockaddr_in6);
 		memcpy(new_sock->sockaddr_local, sock->sockaddr_local, sizeof(struct sockaddr_in6));
 		new_sock->sockaddr_remote = (struct sockaddr*)sin;
+		new_sock->socklen_remote = sizeof(struct sockaddr_in6);
 		new_sock->event_func = event_func;
 		new_sock->read_func = read_func;
 		new_sock->flags = SOCK_IPV6;
@@ -506,8 +540,10 @@ struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_
 		new_sock = malloc(sizeof(struct sock));
 		memset(new_sock, 0, sizeof(struct sock));
 		new_sock->sockaddr_local = malloc(sizeof(struct sockaddr_un));
+		new_sock->socklen_local = sizeof(struct sockaddr_un);
 		memcpy(new_sock->sockaddr_local, sock->sockaddr_local, sizeof(struct sockaddr_un));
 		new_sock->sockaddr_remote = (struct sockaddr*)sun;
+		new_sock->socklen_remote = sizeof(struct sockaddr_un);
 		new_sock->event_func = event_func;
 		new_sock->read_func = read_func;
 		new_sock->flags = SOCK_UNIX;
@@ -720,6 +756,13 @@ int sock_poll()
 	{
 		struct sock *sock = sock_list->data[i];
 
+		// Call connect func for "connecting" udp sockets.
+		if((sock->flags & (SOCK_UDP|SOCK_CONNECT)) == (SOCK_UDP|SOCK_CONNECT))
+		{
+			sock->event_func(sock, EV_CONNECT, 0);
+			sock->flags &= ~SOCK_CONNECT;
+		}
+
 		pollfds[i].fd = sock->fd;
 		pollfds[i].events = sock->config_poll ? 0 : POLLIN;
 		pollfds[i].revents = 0;
@@ -832,7 +875,10 @@ int sock_poll()
 						rres = SSL_read(sock->ssl_handle, sock->read_buf + sock->read_buf_used, sock->read_buf_len - sock->read_buf_used);
 					else
 #endif
-						rres = read(sock->fd, sock->read_buf + sock->read_buf_used, sock->read_buf_len - sock->read_buf_used);
+						if(sock->flags & SOCK_UDP)
+							rres = recvfrom(sock->fd, sock->read_buf + sock->read_buf_used, sock->read_buf_len - sock->read_buf_used, 0, sock->sockaddr_remote, &sock->socklen_remote);
+						else
+							rres = read(sock->fd, sock->read_buf + sock->read_buf_used, sock->read_buf_len - sock->read_buf_used);
 
 					if(rres == -1 && !(sock->flags & SOCK_SSL) && errno != EINTR && errno != EAGAIN)
 					{
@@ -940,7 +986,10 @@ int sock_poll()
 					wres = SSL_write(sock->ssl_handle, sock->send_queue, sock->send_queue_len);
 				else
 #endif
-					wres = write(sock->fd, sock->send_queue, sock->send_queue_len);
+					if(sock->flags & SOCK_UDP)
+						wres = sendto(sock->fd, sock->send_queue, sock->send_queue_len, 0, sock->sockaddr_remote, sock->socklen_remote);
+					else
+						wres = write(sock->fd, sock->send_queue, sock->send_queue_len);
 
 				if(wres < 0)
 				{
