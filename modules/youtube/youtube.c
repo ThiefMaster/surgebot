@@ -278,14 +278,19 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	if(!(tmp = strstr(buf, "<div id=\"watch-vid-title\"")))
 		return;
 
-	// Find end of <div> tag
 	tmp += 25; // strlen("<div id=\"watch-vid-title\"")
+	// Find <h1> containing the title
+	if(!(tmp = strstr(buf, "<h1")))
+		return;
+
+	// Find end of <h1> tag
+	tmp += 3; // strlen("<h1");
 	if(!(tmp = strchr(tmp, '>')))
 		return;
 
 	tmp++;
-	// Find end of <div>
-	if(!(tmp2 = strstr(tmp, "</div>")))
+	// Find end of <h1>
+	if(!(tmp2 = strstr(tmp, "</h1>")))
 		return;
 
 	// Duplicate title string
