@@ -174,7 +174,7 @@ PARSER_FUNC(group)
 
 	if(res == 1)
 		return RET_TRUE;
-	else if(res == 0)
+	else if(res == 0 || res == -1)
 		return RET_FALSE;
 	else
 		return RET_NONE;
