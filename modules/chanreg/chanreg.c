@@ -172,6 +172,12 @@ static void chanreg_db_read(struct database *db)
 					if(level_str && (level = strtoul(level_str, NULL, 10)) && level <= UL_OWNER)
 					{
 						struct chanreg_user *c_user = chanreg_user_add(reg, account, level);
+						if(!c_user)
+						{
+							log_append(LOG_WARNING, "Found non-existent user %s in %s (with %u access)", account, channel, level);
+							continue;
+						}
+
 						c_user->flags = flags_str ? strtoul(flags_str, NULL, 10) : 0;
 					}
 				}
