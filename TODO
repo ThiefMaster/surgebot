@@ -1,6 +1,6 @@
 Description							| Assigned to
 ================================================================#=============
- Adding TimeOuts to open DCCs from paste module			|
+ Adding Timeouts to open DCC sockets from paste module		|
 								|
 ----------------------------------------------------------------+-------------
 								|
@@ -9,9 +9,6 @@ Description							| Assigned to
 ----------------------------------------------------------------+-------------
 								|
  Writing some proper help files					|
-	- add descriptions to categories			| ThiefMaster
-	- add parmeter to {HELP_* functions to define		| ThiefMaster
-	  output in helpfiles 					|
 	- rewrite help files					| Izlots
 								|
 ----------------------------------------------------------------+-------------
@@ -28,7 +25,7 @@ Description							| Assigned to
 								|
  Remove color output if running from IDE			|
 	- Makefile						|
-	- BOT Output (see logging modul)			|
+	- Bot output (see logging modul)			|
 								|
 ----------------------------------------------------------------+-------------
 
