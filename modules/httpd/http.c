@@ -181,7 +181,7 @@ static void http_conf_reload()
 	unsigned int old_port = http_conf.listen_port;
 	unsigned int old_port_ssl = http_conf.listen_port_ssl;
 	http_conf.listen_ip		= ((str = conf_get("httpd/listen_ip", DB_STRING)) ? str : "0.0.0.0");
-	http_conf.listen_port		= ((str = conf_get("httpd/listen_port", DB_STRING)) ? atoi(str) : 8000);
+	http_conf.listen_port		= ((str = conf_get("httpd/listen_port", DB_STRING)) ? atoi(str) : 0);
 	http_conf.listen_port_ssl	= ((str = conf_get("httpd/listen_port_ssl", DB_STRING)) ? atoi(str) : 0);
 	http_conf.listen_pem		= ((str = conf_get("httpd/listen_pem", DB_STRING)) ? str : NULL);
 
@@ -245,7 +245,7 @@ static void listener_start()
 			goto listener_done;
 		}
 
-		if(sock_listen(listener, http_conf.listen_pem))
+		if(sock_listen(listener, NULL))
 		{
 			log_append(LOG_ERROR, "[httpd] sock_listen() failed");
 			listener = NULL;
