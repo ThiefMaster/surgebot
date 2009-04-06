@@ -455,7 +455,7 @@ static void exec_sock_read(struct sock *sock, char *buf, size_t len)
 {
 	assert(sock->ctx);
 	buf[len] = '\0';
-	irc_send("NOTICE %s :%s", (const char *)sock->ctx, buf);
+	irc_send("%s %s :%s", (IsChannelName(sock->ctx) ? "PRIVMSG" : "NOTICE"), (const char *)sock->ctx, buf);
 }
 
 static void exec_sock_event(struct sock *sock, enum sock_event event, int err)
@@ -473,6 +473,7 @@ COMMAND(exec)
 {
 	char *args[4];
 	struct sock *sock;
+	const char *target = channel ? channel->name : src->nick;
 
 	if(!(sock = sock_create(SOCK_EXEC, exec_sock_event, exec_sock_read)))
 		return 0;
@@ -482,9 +483,11 @@ COMMAND(exec)
 	args[2] = untokenize(argc - 1, argv + 1, " ");
 	args[3] = NULL;
 
+	irc_send("%s %s :Executing: %s", (IsChannelName(target) ? "PRIVMSG" : "NOTICE"), target, args[2]);
+
 	sock_exec(sock, (const char **) args);
 	sock_set_readbuf(sock, 512, "\r\n");
-	sock->ctx = strdup(channel ? channel->name : src->nick);
+	sock->ctx = strdup(target);
 	free(args[2]);
 	return 1;
 }
