@@ -54,6 +54,12 @@ static void sig_segv(int n)
 	// we must NOT exit() here or no core dump is created
 }
 
+static void sig_chld(int n)
+{
+	while(waitpid(-1, NULL, WNOHANG) > 0)
+		/* empty */;
+}
+
 static void signal_init()
 {
 	struct sigaction sa;
@@ -65,6 +71,9 @@ static void signal_init()
 
 	sa.sa_handler = sig_rehash;
 	sigaction(SIGHUP, &sa, NULL);
+
+	sa.sa_handler = sig_chld;
+	sigaction(SIGCHLD, &sa, NULL);
 
 	// Reset handler after calling it so the program creates a core dump after a SEGV
 	// and always exists after a second SIGINT etc.

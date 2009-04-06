@@ -13,6 +13,7 @@
 #define SOCK_NOSOCK	0x080 // Not a socket but something else with a fd (file, pipe, etc.)
 #define SOCK_QUIET	0x100 // Do not show socket debug messages
 #define SOCK_UDP	0x200 // UDP socket
+#define SOCK_EXEC	0x400 // pipe to a subprocess
 
 #define sock_debug(sock, text...) { if(!(sock->flags & SOCK_QUIET)) log_append(LOG_DEBUG, ## text); }
 
@@ -66,12 +67,14 @@ struct sock
 	unsigned int	want_read : 1;
 	unsigned int	want_write : 1;
 
+	pid_t		pid;
 	void		*ctx;
 };
 
 void sock_init();
 void sock_fini();
 struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_read_f *read_func);
+int sock_exec(struct sock *sock, const char **args);
 int sock_bind(struct sock *sock, const char *addr, unsigned int port);
 int sock_connect(struct sock *sock, const char *addr, unsigned int port);
 int sock_listen(struct sock *sock, const char *ssl_pem);

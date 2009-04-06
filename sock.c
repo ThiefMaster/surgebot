@@ -11,6 +11,7 @@ static void sock_destroy(struct sock *sock);
 #ifdef HAVE_SSL
 static int sock_enable_ssl(struct sock *sock, SSL_CTX *ctx);
 #endif
+static int sock_set_nonblocking(int fd);
 
 
 void sock_init()
@@ -49,7 +50,7 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 
 	type &= ~(SOCK_LISTEN | SOCK_CONNECT | SOCK_ZOMBIE);
 
-	switch(type & (SOCK_IPV4|SOCK_IPV6|SOCK_UNIX|SOCK_NOSOCK))
+	switch(type & (SOCK_IPV4|SOCK_IPV6|SOCK_UNIX|SOCK_NOSOCK|SOCK_EXEC))
 	{
 		case SOCK_IPV4:
 			domain_type = AF_INET;
@@ -67,6 +68,7 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 			break;
 
 		case SOCK_NOSOCK:
+		case SOCK_EXEC:
 			// Just create a "blank" socket struct (without a socket) and return it
 			sock = malloc(sizeof(struct sock));
 			memset(sock, 0, sizeof(struct sock));
@@ -78,7 +80,7 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 			break;
 
 		default:
-			log_append(LOG_ERROR, "Invalid socket type %d in sock_create(); use SOCK_IPV4, SOCK_IPV6, SOCK_UNIX or SOCK_NOSOCK", type);
+			log_append(LOG_ERROR, "Invalid socket type %d in sock_create(); use SOCK_IPV4, SOCK_IPV6, SOCK_UNIX, SOCK_NOSOCK or SOCK_EXEC", type);
 			return NULL;
 	}
 
@@ -110,17 +112,8 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 		return NULL;
 	}
 
-	if((flags = fcntl(fd, F_GETFL)) == -1)
+	if(!sock_set_nonblocking(fd))
 	{
-		log_append(LOG_ERROR, "fcntl(%d, F_GETFL) failed: %s (%d)", fd, strerror(errno), errno);
-		close(fd);
-		return NULL;
-	}
-
-	flags |= O_NONBLOCK;
-	if(fcntl(fd, F_SETFL, flags))
-	{
-		log_append(LOG_ERROR, "fcntl(%d, F_SETFL) failed: %s (%d)", fd, strerror(errno), errno);
 		close(fd);
 		return NULL;
 	}
@@ -145,6 +138,61 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 
 	sock_debug(sock, "Created new socket %p with fd=%d", sock, sock->fd);
 	return sock;
+}
+
+int sock_exec(struct sock *sock, const char **args)
+{
+	assert_return(sock, -1);
+	assert_return(sock->flags & SOCK_EXEC, -1);
+	assert_return(sock->pid == 0, -1);
+	assert_return(sock->fd == -1, -1);
+	assert_return(args, -1);
+	assert_return(args[0], -1);
+
+	int io[2];
+	pid_t child;
+
+	if(socketpair(AF_UNIX, SOCK_STREAM, 0, io))
+	{
+		log_append(LOG_ERROR, "socketpair() failed: %s (%d)", strerror(errno), errno);
+		free(sock);
+		return -2;
+	}
+
+	if(!sock_set_nonblocking(io[0]))
+	{
+		close(io[0]);
+		close(io[1]);
+		free(sock);
+		return -3;
+	}
+
+	child = fork();
+	if(child < 0) /* Fail */
+	{
+		log_append(LOG_ERROR, "fork() failed: %s (%d)", strerror(errno), errno);
+		close(io[0]);
+		close(io[1]);
+		free(sock);
+		return -4;
+	}
+	else if(child > 0) /* Parent */
+	{
+		sock->pid = child;
+		close(io[1]); // Close child socket
+		sock->fd = io[0];
+		sock_list_add(sock_list, sock);
+		return 0;
+	}
+
+	/* Child */
+	// Close stderr
+	close(2);
+	// Connect stdin/stdout
+	if (dup2(io[1], 0) == 0 && dup2(io[1], 1) == 1)
+		execvp(args[0], (char * const *) args);
+
+	exit(EXIT_FAILURE);
 }
 
 int sock_bind(struct sock *sock, const char *addr, unsigned int port)
@@ -664,6 +712,21 @@ static void sock_destroy(struct sock *sock)
 	if(sock->sockaddr_remote)
 		free(sock->sockaddr_remote);
 
+	if((sock->flags & SOCK_EXEC) && sock->pid)
+	{
+		kill(sock->pid, SIGKILL);
+		while(waitpid(sock->pid, NULL, WNOHANG) == 0)
+		{
+			if((time(NULL) - now) > 3)
+			{
+				log_append(LOG_WARNING, "waitpid() blocked for 3 seconds, pid: %u", sock->pid);
+				break; // give up, blocking the bot is bad
+			}
+
+			usleep(100);
+		}
+	}
+
 	sock_list_del(sock_list, sock);
 	free(sock);
 }
@@ -1055,3 +1118,22 @@ void sock_set_readbuf(struct sock *sock, size_t len, const char *buf_delimiter)
 	sock_debug(sock, "Read buffer of %lu bytes set for socket with fd=%d", (unsigned long)len, sock->fd);
 }
 
+static int sock_set_nonblocking(int fd)
+{
+	int flags;
+
+	if((flags = fcntl(fd, F_GETFL)) == -1)
+	{
+		log_append(LOG_ERROR, "fcntl(%d, F_GETFL) failed: %s (%d)", fd, strerror(errno), errno);
+		return 0;
+	}
+
+	flags |= O_NONBLOCK;
+	if(fcntl(fd, F_SETFL, flags))
+	{
+		log_append(LOG_ERROR, "fcntl(%d, F_SETFL) failed: %s (%d)", fd, strerror(errno), errno);
+		return 0;
+	}
+
+	return 1;
+}
