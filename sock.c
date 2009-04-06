@@ -192,6 +192,7 @@ int sock_exec(struct sock *sock, const char **args)
 	if (dup2(io[1], 0) == 0 && dup2(io[1], 1) == 1)
 		execvp(args[0], (char * const *) args);
 
+	fprintf(stdout, "dup2 or execvp failed: %s (%d)\n", strerror(errno), errno);
 	exit(EXIT_FAILURE);
 }
 
