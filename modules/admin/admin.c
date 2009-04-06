@@ -30,6 +30,7 @@ COMMAND(binding_del);
 COMMAND(binding_rule);
 COMMAND(writeall);
 COMMAND(trigger_timer);
+COMMAND(exec);
 
 MODULE_INIT
 {
@@ -51,6 +52,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "binding rule",	binding_rule,	2, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "writeall",	writeall,	1,	0,	"group(admins)");
 	DEFINE_COMMAND(self, "timer trigger",	trigger_timer, 2, 0, "group(admins)");
+	DEFINE_COMMAND(self, "exec",		exec,		2, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 }
 
 MODULE_FINI
@@ -447,6 +449,45 @@ COMMAND(trigger_timer)
 
 	reply("There is no timer with the ID $b%lu$b.", id);
 	return 0;
+}
+
+static void exec_sock_read(struct sock *sock, char *buf, size_t len)
+{
+	assert(sock->ctx);
+	buf[len] = '\0';
+	irc_send("NOTICE %s :%s", (const char *)sock->ctx, buf);
+}
+
+static void exec_sock_event(struct sock *sock, enum sock_event event, int err)
+{
+	if(event == EV_ERROR || event == EV_HANGUP)
+	{
+		if(sock->read_buf_used)
+			exec_sock_read(sock, sock->read_buf, sock->read_buf_used);
+		free(sock->ctx);
+		sock->ctx = NULL;
+	}
+}
+
+COMMAND(exec)
+{
+	const char *args[4];
+	struct sock *sock;
+
+	if(!(sock = sock_create(SOCK_EXEC, exec_sock_event, exec_sock_read)))
+		return 0;
+
+	args[0] = "sh";
+	args[1] = "-c";
+	args[2] = argline + (argv[1] - argv[0]);
+	args[3] = NULL;
+
+	sock_exec(sock, args);
+	free(args);
+
+	sock_set_readbuf(sock, 512, "\r\n");
+	sock->ctx = strdup(channel ? channel->name : src->nick);
+	return 1;
 }
 
 static void module_deps_recursive(struct irc_source *src, struct module *module, unsigned int depth)

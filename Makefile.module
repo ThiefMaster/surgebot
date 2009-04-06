@@ -38,7 +38,7 @@ endif
 # rule for creating object files
 $(OBJ_mod) : $(TMPDIR)/%.o : modules/$(MODULE)/%.c
 ifdef NOCOLOR
-	@printf "   CC        $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.o))\n"
+	@printf "   CC        $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.c=.o))\n"
 else
 	@printf "   \033[38;5;33mCC\033[0m        $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.o))\n"
 endif
@@ -51,7 +51,7 @@ endif
 # rule for creating object files (c++)
 $(OBJX_mod) : $(TMPDIR)/%.oo : modules/$(MODULE)/%.cc
 ifdef NOCOLOR
-	@printf "   CXX       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.oo))\n"
+	@printf "   CXX       $(patsubst modules/$(MODULE)/%,[$(MODULE)] %,$(<:.cc=.oo))\n"
 else
 	@printf "   \033[38;5;37mCXX\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.oo))\n"
 endif
