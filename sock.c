@@ -6,6 +6,7 @@ IMPLEMENT_LIST(sock_list, struct sock *)
 
 static struct sock_list *sock_list;
 static struct pollfd *pollfds = NULL;
+static int highestFd = 0;
 
 static void sock_destroy(struct sock *sock);
 #ifdef HAVE_SSL
@@ -104,6 +105,9 @@ struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_rea
 		return NULL;
 	}
 
+	if(fd > highestFd)
+		highestFd = fd;
+
 	param = 1;
 	if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&param, sizeof(int)))
 	{
@@ -189,10 +193,16 @@ int sock_exec(struct sock *sock, const char **args)
 	// Close stderr
 	close(2);
 	// Connect stdin/stdout
-	if (dup2(io[1], 0) == 0 && dup2(io[1], 1) == 1)
-		execvp(args[0], (char * const *) args);
+	if(dup2(io[1], 0) == 0 && dup2(io[1], 1) == 1)
+	{
+		// Close sockets
+		for (int i = 3; i < highestFd; i++)
+			close(i);
 
-	fprintf(stdout, "dup2 or execvp failed: %s (%d)\n", strerror(errno), errno);
+		execvp(args[0], (char * const *) args);
+	}
+
+	printf("dup2 or execvp failed: %s (%d)\n", strerror(errno), errno);
 	exit(EXIT_FAILURE);
 }
 
@@ -455,6 +465,9 @@ void sock_set_fd(struct sock *sock, int fd)
 {
 	if(!(sock->flags & SOCK_NOSOCK) || sock->fd != -1)
 		return;
+
+	if(fd > highestFd)
+		highestFd = fd;
 
 	sock->fd = fd;
 	sock_list_add(sock_list, sock);

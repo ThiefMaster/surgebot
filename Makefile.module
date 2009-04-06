@@ -19,17 +19,29 @@ TMPDIR = .tmp/modules/$(MODULE)
 all: $(TMPDIR) $(LIB_mod)
 
 clean:
+ifdef NOCOLOR
+	@printf "   CLEANMOD  %s\n" $(MODULE)
+else
 	@printf "   \033[38;5;154mCLEANMOD\033[0m  %s\n" $(MODULE)
+endif
 	@rm -f $(TMPDIR)/*.d $(TMPDIR)/*.dd $(TMPDIR)/*.o $(TMPDIR)/*.oo $(LIB_mod)
 
 # rule for creating final binary
 $(LIB_mod): $(OBJ_mod) $(OBJX_mod)
+ifdef NOCOLOR
+	@printf "   LD        [%s] %s\n" $(MODULE) $@
+else
 	@printf "   \033[38;5;69mLD\033[0m        [\033[38;5;220m%s\033[0m] %s\n" $(MODULE) $@
+endif
 	$(CC) $(LDFLAGS_mod) $(LIBS_mod) $(OBJ_mod) $(OBJX_mod) -o $(LIB_mod)
 
 # rule for creating object files
 $(OBJ_mod) : $(TMPDIR)/%.o : modules/$(MODULE)/%.c
+ifdef NOCOLOR
+	@printf "   CC        $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.o))\n"
+else
 	@printf "   \033[38;5;33mCC\033[0m        $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.c=.o))\n"
+endif
 	@$(CC) $(CFLAGS_mod) -std=gnu99 -MMD -MF .tmp/$(<:.c=.d) -MT $@ -o $@ -c $<
 	@cp -f $(TMPDIR)/$*.d $(TMPDIR)/$*.d.tmp
 	@sed -e 's/.*://' -e 's/\\$$//' < $(TMPDIR)/$*.d.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TMPDIR)/$*.d
@@ -38,7 +50,11 @@ $(OBJ_mod) : $(TMPDIR)/%.o : modules/$(MODULE)/%.c
 
 # rule for creating object files (c++)
 $(OBJX_mod) : $(TMPDIR)/%.oo : modules/$(MODULE)/%.cc
+ifdef NOCOLOR
+	@printf "   CXX       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.oo))\n"
+else
 	@printf "   \033[38;5;37mCXX\033[0m       $(patsubst modules/$(MODULE)/%,[\033[38;5;220m$(MODULE)\033[0m] %,$(<:.cc=.oo))\n"
+endif
 	@$(CXX) $(CXXFLAGS_mod) -MMD -MF .tmp/$(<:.cc=.dd) -MT $@ -o $@ -c $<
 	@cp -f $(TMPDIR)/$*.dd $(TMPDIR)/$*.dd.tmp
 	@sed -e 's/.*://' -e 's/\\$$//' < $(TMPDIR)/$*.dd.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TMPDIR)/$*.dd
