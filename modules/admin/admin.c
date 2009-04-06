@@ -471,7 +471,7 @@ static void exec_sock_event(struct sock *sock, enum sock_event event, int err)
 
 COMMAND(exec)
 {
-	const char *args[4];
+	char *args[4];
 	struct sock *sock;
 
 	if(!(sock = sock_create(SOCK_EXEC, exec_sock_event, exec_sock_read)))
@@ -479,14 +479,13 @@ COMMAND(exec)
 
 	args[0] = "sh";
 	args[1] = "-c";
-	args[2] = argline + (argv[1] - argv[0]);
+	args[2] = untokenize(argc - 1, argv + 1, " ");
 	args[3] = NULL;
 
-	sock_exec(sock, args);
-	free(args);
-
+	sock_exec(sock, (const char **) args);
 	sock_set_readbuf(sock, 512, "\r\n");
 	sock->ctx = strdup(channel ? channel->name : src->nick);
+	free(args[2]);
 	return 1;
 }
 
