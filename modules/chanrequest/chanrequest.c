@@ -55,7 +55,7 @@ MODULE_INIT
 	blockedChannels = dict_create();
 	dict_set_free_funcs(blockedChannels, free, free);
 
-	DEFINE_COMMAND(self, "request",	request, 1, CMD_LAZY_ACCEPT_CHANNEL, "true");
+	DEFINE_COMMAND(self, "request",	request, 2, 0, "true");
 
 	activeRequests = stringlist_create();
 
@@ -92,6 +92,7 @@ static void chanrequest_conf_reload(void)
 COMMAND(request)
 {
 	struct chanreg *reg;
+	char *channel_name = argv[1];
 
 	if(!user->account)
 	{
@@ -101,34 +102,49 @@ COMMAND(request)
 		return 0;
 	}
 
-	if(!channelname)
+	if(!IsChannelName(channel_name))
 	{
 		reply("You must provide a valid channel name.");
+		if(*channel_name == '<')
+		{
+			char *tmp = channel_name + 1;
+			if(tmp[strlen(tmp) - 1] == '>')
+				tmp[strlen(tmp) - 1] = '\0';
+			if(IsChannelName(tmp))
+				reply("You probably wanted to use $b/msg $N request %s$b", tmp);
+		}
+
 		return 0;
 	}
 
-	if((reg = chanreg_find(channelname)))
+	if(*channel_name != '#')
+	{
+		reply("You can only request regular channels (starting with a #).");
+		return 0;
+	}
+
+	if((reg = chanreg_find(channel_name)))
 	{
 		reply("$b%s$b is already registered.", reg->channel);
 		return 0;
 	}
 
-	time_t *blockedUntil = dict_find(blockedChannels, channelname);
+	time_t *blockedUntil = dict_find(blockedChannels, channel_name);
 	if(blockedUntil && now < *blockedUntil)
 	{
-		reply("Sorry you can't request $N for $b%s$b now. You have to wait %s.", channelname, duration2string(*blockedUntil - now));
+		reply("Sorry you can't request $N for $b%s$b now. You have to wait %s.", channel_name, duration2string(*blockedUntil - now));
 		return 0;
 	}
-	else if(stringlist_find(activeRequests, channelname) > -1)
+	else if(stringlist_find(activeRequests, channel_name) > -1)
 	{
-		reply("Sorry you can't request $N for $b%s$b. There's already a request running.", channelname);
+		reply("Sorry you can't request $N for $b%s$b. There's already a request running.", channel_name);
 		return 0;
 	}
 
-	stringlist_add(activeRequests, strdup(channelname));
-	reply("Thanks for requesting $N. I will join $b%s$b now and check your access.", channelname);
+	stringlist_add(activeRequests, strdup(channel_name));
+	reply("Thanks for requesting $N. I will join $b%s$b now and check your access.", channel_name);
 
-	chanjoin_addchan(channelname, this, NULL, (chanjoin_success_f*)chanrequest_chanjoin_success, (chanjoin_error_f*)chanrequest_chanjoin_error, strdup(user->nick), free, 1);
+	chanjoin_addchan(channel_name, this, NULL, (chanjoin_success_f*)chanrequest_chanjoin_success, (chanjoin_error_f*)chanrequest_chanjoin_error, strdup(user->nick), free, 1);
 
 	return 1;
 }

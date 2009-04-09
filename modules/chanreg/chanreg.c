@@ -121,6 +121,9 @@ MODULE_FINI
 	dict_free(chanreg_modules);
 	dict_free(chanregs);
 
+	clear_chanreg_add_hooks();
+	clear_chanreg_del_hooks();
+
 	if(chanreg_staff_rule)
 		command_rule_free(chanreg_staff_rule);
 }
