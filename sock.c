@@ -191,7 +191,7 @@ int sock_exec(struct sock *sock, const char **args)
 
 	/* Child */
 	// Connect stdin/stdout/stderr
-	if(dup2(io[1], 0) == 0 && dup2(io[1], 1) == 1 && dup2(io[2], 2) == 2)
+	if(dup2(io[1], 0) == 0 && dup2(io[1], 1) == 1 && dup2(io[1], 2) == 2)
 	{
 		// Close sockets
 		for (int i = 3; i < highestFd; i++)
