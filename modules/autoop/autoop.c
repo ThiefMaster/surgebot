@@ -18,6 +18,7 @@ static void autoop_db_read(struct dict *db_nodes, struct chanreg *reg);
 static int autoop_db_write(struct database_object *dbo, struct chanreg *reg);
 static int autoop_enabled(struct chanreg *reg, enum cmod_enable_reason reason);
 static int autoop_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+static void autoop_moved(struct chanreg *reg, const char *from, const char *to);
 static unsigned int check_aop_users(struct chanreg *reg, const char *host);
 
 static struct module *this;
@@ -31,7 +32,7 @@ MODULE_INIT
 	aop_hosts = dict_create();
 	dict_set_free_funcs(aop_hosts, free, (dict_free_f *)stringlist_free);
 
-	cmod = chanreg_module_reg("AutoOp", 0, autoop_db_read, autoop_db_write, autoop_enabled, autoop_disabled);
+	cmod = chanreg_module_reg("AutoOp", 0, autoop_db_read, autoop_db_write, autoop_enabled, autoop_disabled, autoop_moved);
 	chanreg_module_readdb(cmod);
 
 	reg_irc_handler("JOIN", join);
@@ -94,6 +95,13 @@ static int autoop_disabled(struct chanreg *reg, unsigned int delete_data, enum c
 	if(delete_data)
 		dict_delete(aop_hosts, reg->channel);
 	return 0;
+}
+
+static void autoop_moved(struct chanreg *reg, const char *from, const char *to)
+{
+	struct dict_node *node = dict_find_node(aop_hosts, from);
+	free(node->key);
+	node->key = strdup(to);
 }
 
 static unsigned int check_aop_users(struct chanreg *reg, const char *host)

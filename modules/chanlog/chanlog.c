@@ -63,7 +63,7 @@ IRC_HANDLER(topic);
 
 MODULE_INIT
 {
-	cmod = chanreg_module_reg("Chanlog", CMOD_STAFF | CMOD_HIDDEN, NULL, NULL, cmod_enabled, cmod_disabled);
+	cmod = chanreg_module_reg("Chanlog", CMOD_STAFF | CMOD_HIDDEN, NULL, NULL, cmod_enabled, cmod_disabled, NULL);
 	chanreg_module_setting_reg(cmod, "PurgeAfter", "7", cset_purgeafter_validator, cset_purgeafter_formatter, NULL);
 	chanreg_module_setting_reg(cmod, "LogFileMode", "600", cset_logfilemode_validator, NULL, cset_logfilemode_encoder);
 

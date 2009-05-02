@@ -17,6 +17,7 @@ IRC_HANDLER(privmsg);
 static void chandict_db_read(struct dict *db_nodes, struct chanreg *reg);
 static int chandict_db_write(struct database_object *dbo, struct chanreg *reg);
 static int chandict_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+static void chandict_moved(struct chanreg *reg, const char *from, const char *to);
 
 static struct module *this;
 static struct chanreg_module *cmod;
@@ -29,7 +30,7 @@ MODULE_INIT
 	entries = dict_create();
 	dict_set_free_funcs(entries, free, (dict_free_f *)dict_free);
 
-	cmod = chanreg_module_reg("Dictionary", 0, chandict_db_read, chandict_db_write, NULL, chandict_disabled);
+	cmod = chanreg_module_reg("Dictionary", 0, chandict_db_read, chandict_db_write, NULL, chandict_disabled, chandict_moved);
 	chanreg_module_readdb(cmod);
 
 	reg_irc_handler("PRIVMSG", privmsg);
@@ -89,6 +90,13 @@ static int chandict_disabled(struct chanreg *reg, unsigned int delete_data, enum
 	if(delete_data)
 		dict_delete(entries, reg->channel);
 	return 0;
+}
+
+static void chandict_moved(struct chanreg *reg, const char *from, const char *to)
+{
+	struct dict_node *node = dict_find_node(entries, from);
+	free(node->key);
+	node->key = strdup(to);
 }
 
 IRC_HANDLER(privmsg)

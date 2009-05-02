@@ -57,7 +57,7 @@ MODULE_INIT
 	ptrlist_set_free_func(chanserv_access_requests, (ptrlist_free_f*)chanserv_access_request_free);
 
 	this = self;
-	cmod = chanreg_module_reg(sz_chanserv_chanmod_events_name, 0, chanserv_db_read, chanserv_db_write, cmod_enabled, cmod_disabled);
+	cmod = chanreg_module_reg(sz_chanserv_chanmod_events_name, 0, chanserv_db_read, chanserv_db_write, cmod_enabled, cmod_disabled, NULL);
 
 	chanserv_channels_populate();
 

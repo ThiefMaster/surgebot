@@ -46,7 +46,7 @@ COMMAND(google);
 
 MODULE_INIT
 {
-	cmod = chanreg_module_reg("Google", 0, NULL, NULL, NULL, NULL);
+	cmod = chanreg_module_reg("Google", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "MinAccess", "1", access_validator, NULL, access_encoder);
 
 	DEFINE_COMMAND(self, "google", google, 2, 0, "true");

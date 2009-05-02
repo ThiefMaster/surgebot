@@ -27,7 +27,7 @@ MODULE_INIT
 	words = dict_create();
 	dict_set_free_funcs(words, free, (dict_free_f *)dict_free);
 
-	cmod = chanreg_module_reg("Spelling", 0, spelling_db_read, spelling_db_write, NULL, spelling_disabled);
+	cmod = chanreg_module_reg("Spelling", 0, spelling_db_read, spelling_db_write, NULL, spelling_disabled, NULL);
 	chanreg_module_readdb(cmod);
 
 	reg_irc_handler("PRIVMSG", privmsg);

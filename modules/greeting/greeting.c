@@ -20,6 +20,7 @@ IRC_HANDLER(join);
 static void greeting_db_read(struct dict *db_nodes, struct chanreg *reg);
 static int greeting_db_write(struct database_object *dbo, struct chanreg *reg);
 static int greeting_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+static void greeting_moved(struct chanreg *reg, const char *from, const char *to);
 static void greeting_conf_reload(void);
 
 static struct module *this;
@@ -37,7 +38,7 @@ MODULE_INIT
 	greetings = dict_create();
 	dict_set_free_funcs(greetings, free, (dict_free_f *)stringlist_free);
 
-	cmod = chanreg_module_reg("Greeting", 0, greeting_db_read, greeting_db_write, NULL, greeting_disabled);
+	cmod = chanreg_module_reg("Greeting", 0, greeting_db_read, greeting_db_write, NULL, greeting_disabled, greeting_moved);
 	chanreg_module_readdb(cmod);
 
 	reg_irc_handler("JOIN", join);
@@ -80,6 +81,13 @@ static int greeting_disabled(struct chanreg *reg, unsigned int delete_data, enum
 	if(delete_data)
 		dict_delete(greetings, reg->channel);
 	return 0;
+}
+
+static void greeting_moved(struct chanreg *reg, const char *from, const char *to)
+{
+	struct dict_node *node = dict_find_node(greetings, from);
+	free(node->key);
+	node->key = strdup(to);
 }
 
 IRC_HANDLER(join)

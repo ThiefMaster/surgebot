@@ -484,7 +484,7 @@ int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, co
 	return atoi(value);
 }
 
-struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func)
+struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func, cmod_move_f *move_func)
 {
 	struct chanreg_module *cmod = malloc(sizeof(struct chanreg_module));
 	memset(cmod, 0, sizeof(struct chanreg_module));
@@ -496,6 +496,7 @@ struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, 
 	cmod->db_write = db_write;
 	cmod->enable_func = enable_func;
 	cmod->disable_func = disable_func;
+	cmod->move_func = move_func;
 	cmod->channels = chanreg_list_create();
 
 	dict_set_free_funcs(cmod->settings, NULL, (dict_free_f *)chanreg_module_setting_free);
@@ -1575,11 +1576,20 @@ COMMAND(move)
 	else
 	{
 		struct dict_node *node = dict_find_node(chanregs, creg->channel);
-		chanjoin_delchan(creg->channel, this, NULL);
-		free(creg->channel);
+		char *from = creg->channel;
+		chanjoin_delchan(from, this, NULL);
 		creg->channel = strdup(argv[2]);
 		node->key = creg->channel;
 		chanreg_join(creg);
+
+		for(unsigned int i = 0; i < creg->active_modules->count; i++)
+		{
+			struct chanreg_module *cmod = chanreg_module_find(creg->active_modules->data[i]);
+			if(cmod->move_func)
+				cmod->move_func(creg, from, creg->channel);
+		}
+
+		free(from);
 		reply("Channel registration has been moved to $b%s$b.", creg->channel);
 		return 1;
 	}

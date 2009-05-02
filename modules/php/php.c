@@ -61,7 +61,7 @@ MODULE_INIT
 {
 	this = self;
 
-	cmod = chanreg_module_reg("PHP", 0, NULL, NULL, NULL, NULL);
+	cmod = chanreg_module_reg("PHP", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "Language", default_language, cmod_lang_validator, NULL, NULL);
 	DEFINE_COMMAND(self, "php", php, 2, 0, "group(admins)");
 

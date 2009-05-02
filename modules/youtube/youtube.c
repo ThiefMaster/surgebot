@@ -64,7 +64,7 @@ IRC_HANDLER(privmsg);
 
 MODULE_INIT
 {
-	cmod = chanreg_module_reg("YouTube", 0, NULL, NULL, NULL, youtube_disable_cmod);
+	cmod = chanreg_module_reg("YouTube", 0, NULL, NULL, NULL, youtube_disable_cmod, NULL);
 
 	reg_irc_handler("privmsg", privmsg);
 

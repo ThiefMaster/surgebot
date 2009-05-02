@@ -40,7 +40,7 @@ COMMAND(urbandict);
 
 MODULE_INIT
 {
-	cmod = chanreg_module_reg("UrbanDict", 0, NULL, NULL, NULL, NULL);
+	cmod = chanreg_module_reg("UrbanDict", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "MinAccess", "0", access_validator, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "Reply", "NOTICE", ud_reply_validator, NULL, NULL);
 

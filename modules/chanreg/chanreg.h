@@ -45,6 +45,7 @@ typedef const char* (cset_format_f)(struct chanreg *reg, const char *value);
 typedef const char* (cset_encode_f)(struct chanreg *reg, const char *old_value, const char *value);
 typedef int (cmod_enable_f)(struct chanreg *reg, enum cmod_enable_reason reason);
 typedef int (cmod_disable_f)(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+typedef void (cmod_move_f)(struct chanreg *reg, const char *from, const char *to);
 typedef void (cmod_db_read_f)(struct dict *db_nodes, struct chanreg *reg);
 typedef int (cmod_db_write_f)(struct database_object *dbo, struct chanreg *reg);
 
@@ -82,6 +83,7 @@ struct chanreg_module
 	cmod_db_write_f *db_write;
 	cmod_enable_f *enable_func;
 	cmod_disable_f *disable_func;
+	cmod_move_f *move_func;
 	struct chanreg_list *channels;
 };
 
@@ -132,7 +134,7 @@ void chanreg_setting_set(struct chanreg *reg, struct chanreg_module *cmod, const
 const char *chanreg_setting_get(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
 int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
 
-struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func);
+struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func, cmod_move_f *move_func);
 void chanreg_module_unreg(struct chanreg_module *cmod);
 void chanreg_module_readdb(struct chanreg_module *cmod);
 void chanreg_module_writedb(struct chanreg_module *cmod);

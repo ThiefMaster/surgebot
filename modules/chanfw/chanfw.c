@@ -52,7 +52,7 @@ MODULE_INIT
 	reg_irc_handler("NICK", nick);
 	reg_channel_complete_hook(channel_complete_hook);
 
-	cmod = chanreg_module_reg("ChanForward", 0, NULL, NULL, cmod_enabled, cmod_disabled);
+	cmod = chanreg_module_reg("ChanForward", 0, NULL, NULL, cmod_enabled, cmod_disabled, NULL);
 	chanreg_module_setting_reg(cmod, "KickMsg", NULL, NULL, null_none, asterisk_null);
 	chanreg_module_setting_reg(cmod, "JoinMsg", NULL, NULL, null_none, asterisk_null);
 	chanreg_module_setting_reg(cmod, "KickDelay", "600", number_validate, NULL, NULL);

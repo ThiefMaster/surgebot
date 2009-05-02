@@ -41,7 +41,7 @@ IRC_HANDLER(privmsg);
 
 MODULE_INIT
 {
-	cmod = chanreg_module_reg("TinyURL", 0, NULL, NULL, NULL, NULL);
+	cmod = chanreg_module_reg("TinyURL", 0, NULL, NULL, NULL, NULL, NULL);
 	reg_irc_handler("PRIVMSG", privmsg);
 
 	tinyurls = dict_create();
