@@ -12,6 +12,7 @@ MODULE_DEPENDS("commands", NULL);
 
 static struct
 {
+	const char *local_host;
 	const char *qserver_host;
 	unsigned int qserver_port;
 	const char *qserver_pass;
@@ -77,6 +78,8 @@ MODULE_FINI
 static void srvx_conf_reload()
 {
 	char *str;
+
+	srvx_conf.local_host = conf_get("srvx/local_host", DB_STRING);
 
 	str = conf_get("srvx/qserver_host", DB_STRING);
 	srvx_conf.qserver_host = str ? str : "127.0.0.1";
@@ -146,6 +149,9 @@ static void srvx_sock_connect()
 
 	srvx_sock = sock_create(SOCK_IPV4, srvx_sock_event, srvx_sock_read);
 	assert(srvx_sock);
+
+	if(srvx_conf.local_host)
+		sock_bind(srvx_sock, srvx_conf.local_host, 0);
 
 	if(sock_connect(srvx_sock, srvx_conf.qserver_host, srvx_conf.qserver_port) != 0)
 	{
