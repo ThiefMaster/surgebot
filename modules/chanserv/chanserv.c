@@ -14,7 +14,7 @@
 struct module *this;
 struct chanreg_module *cmod;
 
-MODULE_DEPENDS("chanreg", "commands", "tools", "db", NULL);
+MODULE_DEPENDS("chanreg", "commands", "tools", "db", "srvx", NULL);
 
 COMMAND(users);
 COMMAND(events);
@@ -97,7 +97,7 @@ MODULE_FINI
 	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("PART", part);
 	unreg_irc_handler("NOTICE", notice);
-	command_rule_unreg("access");
+	command_rule_unreg("chanserv");
 
 	if(event_table)
 		db_table_close(event_table);
@@ -465,6 +465,7 @@ IRC_HANDLER(notice)
 		return;
 	}
 
+#if 0
 	// "You lack access..." after requesting events
 	// -> Turn off eventlog module
 	if((count == 5 && strncmp(dup, "You lack access to", 18) == 0) || (count > 5 && strncmp(dup, "You lack sufficient access in", 29) == 0))
@@ -614,6 +615,7 @@ IRC_HANDLER(notice)
 		curchan->process = CS_P_NONE;
 		curchan = NULL;
 	}
+#endif
 }
 
 DB_SELECT_CB(show_events_cb)

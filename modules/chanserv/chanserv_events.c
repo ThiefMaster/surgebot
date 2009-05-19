@@ -1,14 +1,89 @@
-#define _GNU_SOURCE
-#include <time.h>
 #include "global.h"
 #include "string.h"
 #include "timer.h"
+
 #include "modules/chanserv/chanserv.h"
+#include "modules/srvx/srvx.h"
 
 extern struct db_table *event_table;
 
 extern struct module *this;
 extern struct chanreg_module *cmod;
+
+static void srvx_response_events(struct srvx_request *r, const char *channelname)
+{
+	for(unsigned int ii = 0; ii < r->count; ii++)
+	{
+		struct srvx_response_line *line = r->lines[ii];
+		assert_continue(!strcasecmp(line->nick, sz_chanserv_botname));
+
+		char *str, *vec[8];
+		unsigned int count;
+		struct chanserv_channel *chan;
+
+		str = strip_codes(line->msg); // that messes up line->msg but it's not needed anymore
+
+		// First line of events
+		if(!strcmp(str, "The following channel events were found:"))
+			continue;
+
+		count = tokenize(strdupa(str), vec, ArraySize(vec), ' ', 0);
+		chan = chanserv_channel_find(channelname);
+
+		// "You lack access..." after requesting events
+		// -> Turn off eventlog module
+		if((count == 5 && strncmp(str, "You lack access to", 18) == 0) || (count > 5 && strncmp(str, "You lack sufficient access in", 29) == 0))
+		{
+			if(chan)
+			{
+				if(chanreg_module_disable(chan->reg, cmod, 0, CDR_DISABLED) == 0)
+					chanserv_report(chan->reg->channel, "My access has been clvl'ed to less than 350. Module $b%s$b has been disabled.", cmod->name);
+			}
+
+			break;
+		}
+
+		// Last line of events
+		if((count == 3 && !strcmp(vec[0], "Found") && !strcmp(vec[2], "matches.")) || !strcmp(str, "Nothing matched the criteria of your search."))
+			break;
+
+		// Line of events
+		struct tm calendar;
+		memset(&calendar, 0, sizeof(calendar));
+		if(sscanf(str, "[%2d:%2d:%2d %2d/%2d/%4d]",
+			&calendar.tm_hour, &calendar.tm_min, &calendar.tm_sec,
+			&calendar.tm_mon, &calendar.tm_mday, &calendar.tm_year) == 6)
+		{
+			char *tmp, *tmp2, *channel, *issuer, *command;
+			// (ChanServ:#') [Someone:Someone]: adduser *user 200
+
+			// #') [Someone:Someone]: adduser *user 200
+			tmp = str + 32; // 32 = length of "[??:??:?? ??/??/????] (ChanServ:"
+			if(!(tmp2 = strchr(tmp, ' ')))
+				return;
+			channel = strndup(tmp, tmp2 - tmp - 1);
+
+			// Someone:Someone]: adduser *user 200
+			tmp = tmp2 + 2; // Point to issuer
+			if((tmp2 = strchr(tmp, ' ')) == NULL)
+			{
+				free(channel);
+				return;
+			}
+
+			issuer = strndup(tmp, tmp2 - tmp - 2);
+
+			// adduser *user 200
+			command = trim(strdup(tmp2 + 1));
+
+			chanserv_event_add(calendar, channel, issuer, command);
+			free(channel);
+			free(issuer);
+			free(command);
+			continue;
+		}
+	}
+}
 
 void chanserv_event_add(struct tm calendar, const char *channel, const char *issuer, const char *command)
 {
@@ -131,12 +206,17 @@ void chanserv_event_add(struct tm calendar, const char *channel, const char *iss
 void chanserv_fetch_events(void *bound, struct chanserv_channel *cschan)
 {
 	if(cschan)
-		return irc_send(sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
+	{
+		//irc_send(sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
+		srvx_send_ctx((srvx_response_f*)srvx_response_events, strdup(cschan->reg->channel), 1, sz_chanserv_fetch_events, cschan->reg->channel, u_chanserv_fetch_events_amount);
+		return;
+	}
 
 	for(unsigned int i = 0; i < cmod->channels->count; i++)
 	{
 		struct chanreg *reg = cmod->channels->data[i];
-		irc_send(sz_chanserv_fetch_events, reg->channel, u_chanserv_fetch_events_amount);
+		//irc_send(sz_chanserv_fetch_events, reg->channel, u_chanserv_fetch_events_amount);
+		srvx_send_ctx((srvx_response_f*)srvx_response_events, strdup(reg->channel), 1, sz_chanserv_fetch_events, reg->channel, u_chanserv_fetch_events_amount);
 	}
 
 	chanserv_event_timer_add();

@@ -1,3 +1,5 @@
+#include "global.h"
+#include "modules/srvx/srvx.h"
 #include "modules/chanserv/chanserv.h"
 #include "ptrlist.h"
 
@@ -76,15 +78,78 @@ void chanserv_channel_free(struct chanserv_channel *cschan)
 	free(cschan);
 }
 
+static void srvx_response_names(struct srvx_request *r, const char *channelname)
+{
+	for(unsigned int ii = 0; ii < r->count; ii++)
+	{
+		struct srvx_response_line *line = r->lines[ii];
+		assert_continue(!strcasecmp(line->nick, sz_chanserv_botname));
+
+		char *str, *vec[8];
+		unsigned int count;
+		struct chanserv_channel *chan;
+
+		str = strip_codes(line->msg); // that messes up line->msg but it's not needed anymore
+		count = tokenize(strdupa(str), vec, ArraySize(vec), ' ', 0);
+		chan = chanserv_channel_find(channelname);
+
+		// Line of names list
+		if(!strncmp(str, "Users in", 8))
+		{
+			// No users
+			if(count < 4)
+				continue;
+
+			chanserv_user_parse_names(chan, str + (vec[3] - vec[0]));
+		}
+	}
+}
+
+static void srvx_response_users(struct srvx_request *r, const char *channelname)
+{
+	for(unsigned int ii = 0; ii < r->count; ii++)
+	{
+		struct srvx_response_line *line = r->lines[ii];
+		assert_continue(!strcasecmp(line->nick, sz_chanserv_botname));
+
+		char *str, *vec[8];
+		unsigned int count;
+		struct chanserv_channel *chan;
+
+		str = strip_codes(line->msg); // that messes up line->msg but it's not needed anymore
+		count = tokenize(strdupa(str), vec, ArraySize(vec), ' ', 0);
+		chan = chanserv_channel_find(channelname);
+
+		// First line of userlist is of the format "#channel users from level 1 to 500:"
+		if(IsChannelName(vec[0]) && !strcmp(str + (vec[1] - vec[0]), "users from level 1 to 500:"))
+		{
+			assert_continue(!strcasecmp(vec[0], channelname));
+			if(chan)
+				dict_clear(chan->users);
+			continue;
+		}
+
+		chanserv_user_add(chan, str, count, vec);
+	}
+
+	debug("Fetched userlist from channel %s, requesting names", channelname);
+	srvx_send_ctx((srvx_response_f*)srvx_response_names, strdup(channelname), 1, sz_chanserv_fetch_names, channelname);
+}
+
 static void chanserv_fetch_users(void *bound, struct chanserv_channel *cschan)
 {
 	if(cschan)
-		return irc_send(sz_chanserv_fetch_info, cschan->reg->channel);
+	{
+		//return irc_send(sz_chanserv_fetch_info, cschan->reg->channel);
+		srvx_send_ctx((srvx_response_f*)srvx_response_users, strdup(cschan->reg->channel), 1, sz_chanserv_fetch_users, cschan->reg->channel);
+		return;
+	}
 
 	for(unsigned int i = 0; i < chanserv_channels->count; i++)
 	{
 		struct chanserv_channel *cschan = chanserv_channels->data[i]->ptr;
-		irc_send(sz_chanserv_fetch_info, cschan->reg->channel);
+		//irc_send(sz_chanserv_fetch_info, cschan->reg->channel);
+		srvx_send_ctx((srvx_response_f*)srvx_response_users, strdup(cschan->reg->channel), 1, sz_chanserv_fetch_users, cschan->reg->channel);
 	}
 	chanserv_timer_add();
 }

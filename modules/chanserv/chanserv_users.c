@@ -3,6 +3,7 @@
 #include <string.h>
 #include "global.h"
 #include "modules/chanserv/chanserv.h"
+#include "modules/srvx/srvx.h"
 
 struct dict *chanserv_accounts;
 
@@ -54,6 +55,7 @@ int chanserv_user_add(struct chanserv_channel *cschan, const char *line, int arg
 			cs_user->status = CS_USER_NORMAL;
 
 		dict_insert(cschan->users, cs_user->account->name, cs_user);
+		/*
 		if(cschan->users->count == cschan->user_count)
 		{
 			debug("Fetched userlist from channel %s, %d users", cschan->reg->channel, cschan->users->count);
@@ -62,6 +64,7 @@ int chanserv_user_add(struct chanserv_channel *cschan, const char *line, int arg
 			irc_send(sz_chanserv_fetch_names, cschan->reg->channel);
 			return 1;
 		}
+		*/
 	}
 
 	return 0;
