@@ -61,6 +61,7 @@ static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
 static void chanreg_join(struct chanreg *creg);
+static void chanreg_account_del(struct user_account *account);
 
 static struct module *this;
 static struct database *chanreg_db = NULL;
@@ -100,6 +101,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "move",		move,		3, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "global",		global,		2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "group(admins)");
 
+	reg_account_del_hook(chanreg_account_del);
 	reg_conf_reload_func(chanreg_conf_reload);
 	chanreg_conf_reload();
 
@@ -114,6 +116,7 @@ MODULE_FINI
 	database_delete(chanreg_db);
 
 	unreg_conf_reload_func(chanreg_conf_reload);
+	unreg_account_del_hook(chanreg_account_del);
 
 	command_rule_unreg("chanuser");
 	command_rule_unreg("privchan");
@@ -687,6 +690,23 @@ static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const 
 static void chanreg_join(struct chanreg *creg)
 {
 	chanjoin_addchan(creg->channel, this, NULL, cj_success, cj_error, creg, NULL, 0);
+}
+
+static void chanreg_account_del(struct user_account *account)
+{
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *reg = node->data;
+		for(unsigned int i = 0; i < reg->users->count; i++)
+		{
+			struct chanreg_user *c_user = reg->users->data[i];
+			if(c_user->account == account)
+			{
+				chanreg_user_del(reg, c_user);
+				break;
+			}
+		}
+	}
 }
 
 static int sort_channels(const void *a_, const void *b_)
