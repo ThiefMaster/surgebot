@@ -1,0 +1,189 @@
+#include "global.h"
+#include "module.h"
+#include "modules/commands/commands.h"
+#include "modules/chanreg/chanreg.h"
+#include "modules/help/help.h"
+#include "irc.h"
+
+MODULE_DEPENDS("commands", "chanreg", "help", NULL);
+
+COMMAND(quote);
+COMMAND(quotes_add);
+COMMAND(quotes_del);
+COMMAND(quotes_info);
+
+static struct module *this;
+static struct chanreg_module *cmod;
+static struct dict *quotes;
+
+static void quote_db_read(struct dict *db_nodes, struct chanreg *reg);
+static int quote_db_write(struct database_object *dbo, struct chanreg *reg);
+static int quote_enable(struct chanreg *reg, enum cmod_enable_reason reason);
+static int quote_disable(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
+static void quote_move(struct chanreg *reg, const char *from, const char *to);
+
+MODULE_INIT
+{
+	this = self;
+
+	help_load(this, "quote.help");
+
+	quotes = dict_create();
+	dict_set_free_funcs(quotes, free, (dict_free_f *)stringlist_free);
+
+	cmod = chanreg_module_reg("Quote", 0, quote_db_read, quote_db_write, quote_enable, quote_disable, quote_move);
+	chanreg_module_readdb(cmod);
+
+	DEFINE_COMMAND(self, "quote",			quote,			0,	CMD_LAZY_ACCEPT_CHANNEL,						"true");
+	DEFINE_COMMAND(self, "quotes add",		quotes_add,		2,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes del",		quotes_del,		2,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes info",		quotes_info,	1,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
+
+	srand(now);
+}
+
+MODULE_FINI
+{
+	chanreg_module_writedb(cmod);
+	chanreg_module_unreg(cmod);
+
+	dict_free(quotes);
+}
+
+static void quote_db_read(struct dict *db_nodes, struct chanreg *reg)
+{
+	struct stringlist *slist;
+
+	if((slist = database_fetch(db_nodes, "quotes", DB_STRINGLIST)))
+	{
+		dict_insert(quotes, strdup(reg->channel), stringlist_copy(slist));
+	}
+}
+
+static int quote_db_write(struct database_object *dbo, struct chanreg *reg)
+{
+	struct stringlist *channel_quotes;
+
+	if((channel_quotes = dict_find(quotes, reg->channel)) && channel_quotes->count)
+	{
+		database_obj_write_stringlist(dbo, "quotes", channel_quotes);
+	}
+
+	return 0;
+}
+
+static int quote_enable(struct chanreg *reg, enum cmod_enable_reason reason)
+{
+	if(reason == CER_ENABLED)
+	{
+		struct stringlist *channel_quotes = stringlist_create();
+		dict_insert(quotes, strdup(reg->channel), channel_quotes);
+	}
+
+	return 0;
+}
+
+static int quote_disable(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason)
+{
+	dict_delete(quotes, reg->channel);
+
+	return 0;
+}
+
+static void quote_move(struct chanreg *reg, const char *from, const char *to)
+{
+	struct dict_node *node = dict_find_node(quotes, from);
+	free(node->key);
+	node->key = strdup(to);
+}
+
+COMMAND(quote)
+{
+	struct stringlist *channel_quotes;
+
+	CHANREG_MODULE_COMMAND(cmod)
+
+	channel_quotes = dict_find(quotes, reg->channel);
+
+	if(channel_quotes->count > 0)
+	{
+		unsigned int item = 0;
+
+		if(argc > 1)
+		{
+			if((item = atoi(argv[1])) == 0)
+			{
+				reply("You must enter a valid quote id (a positive integer)!");
+				return 0;
+			}
+			else
+			{
+				item = (item - 1) % channel_quotes->count;
+			}
+		}
+		else
+		{
+			item = rand() % channel_quotes->count;
+		}
+
+		irc_send("PRIVMSG %s :$bQuote %u$b: %s", reg->channel, item + 1, channel_quotes->data[item]);
+	}
+
+	return 0;
+}
+
+COMMAND(quotes_add)
+{
+	struct stringlist *channel_quotes;
+
+	CHANREG_MODULE_COMMAND(cmod)
+
+	assert_return(argc > 1, 1);
+
+	channel_quotes = dict_find(quotes, reg->channel);
+	char *quote = untokenize(argc - 1, argv + 1, " ");
+	stringlist_add(channel_quotes, quote);
+	reply("Quote added with id $b%u$b", channel_quotes->count);
+
+	return 1;
+}
+
+COMMAND(quotes_del)
+{
+	struct stringlist *channel_quotes;
+
+	CHANREG_MODULE_COMMAND(cmod)
+
+	assert_return(argc > 1, 1);
+
+	channel_quotes = dict_find(quotes, reg->channel);
+	unsigned int item = atoi(argv[1]);
+
+	if(item == 0)
+	{
+		reply("You must enter a valid quote id (a positive integer)!");
+		return 1;
+	}
+	else if(item > channel_quotes->count)
+	{
+		reply("You must pass the id of a quote to delete that exists!");
+		return 1;
+	}
+
+	reply("Deleted quote $b%u$b: %s", item, channel_quotes->data[item - 1]);
+	stringlist_del(channel_quotes, item - 1);
+
+	return 1;
+}
+
+COMMAND(quotes_info)
+{
+	struct stringlist *channel_quotes;
+
+	CHANREG_MODULE_COMMAND(cmod)
+	channel_quotes = dict_find(quotes, reg->channel);
+	reply("There are currently $b%u$b quotes in my database for $b%s$b", channel_quotes->count, reg->channel);
+
+	return 1;
+}
+

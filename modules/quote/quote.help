@@ -1,0 +1,65 @@
+"*MODULE" = {
+	"*QUOTE" = {
+		"*" = "Custom channel quote database";
+		"*" = (
+			"$b$uQuote Module:$b$u",
+			"This module adds a custom quote database to your channel.",
+
+			"{HELP_COMMAND_LIST}",
+			"{HELP_CATEGORY_LIST}"
+		);
+		
+		"quote" = {
+			"description" = "Prints a quote to the channel:";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <id>",
+				"If <id> is specified, prints the quote with that id to the channel.",
+				"Otherwise, a random quote is chosen and printed."
+			);
+			"see_also" = (
+				"quote.quotes add",
+				"quote.quotes del",
+				"quote.quotes info"
+			);
+		};
+
+		"quotes add" = {
+			"description" = "Adds a quote to the channel quote database.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <quote>",
+				"Adds the quote specified to the channel quote database and tells you its id."
+			);
+			"see_also" = (
+				"quote.quote",
+				"quote.quotes del",
+				"quote.quotes info"
+			);
+		};
+
+		"quotes del" = {
+			"description" = "Deletes a quote from the channel quote database.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <id>",
+				"Deletes the quote specified by <id> in the channel quote database."
+			);
+			"see_also" = (
+				"quote.quote",
+				"quote.quotes add",
+				"quote.quotes info"
+			);
+		};
+
+		"quotes info" = {
+			"description" = "Tells you the size of the channel quote database.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+				"Tells you the size of the channel quote database."
+			);
+			"see_also" = (
+				"quote.quote",
+				"quote.quotes add",
+				"quote.quotes del"
+			);
+		};
+	};
+};
