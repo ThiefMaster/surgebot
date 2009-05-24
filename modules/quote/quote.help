@@ -19,7 +19,8 @@
 			"see_also" = (
 				"quote.quotes add",
 				"quote.quotes del",
-				"quote.quotes info"
+				"quote.quotes info",
+				"quote.quotes list"
 			);
 		};
 
@@ -32,7 +33,8 @@
 			"see_also" = (
 				"quote.quote",
 				"quote.quotes del",
-				"quote.quotes info"
+				"quote.quotes info",
+				"quote.quotes list"
 			);
 		};
 
@@ -45,7 +47,8 @@
 			"see_also" = (
 				"quote.quote",
 				"quote.quotes add",
-				"quote.quotes info"
+				"quote.quotes info",
+				"quote.quotes list"
 			);
 		};
 
@@ -58,8 +61,24 @@
 			"see_also" = (
 				"quote.quote",
 				"quote.quotes add",
-				"quote.quotes del"
+				"quote.quotes del",
+				"quote.quotes list"
 			);
 		};
+		
+		"quotes list" = {
+			"description" = "Lists all quotes in the channel quote database.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+				"Lists all quotes in the channel quote database.",
+				"Depending on the size of your database, this can be very spammy!"
+			);
+			"see_also" = (
+				"quote.quote",
+				"quote.quotes add",
+				"quote.quotes del",
+				"quote.quotes info"
+			);
+		};		
 	};
 };

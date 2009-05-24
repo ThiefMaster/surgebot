@@ -4,6 +4,7 @@
 #include "modules/chanreg/chanreg.h"
 #include "modules/help/help.h"
 #include "irc.h"
+#include "table.h"
 
 MODULE_DEPENDS("commands", "chanreg", "help", NULL);
 
@@ -11,6 +12,7 @@ COMMAND(quote);
 COMMAND(quotes_add);
 COMMAND(quotes_del);
 COMMAND(quotes_info);
+COMMAND(quotes_list);
 
 static struct module *this;
 static struct chanreg_module *cmod;
@@ -38,6 +40,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "quotes add",		quotes_add,		2,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "quotes del",		quotes_del,		2,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "quotes info",		quotes_info,	1,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes list",		quotes_list,	1,	CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL,	"chanuser(300) || group(admins)");
 
 	srand(now);
 }
@@ -111,14 +114,16 @@ COMMAND(quote)
 
 		if(argc > 1)
 		{
-			if((item = atoi(argv[1])) == 0)
+			item = atoi(argv[1]);
+
+			if(!(item > 0 && item <= channel_quotes->count))
 			{
-				reply("You must enter a valid quote id (a positive integer)!");
+				reply("You must enter a valid quote id or none at all for a random quote!");
 				return 0;
 			}
 			else
 			{
-				item = (item - 1) % channel_quotes->count;
+				item--;
 			}
 		}
 		else
@@ -159,14 +164,9 @@ COMMAND(quotes_del)
 	channel_quotes = dict_find(quotes, reg->channel);
 	unsigned int item = atoi(argv[1]);
 
-	if(item == 0)
+	if(!(item > 0 && item <= channel_quotes->count))
 	{
-		reply("You must enter a valid quote id (a positive integer)!");
-		return 1;
-	}
-	else if(item > channel_quotes->count)
-	{
-		reply("You must pass the id of a quote to delete that exists!");
+		reply("You must enter a valid quote id to delete!");
 		return 1;
 	}
 
@@ -181,8 +181,32 @@ COMMAND(quotes_info)
 	struct stringlist *channel_quotes;
 
 	CHANREG_MODULE_COMMAND(cmod)
+
 	channel_quotes = dict_find(quotes, reg->channel);
 	reply("There are currently $b%u$b quotes in my database for $b%s$b", channel_quotes->count, reg->channel);
+
+	return 1;
+}
+
+COMMAND(quotes_list)
+{
+	struct stringlist *channel_quotes;
+
+	CHANREG_MODULE_COMMAND(cmod)
+
+	channel_quotes = dict_find(quotes, reg->channel);
+	struct table *quotes_table = table_create(2, channel_quotes->count);
+	table_set_header(quotes_table, "ID", "Quote");
+
+	for(unsigned int i = 0; i < channel_quotes->count; i++)
+	{
+		quotes_table->data[i][0] = strtab(i + 1);
+		quotes_table->data[i][1] = channel_quotes->data[i];
+	}
+
+	reply("Quote database entries for $b%s$b:", reg->channel);
+	table_send(quotes_table, src->nick);
+	table_free(quotes_table);
 
 	return 1;
 }
