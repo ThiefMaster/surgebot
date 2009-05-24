@@ -10,7 +10,7 @@
 		);
 		
 		"quote" = {
-			"description" = "Prints a quote to the channel:";
+			"description" = "Prints a quote to the channel.";
 			"help" = (
 				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <id>",
 				"If <id> is specified, prints the quote with that id to the channel.",
