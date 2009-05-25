@@ -487,6 +487,12 @@ int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, co
 	return atoi(value);
 }
 
+int chanreg_setting_get_bool(struct chanreg *reg, struct chanreg_module *cmod, const char *setting)
+{
+	const char *value = chanreg_setting_get(reg, cmod, setting);
+	return (value && true_string(value));
+}
+
 struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func, cmod_move_f *move_func)
 {
 	struct chanreg_module *cmod = malloc(sizeof(struct chanreg_module));
@@ -597,7 +603,7 @@ static int chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmo
 
 int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, unsigned int delete_data, enum cmod_disable_reason reason)
 {
-	int idx, ret = 1;
+	int idx, ret = 0;
 
 	if((idx = stringlist_find(reg->modules, cmod->name)) != -1)
 		stringlist_del(reg->modules, idx);
@@ -1667,6 +1673,11 @@ const char *null_none(struct chanreg *reg, const char *value)
 	return value ? value : "None";
 }
 
+const char *boolean_formatter_onoff(struct chanreg *reg, const char *value)
+{
+	return (value && true_string(value)) ? "On" : "Off";
+}
+
 // Encoders
 
 const char *asterisk_null(struct chanreg *reg, const char *old_value, const char *value)
@@ -1687,4 +1698,9 @@ const char *access_encoder(struct chanreg *reg, const char *old_Value, const cha
 		return "0";
 
 	return str;
+}
+
+const char *boolean_encoder(struct chanreg *reg, const char *old_value, const char *value)
+{
+	return true_string(value) ? "1" : "0";
 }

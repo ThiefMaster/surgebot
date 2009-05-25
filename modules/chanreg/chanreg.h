@@ -133,6 +133,7 @@ unsigned int chanreg_check_access(struct chanreg *reg, struct user_account *acco
 void chanreg_setting_set(struct chanreg *reg, struct chanreg_module *cmod, const char *setting, const char *value);
 const char *chanreg_setting_get(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
 int chanreg_setting_get_int(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
+int chanreg_setting_get_bool(struct chanreg *reg, struct chanreg_module *cmod, const char *setting);
 
 struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, cmod_db_read_f *db_read, cmod_db_write_f *db_write, cmod_enable_f *enable_func, cmod_disable_f *disable_func, cmod_move_f *move_func);
 void chanreg_module_unreg(struct chanreg_module *cmod);
@@ -150,10 +151,12 @@ int access_validator(struct chanreg *reg, struct irc_source *src, const char *va
 
 // Default formatters
 const char *null_none(struct chanreg *reg, const char *value);
+const char *boolean_formatter_onoff(struct chanreg *reg, const char *value);
 
 // Default encoders
 const char *asterisk_null(struct chanreg *reg, const char *old_value, const char *value);
 const char *access_encoder(struct chanreg *reg, const char *old_Value, const char *value);
+const char *boolean_encoder(struct chanreg *reg, const char *old_Value, const char *value);
 
 DECLARE_HOOKABLE(chanreg_del, (struct chanreg *reg));
 DECLARE_HOOKABLE(chanreg_add, (struct chanreg *reg));

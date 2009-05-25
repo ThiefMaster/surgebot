@@ -48,6 +48,7 @@ MODULE_INIT
 {
 	cmod = chanreg_module_reg("Google", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "MinAccess", "1", access_validator, NULL, access_encoder);
+	chanreg_module_setting_reg(cmod, "PubReply", "1", boolean_validator, boolean_formatter_onoff, boolean_encoder);
 
 	DEFINE_COMMAND(self, "google", google, 2, 0, "true");
 
@@ -83,6 +84,7 @@ COMMAND(google)
 
 	if(channel)
 	{
+		char *str;
 		CHANREG_MODULE_COMMAND(cmod);
 
 		if((level = chanreg_setting_get_int(reg, cmod, "MinAccess")) > 0)
@@ -93,7 +95,11 @@ COMMAND(google)
 				return 0;
 			}
 		}
-		obj->channel = strdup(channelname);
+
+		if(chanreg_setting_get_bool(reg, cmod, "PubReply"))
+			obj->channel = strdup(channelname);
+		else
+			obj->channel = NULL;
 	}
 	else
 		obj->channel = NULL;
@@ -122,7 +128,8 @@ COMMAND(google)
 
 static void google_object_free(struct google_object *obj)
 {
-	free(obj->channel);
+	if(obj->channel)
+		free(obj->channel);
 	free(obj->nick);
 	free(obj->request);
 	free(obj);
