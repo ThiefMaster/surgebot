@@ -148,6 +148,8 @@ COMMAND(timer_add)
 		{
 			reply("Setting new interval of $b%lu$b seconds.", interval);
 			timer->interval = interval;
+			user_timer_del_timer(timer); // remove timer with old interval
+			user_timer_add_timer(timer_chan, timer); // add one with new interval
 			changed = 1;
 		}
 
