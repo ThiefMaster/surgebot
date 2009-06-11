@@ -112,7 +112,7 @@ COMMAND(timer_list)
 		}
 	}
 	reply("$b%u$b timer%s.", timer_chan->timers->count, timer_chan->timers->count == 1 ? "" : "s");
-	return 0;
+	return 1;
 }
 
 COMMAND(timer_add)
@@ -346,7 +346,7 @@ COMMAND(timer_del)
 
 	dict_delete(timer_chan->timers, argv[1]);
 	reply("Timer $b%s$b has been deleted.", argv[1]);
-	return 0;
+	return 1;
 }
 
 static void user_timer_func(struct user_timer_channel *channel, struct user_timer *timer)
