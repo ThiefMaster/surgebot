@@ -9,7 +9,7 @@
 
 #define TIMER_IGNORE_ALL	0x1F
 
-#define timer_debug(timer, text...) { if(timer->debug) log_append(LOG_DEBUG, ## text); }
+#define timer_debug(timer, text...) do { if(timer->debug) log_append(LOG_DEBUG, ## text); } while(0)
 
 typedef void (timer_f)(void *bound, void *data);
 

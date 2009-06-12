@@ -140,7 +140,7 @@ const char *chanmodes2string(int modes, unsigned int limit, const char *key)
 	static char str[MAXLEN];
 	unsigned int pos = 0;
 
-#define do_mode_char(MODE, CHAR) if(modes & (MODE_ ## MODE)) str[pos++] = (CHAR);
+#define do_mode_char(MODE, CHAR) if(modes & (MODE_ ## MODE)) str[pos++] = (CHAR)
 	do_mode_char(SECRET, 's');
 	do_mode_char(PRIVATE, 'p');
 	do_mode_char(MODERATED, 'm');

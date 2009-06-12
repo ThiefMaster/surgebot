@@ -69,8 +69,8 @@ extern time_t now;
 #include "structs.h"
 
 #define ArraySize(ARRAY)		(sizeof((ARRAY)) / sizeof((ARRAY)[0]))
-#define MyFree(PTR)				{ if(PTR) free_null(PTR); }
-#define free_null(PTR)			{ free(PTR); (PTR) = NULL; }
+#define MyFree(PTR)				do { if(PTR) free_null(PTR); } while(0)
+#define free_null(PTR)			do { free(PTR); (PTR) = NULL; } while(0)
 
 #undef assert
 #define assert(CHECK)			{ if(!(CHECK)) { log_append(LOG_ERROR, "Assertion failed in %s:%d: %s", __FILE__, __LINE__, #CHECK); return; } }

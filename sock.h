@@ -15,7 +15,7 @@
 #define SOCK_UDP	0x200 // UDP socket
 #define SOCK_EXEC	0x400 // pipe to a subprocess
 
-#define sock_debug(sock, text...) { if(!(sock->flags & SOCK_QUIET)) log_append(LOG_DEBUG, ## text); }
+#define sock_debug(sock, text...) do { if(!(sock->flags & SOCK_QUIET)) log_append(LOG_DEBUG, ## text); } while(0)
 
 #define REMOTE_IP(SOCK)	(((struct sockaddr_in *)(SOCK)->sockaddr_remote)->sin_addr)
 

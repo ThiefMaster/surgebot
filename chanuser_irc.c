@@ -530,7 +530,7 @@ CHANUSER_IRC_HANDLER(num_hosthidden)
 
 static void setup_handlers()
 {
-#define set_chanuser_irc_handler(CMD, NAME)	dict_insert(chanuser_irc_handlers, CMD, __chanuser_irc_handler_ ## NAME);
+#define set_chanuser_irc_handler(CMD, NAME)	dict_insert(chanuser_irc_handlers, CMD, __chanuser_irc_handler_ ## NAME)
 	set_chanuser_irc_handler("JOIN", join);
 	set_chanuser_irc_handler("PART", part);
 	set_chanuser_irc_handler("KICK", kick);
