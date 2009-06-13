@@ -8,6 +8,7 @@ static struct sock_list *sock_list;
 static struct pollfd *pollfds = NULL;
 static int highestFd = 0;
 
+static void sock_flush_readbuf(struct sock *sock);
 static void sock_destroy(struct sock *sock);
 #ifdef HAVE_SSL
 static int sock_enable_ssl(struct sock *sock, SSL_CTX *ctx);
@@ -691,6 +692,8 @@ int sock_close(struct sock *sock)
 	if(sock->fd > 0)
 		close(sock->fd);
 
+	sock_flush_readbuf(sock);
+
 	sock->flags |= SOCK_ZOMBIE;
 	sock->fd = -1;
 	return 0;
@@ -977,6 +980,7 @@ int sock_poll()
 #endif
 					else if(rres == 0 && !(sock->flags & SOCK_NOSOCK))
 					{
+						sock_flush_readbuf(sock);
 						sock->event_func(sock, EV_HANGUP, 0);
 						sock_close(sock);
 					}
@@ -1128,6 +1132,16 @@ void sock_set_readbuf(struct sock *sock, size_t len, const char *buf_delimiter)
 	sock->read_buf_delimiter = strdup(buf_delimiter);
 
 	sock_debug(sock, "Read buffer of %lu bytes set for socket with fd=%d", (unsigned long)len, sock->fd);
+}
+
+static void sock_flush_readbuf(struct sock *sock)
+{
+	if(sock->read_func && sock->read_buf && sock->read_buf_used)
+	{
+		sock->read_func(sock, sock->read_buf, sock->read_buf_used);
+		sock->read_buf_used = 0;
+		sock->read_buf[0] = '\0';
+	}
 }
 
 static int sock_set_nonblocking(int fd)
