@@ -100,6 +100,8 @@ static int autoop_disabled(struct chanreg *reg, unsigned int delete_data, enum c
 static void autoop_moved(struct chanreg *reg, const char *from, const char *to)
 {
 	struct dict_node *node = dict_find_node(aop_hosts, from);
+	if(!node)
+		return;
 	free(node->key);
 	node->key = strdup(to);
 }

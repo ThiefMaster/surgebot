@@ -95,6 +95,8 @@ static int chandict_disabled(struct chanreg *reg, unsigned int delete_data, enum
 static void chandict_moved(struct chanreg *reg, const char *from, const char *to)
 {
 	struct dict_node *node = dict_find_node(entries, from);
+	if(!node)
+		return;
 	free(node->key);
 	node->key = strdup(to);
 }
