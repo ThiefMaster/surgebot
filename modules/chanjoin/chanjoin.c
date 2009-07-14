@@ -314,7 +314,8 @@ static void perform_done()
 			chan->state = CJ_JOIN_PENDING;
 			irc_send("JOIN %s", chan->name);
 			timer_del_boundname(chan, "chanjoin_join_timeout");
-			timer_add(chan, "chanjoin_join_timeout", now + 30, (timer_f *)chanjoin_join_timeout, NULL, 0, 0);
+			// use high timeout, we are probably going to join *lots* of channels
+			timer_add(chan, "chanjoin_join_timeout", now + 120, (timer_f *)chanjoin_join_timeout, NULL, 0, 0);
 		}
 	}
 }
