@@ -12,8 +12,8 @@
 		"quote" = {
 			"description" = "Prints a quote to the channel.";
 			"help" = (
-				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <id>",
-				"If <id> is specified, prints the quote with that id to the channel.",
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> [id]",
+				"If an id is specified, prints the quote with that id to the channel.",
 				"Otherwise, a random quote is chosen and printed."
 			);
 			"see_also" = (
