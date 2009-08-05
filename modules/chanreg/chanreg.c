@@ -391,7 +391,7 @@ static void chanreg_free(struct chanreg *reg)
 {
 	CALL_HOOKS(chanreg_del, (reg));
 
-	if(reg->active && !reloading_module)
+	if(!reloading_module)
 		chanjoin_delchan(reg->channel, this, NULL);
 
 	for(unsigned int i = 0; i < reg->users->count; i++)
