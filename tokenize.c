@@ -14,33 +14,36 @@
  */
 unsigned int tokenize(char *str, char **vec, unsigned int vec_size, char token, unsigned char allow_empty)
 {
-	unsigned int count = 1;
+	unsigned int count;
 	unsigned char inside_string = 0;
-	char *ch = str;
+	char *last, *ch;
 
-	vec[0] = str;
+	if(vec_size == 0)
+		return 0;
 
-	for(ch = str; *ch; ch++)
+	count = 1;
+	vec[0] = last = ch = str;
+
+	while((ch = strchr(last, token)))
 	{
-		if((*ch == token) && (inside_string == 0))
-			*ch = '\0';
+		*ch++ = '\0';
 
-		while((*ch == token) && (inside_string == 1))
+		if(!allow_empty)
 		{
-			*ch++ = '\0';
-			if(!allow_empty && *ch == token)
-				continue;
-
-			if(allow_empty || *ch)
-				vec[count++] = ch;
-
-			if((count >= vec_size) || (*ch == '\0'))
-				return count;
+			while((*ch == token))
+				ch++;
 		}
 
-		if(inside_string == 0)
-			inside_string = 1;
+		vec[count++] = ch;
+		last = ch;
+
+		if(count == vec_size)
+			return count;
 	}
+
+	// If there were no tokens, the first and last elements are the same
+	if(ch == str)
+		vec[count++] = last;
 
 	return count;
 }
