@@ -36,7 +36,7 @@
 
 // require session only if a sid was sent
 #define REQUIRE_SESSION_IF_SID 	struct session *session = NULL; \
-				if(argc > 2 && !(session = session_find(client, uri, argc, argv))) { \
+				if(argc > 2 && *argv[2] && !(session = session_find(client, uri, argc, argv))) { \
 					struct json_object *nosession_response = json_object_new_object(); \
 					json_object_object_add(nosession_response, "success", json_object_new_boolean(0)); \
 					json_object_object_add(nosession_response, "error", json_object_new_string("sessionInvalid")); \
