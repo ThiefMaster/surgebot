@@ -22,7 +22,19 @@ unsigned int tokenize(char *str, char **vec, unsigned int vec_size, char token, 
 		return 0;
 
 	count = 1;
-	vec[0] = last = ch = str;
+	last = ch = str;
+
+	// String starts with tokens, skip them
+	if(!allow_empty)
+	{
+		while(*last == token)
+			last++;
+		// String already ends here
+		if(!*last)
+			return 0;
+	}
+
+	vec[0] = last;
 
 	while((ch = strchr(last, token)))
 	{
@@ -34,6 +46,10 @@ unsigned int tokenize(char *str, char **vec, unsigned int vec_size, char token, 
 				ch++;
 		}
 
+		// String may end here after token
+		if(!allow_empty && !*ch)
+			return count;
+
 		vec[count++] = ch;
 		last = ch;
 
@@ -41,7 +57,7 @@ unsigned int tokenize(char *str, char **vec, unsigned int vec_size, char token, 
 			return count;
 	}
 
-	// If there were no tokens, the first and last elements are the same
+	// If there were no tokens, the first and last element are the same
 	if(ch == str)
 		vec[count++] = last;
 

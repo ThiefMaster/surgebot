@@ -192,12 +192,12 @@ COMMAND(stats_commands)
 	if(command_count)
 	{
 		table_send(table, src->nick);
-		table_free(table);
 		reply("$b%d$b commands registered.", command_count);
 	}
 	else if(module)
 		reply("Module $b%s$b does not implement any commands.", module->name);
 
+	table_free(table);
 	return 1;
 }
 

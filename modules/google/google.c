@@ -16,7 +16,6 @@ MODULE_DEPENDS("tools", "commands", "http", "chanreg", "help", NULL);
 static struct
 {
 	char *url;
-	int results;
 } google_conf;
 
 struct google_object
@@ -39,6 +38,8 @@ static void event_func(struct HTTPRequest *, enum HTTPRequest_event);
 
 static void google_readconf();
 
+int replycount_validator(struct chanreg *reg, struct irc_source *src, const char *value);
+
 static struct dict *objects;
 static struct chanreg_module *cmod;
 
@@ -49,6 +50,7 @@ MODULE_INIT
 	cmod = chanreg_module_reg("Google", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "MinAccess", "1", access_validator, NULL, access_encoder);
 	chanreg_module_setting_reg(cmod, "PubReply", "1", boolean_validator, boolean_formatter_onoff, boolean_encoder);
+	chanreg_module_setting_reg(cmod, "ReplyCount", "2", replycount_validator, NULL, NULL);
 
 	DEFINE_COMMAND(self, "google", google, 2, 0, "true");
 
@@ -148,10 +150,24 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 
 	const char *tmp;
 	char *tmp2, *tmp3, *tmp4, *result, *link, *read_buf;
-	struct google_object *obj = google_object_find(http);
+	struct google_object *obj;
 	int i; // Counting variable to print out a certain amount of results
+	long count_setting_value, i_max_results = 2;
+	const char *sz_max_results;
+	struct chanreg *reg;
 
+	obj = google_object_find(http);
 	assert(obj);
+
+	if(obj->channel)
+	{
+		reg = chanreg_find(obj->channel);
+		assert(reg);
+
+		sz_max_results = chanreg_setting_get(reg, cmod, "ReplyCount");
+		if(sz_max_results && (count_setting_value = strtol(sz_max_results, NULL, 10)))
+			i_max_results = count_setting_value;
+	}
 
 	i = 0;
 
@@ -174,7 +190,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	}
 
 	tmp = buf;
-	while(i < google_conf.results && (tmp = strstr(tmp, "<h3 class=r>")))
+	while(i < i_max_results && (tmp = strstr(tmp, "<h3 class=r>")))
 	{
 		tmp += 12;
 
@@ -295,7 +311,6 @@ static void google_readconf()
 
 	// Default values to use in the config
 	const char *default_url = "www.google.com/search?q=%s";
-	int default_results = 2;
 
 	tmp = conf_get("google/url", DB_STRING);
 	if(!tmp)
@@ -324,7 +339,7 @@ static void google_readconf()
 		}
 
 		str = tmp;
-		while((str = strstr(str, "%")))
+		while((str = strchr(str, '%')))
 		{
 			if(str[1] == 's')
 			{
@@ -403,26 +418,15 @@ static void google_readconf()
 		}
 		while(0);
 	}
+}
 
-	str = conf_get("google/results", DB_STRING);
-	if(!str)
-	{
-		log_append(LOG_INFO, "Could not read path 'google/results' from configuration file, defaulting to %d results.", default_results);
-		google_conf.results = default_results;
-	}
-	else if(!strcmp(str, "0"))
-	{
-		log_append(LOG_INFO, "Configuration path 'google/results' returned 0, defaulting to %d results.", default_results);
-		google_conf.results = default_results;
-	}
-	else if((strspn(str, "0123456789") < (len = strlen(str))))
-	{
-		log_append(LOG_INFO, "Configuration path 'google/results' is an invalid number, defaulting to %d results.", default_results);
-		google_conf.results = default_results;
-	}
-	else if(len > 2 || !(google_conf.results = atoi(str)) || google_conf.results > 10)
-	{
-		log_append(LOG_INFO, "The amount of results set in configuration path 'google/results' may not exceed 10. Defaulting to %d", default_results);
-		google_conf.results = default_results;
-	}
+int replycount_validator(struct chanreg *reg, struct irc_source *src, const char *value)
+{
+	long replycount = strtol(value, NULL, 10);
+	int ret = replycount > 0 && replycount <= 10;
+
+	if(!ret)
+		reply("The replycount has to be a valid number between 1 and 10.");
+
+	return ret;
 }
