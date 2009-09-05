@@ -366,6 +366,7 @@ HTTP_HANDLER(ajax_chandict_handler)
 	}
 
 	struct dict *entries = chandict_get_entries(chanreg->channel);
+	struct dict *aliases = chandict_get_aliases(chanreg->channel);
 
 	if((key = dict_find(post_vars, "add")) && (str = dict_find(post_vars, "definition")) &&
 	   chanreg_check_access(chanreg, session->account, 300, 1)) // add definition
@@ -385,12 +386,31 @@ HTTP_HANDLER(ajax_chandict_handler)
 		}
 	}
 
-	struct json_object *response, *definitions;
+	if((key = dict_find(post_vars, "addAlias")) && (str = dict_find(post_vars, "entry")) &&
+	   chanreg_check_access(chanreg, session->account, 300, 1)) // add definition
+	{
+		chandict_add_alias(chanreg->channel, key, str);
+	}
+	else if(entries && (key = dict_find(post_vars, "deleteAlias")) &&
+		chanreg_check_access(chanreg, session->account, 300, 1)) // delete definition
+	{
+		dict_iter(node, aliases)
+		{
+			if((unsigned long)node->key == (unsigned long)strtoul(key, NULL, 16))
+			{
+				chandict_del_alias(chanreg->channel, node->key);
+				break;
+			}
+		}
+	}
+
+	struct json_object *response, *definitions, *definition_aliases;
 	response = json_object_new_object();
 	json_object_object_add(response, "success", json_object_new_boolean(1));
 	json_object_object_add(response, "channel", json_object_new_string(chanreg->channel));
 	json_object_object_add(response, "readOnly", json_object_new_boolean(!chanreg_check_access(chanreg, session->account, 300, 1)));
 	json_object_object_add(response, "definitionCount", json_object_new_int(entries ? dict_size(entries) : 0));
+	json_object_object_add(response, "aliasCount", json_object_new_int(aliases ? dict_size(aliases) : 0));
 	definitions = json_object_new_array();
 	if(entries)
 	{
@@ -406,6 +426,23 @@ HTTP_HANDLER(ajax_chandict_handler)
 		}
 	}
 	json_object_object_add(response, "definitions", definitions);
+
+	definition_aliases = json_object_new_array();
+	if(aliases)
+	{
+		dict_iter(node, aliases)
+		{
+			struct json_object *alias = json_object_new_object();
+			char ptr[32];
+			snprintf(ptr, sizeof(ptr), "%p", node->key);
+			json_object_object_add(alias, "name", json_object_new_string(node->key));
+			json_object_object_add(alias, "value", json_object_new_string(node->data));
+			json_object_object_add(alias, "ptr", json_object_new_string(ptr));
+			json_object_array_add(definition_aliases, alias);
+		}
+	}
+	json_object_object_add(response, "aliases", definition_aliases);
+
 	http_reply_header("Content-Type", "text/javascript");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);

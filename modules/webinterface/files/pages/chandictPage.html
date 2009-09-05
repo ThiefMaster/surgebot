@@ -12,6 +12,15 @@
   </ul>
 </div>
 
+<div id="chandictChannelAliases" style="display:none;">
+  <br />
+  <br />
+  Definition aliases:<br />
+  <ul id="chandictChannelAliasList">
+    <li>dummy</li>
+  </ul>
+</div>
+
 <div id="chandictAddDefinitionFormContainer" style="display:none;">
   <br />
   Add definition:
@@ -19,6 +28,17 @@
     <input type="hidden" name="channel" id="chandict_add_channel" value="" />
     Name: <input type="text" name="add" id="chandict_add_name" value="" /><br />
     Definition: <input type="text" name="definition" id="chandict_add_definition" value="" style="width:50%;" /><br />
+    <input type="submit" name="send" value="Add" />
+  </form>
+</div>
+
+<div id="chandictAddAliasFormContainer" style="display:none;">
+  <br />
+  Add definition alias:
+  <form action="/ajax/chandict" method="post" id="chandictAddAliasForm">
+    <input type="hidden" name="channel" id="chandict_add_alias_channel" value="" />
+    Name: <input type="text" name="addAlias" id="chandict_add_alias_name" value="" /><br />
+    Entry: <select name="entry" id="chandict_add_alias_entry"></select><br />
     <input type="submit" name="send" value="Add" />
   </form>
 </div>
@@ -31,12 +51,12 @@
   {
       $("#chandictPage #chandictAddDefinitionForm").validate({
           rules: {
-              name: 'required',
+              add: 'required',
               definition: 'required'
           },
 
           messages: {
-              name: 'Please enter the word to define.',
+              add: 'Please enter the word to define.',
               definition: 'Please enter a definition.'
           },
 
@@ -50,18 +70,43 @@
               });
           }
       });
+      
+      $("#chandictPage #chandictAddAliasForm").validate({
+          rules: {
+              addAlias: 'required',
+              entry: 'required'
+          },
+
+          messages: {
+              addAlias: 'Please enter an alias name.',
+              entry: 'Please choose an entry.'
+          },
+
+          submitHandler: function(form) {
+              $('#chandict_add_alias_channel').val(pageArg);
+              addInfo('Added alias <b>' + $('#chandict_add_alias_name').val().toHtml() + '</b> in ' + pageArg.toHtml(), false, true);
+              $(form).ajaxSubmit({
+                  success: chandict_definitions_response,
+                  url: form.action + '/' + sessionID,
+                  dataType: 'json'
+              });
+          }
+      });
+
   }
 
   function chandict_show()
   {
       $('#pageTitle').html('Channel Dictionary');
       $('#chandictChannelDefinitions').hide();
+      $('#chandictChannelAliases').hide();
       $('#chandictAddDefinitionFormContainer').hide().find('input[type=text]').val('');
+      $('#chandictAddAliasFormContainer').hide().find('input[type=text]').val('');
 
       $.getJSON('/ajax/chandict/' + sessionID, null, chandict_channels_response)
       if(pageArg)
           $.post('/ajax/chandict/' + sessionID, {'channel': pageArg}, chandict_definitions_response, 'json');
-          
+
       return true;
   }
 
@@ -81,12 +126,15 @@
           if(chandictChannelList[channelID] == undefined)
               return;
           $('#chandictChannelDefinitions').hide();
+          $('#chandictChannelAliases').hide();
           $('#chandictAddDefinitionFormContainer').hide();
+          $('#chandictAddAliasFormContainer').hide();
           setPageArg(chandictChannelList[channelID].name);
+          clearInfos(true);
           $.post('/ajax/chandict/' + sessionID, {'channel': pageArg}, chandict_definitions_response, 'json');
       });
   }
-  
+
   function chandict_channels_sort_ci(a, b)
   {
       var a = a.name.toUpperCase();
@@ -97,39 +145,62 @@
           return -1;
       return 0;
   }
-  
+
   function chandict_definitions_response(data)
   {
       if(!checkSuccess(data, 'Channel Dictionary/Definitions'))
       {
           $('#chandictChannelDefinitions').hide();
+          $('#chandictChannelAliases').hide();
           return;
       }
 
       if(!data.readOnly)
+      {
           $('#chandictAddDefinitionFormContainer').show();
+          $('#chandictAddAliasFormContainer').show();
+      }
 
       var definitions = data.definitions;
       $('#chandictChannelName').html(data.channel.toHtml());
       $('#chandictChannelDefinitionList').children().remove();
+      $('#chandict_add_alias_entry').children().remove();
       if(data.definitionCount == 0)
           $('#chandictChannelDefinitionList').append('<li>No definitions found.</li>');
-          
+
       $.each(definitions, function() {
           var entry = $('<li class="chandictDefinition"><b>' + this.name.toHtml() + '</b>: ' + this.value.toHtml() + '</li>');
           entry.attr('ptr', this.ptr);
           $('#chandictChannelDefinitionList').append(entry);
+          $('#chandict_add_alias_entry').append('<option>' + this.name.toHtml() + '</option>');
       });
       
+      var aliases = data.aliases;
+      $('#chandictChannelAliasList').children().remove();
+      if(data.aliasCount == 0)
+          $('#chandictChannelAliasList').append('<li>No aliases found.</li>');
+
+      $.each(aliases, function() {
+          var entry = $('<li class="chandictAlias"><b>' + this.name.toHtml() + '</b>: ' + this.value.toHtml() + '</li>');
+          entry.attr('ptr', this.ptr);
+          $('#chandictChannelAliasList').append(entry);
+      });
+
       if(!data.readOnly)
       {
           $('#chandictChannelDefinitionList > li.chandictDefinition').append(' <span class="link">[del]</span>').click(function() {
               addInfo('Deleted definition <b>' + $(this).children('b').html() + '</b> in ' + pageArg.toHtml(), false, true);
               $.post('/ajax/chandict/' + sessionID, {'channel': pageArg, 'delete': $(this).attr('ptr')}, chandict_definitions_response, 'json');
           });
+          
+          $('#chandictChannelAliasList > li.chandictAlias').append(' <span class="link">[del]</span>').click(function() {
+              addInfo('Deleted alias <b>' + $(this).children('b').html() + '</b> in ' + pageArg.toHtml(), false, true);
+              $.post('/ajax/chandict/' + sessionID, {'channel': pageArg, 'deleteAlias': $(this).attr('ptr')}, chandict_definitions_response, 'json');
+          });
       }
-      
+
       $('#chandictChannelDefinitions').show();
+      $('#chandictChannelAliases').show();
   }
 /* ]]> */
 </script>

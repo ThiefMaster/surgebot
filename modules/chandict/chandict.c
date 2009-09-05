@@ -37,8 +37,7 @@ MODULE_INIT
 	entries = dict_create();
 	dict_set_free_funcs(entries, free, (dict_free_f *) dict_free);
 
-	cmod
-	        = chanreg_module_reg("Dictionary", 0, chandict_db_read, chandict_db_write, NULL, chandict_disabled, chandict_moved);
+	cmod = chanreg_module_reg("Dictionary", 0, chandict_db_read, chandict_db_write, NULL, chandict_disabled, chandict_moved);
 	chanreg_module_readdb(cmod);
 
 	reg_irc_handler("PRIVMSG", privmsg);
@@ -226,8 +225,7 @@ COMMAND(chandict_del)
 	struct dict *channel_aliases;
 	CHANREG_MODULE_COMMAND(cmod);
 
-	if (!(channel_entries = dict_find(entries, reg->channel))
-	        || !dict_find(channel_entries, argv[1]))
+	if (!(channel_entries = dict_find(entries, reg->channel)) || !dict_find(channel_entries, argv[1]))
 	{
 		reply("$b%s$b is not added.", argv[1]);
 		return 0;
@@ -264,8 +262,7 @@ COMMAND(chandict_list)
 	struct table *table;
 	CHANREG_MODULE_COMMAND(cmod);
 
-	if (!(channel_entries = dict_find(entries, reg->channel))
-	        || !dict_size(channel_entries))
+	if (!(channel_entries = dict_find(entries, reg->channel)) || !dict_size(channel_entries))
 	{
 		reply("There are no definitions added in $b%s$b.", reg->channel);
 		return 0;
@@ -287,8 +284,7 @@ COMMAND(chandict_list)
 	table_send(table, src->nick);
 	table_free(table);
 
-	if (!(channel_aliases = dict_find(aliases, reg->channel))
-	        || !dict_size(channel_aliases))
+	if (!(channel_aliases = dict_find(aliases, reg->channel)) || !dict_size(channel_aliases))
 		return 1;
 
 	table = table_create(2, dict_size(channel_aliases));
@@ -315,10 +311,11 @@ COMMAND(chandict_addalias)
 {
 	struct dict *channel_aliases;
 	struct dict *channel_entries;
+	struct dict_node *entry_node;
+
 	CHANREG_MODULE_COMMAND(cmod);
 
-	if (!(channel_entries = dict_find(entries, reg->channel))
-	        || !(dict_find(channel_entries, argv[2])))
+	if (!(channel_entries = dict_find(entries, reg->channel)) || !(entry_node = dict_find_node(channel_entries, argv[2])))
 	{
 		reply("Dictionary entry $b%s$b not found.", argv[2]);
 		return 0;
@@ -346,7 +343,7 @@ COMMAND(chandict_addalias)
 		dict_delete(channel_aliases, argv[1]);
 	}
 
-	dict_insert(channel_aliases, strdup(argv[1]), untokenize(argc - 2, argv + 2, " "));
+	dict_insert(channel_aliases, strdup(argv[1]), strdup(entry_node->key));
 	reply("Added alias $b%s$b.", argv[1]);
 	return 1;
 }
@@ -356,8 +353,7 @@ COMMAND(chandict_delalias)
 	struct dict *channel_aliases;
 	CHANREG_MODULE_COMMAND(cmod);
 
-	if (!(channel_aliases = dict_find(aliases, reg->channel))
-	        || !dict_find(channel_aliases, argv[1]))
+	if (!(channel_aliases = dict_find(aliases, reg->channel)) || !dict_find(channel_aliases, argv[1]))
 	{
 		reply("$b%s$b is not added.", argv[1]);
 		return 0;
@@ -422,14 +418,13 @@ int chandict_add_alias(const char *channel, const char *alias, const char *entry
 {
 	struct dict *channel_entries;
 	struct dict *channel_aliases;
-
+	struct dict_node *entry_node;
 
 	// Check if we have a dictionary and have the entry linked to
-	if (!(channel_entries = dict_find(entries, channel))
-	        || !(dict_find(channel_entries, entry)))
+	if (!(channel_entries = dict_find(entries, channel)) || !(entry_node = dict_find_node(channel_entries, entry)))
 		return 0;
 
-	// Check if we have  an entry for this alias
+	// Check if we have an entry for this alias
 	if (dict_find_node(channel_entries, alias))
 		return 0;
 
@@ -443,7 +438,7 @@ int chandict_add_alias(const char *channel, const char *alias, const char *entry
 
 	// Add or overwrite the alias
 	dict_delete(channel_aliases, alias);
-	dict_insert(channel_aliases, strdup(alias), strdup(entry));
+	dict_insert(channel_aliases, strdup(alias), strdup(entry_node->key));
 	return 1;
 }
 
