@@ -13,6 +13,7 @@
 			"This module adds a custom dictionary to your channel.",
 			"You can query the dictionary by typing $b'? word'$b inside the channel.",
 			"It can be used to provide information to channel users.",
+			"You can add aliases for any word in your dictionary.",
 
 			"{HELP_COMMAND_LIST}",
 			"{HELP_CATEGORY_LIST}"
@@ -27,7 +28,24 @@
 			"see_also" = (
 				"chandict.chandict add",
 				"chandict.chandict del",
-				"chandict.chandict list"
+				"chandict.chandict list",
+				"chandict.chandict addalias",
+				"chandict.chandict delalias"
+			);
+		};
+		
+		"chandict addalias" = {
+			"description" = "Adds an alias to the channel dictionary.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <alias> <word>",
+				"Adds an alias for the specified word to the dictionary.",
+			);
+			"see_also" = (
+				"chandict.chandict add",
+				"chandict.chandict del",
+				"chandict.chandict list",
+				"chandict.chandict addalias",
+				"chandict.chandict delalias"
 			);
 		};
 
@@ -40,12 +58,29 @@
 			"see_also" = (
 				"chandict.chandict add",
 				"chandict.chandict del",
-				"chandict.chandict list"
+				"chandict.chandict list",
+				"chandict.chandict addalias",
+				"chandict.chandict delalias"
 			);
 		};
+		
+		"chandict delalias" = {
+			"description" = "Deletes an alias from the channel dictionary.";
+			"help" = (
+				"$bUsage:$b /msg $N {HELP_BINDING} <#channel> <alias>",
+				"Deletes the specified alias from the dictionary."
+			);
+			"see_also" = (
+				"chandict.chandict add",
+				"chandict.chandict del",
+				"chandict.chandict list",
+				"chandict.chandict addalias",
+				"chandict.chandict delalias"
+			);
+		};	
 
 		"chandict list" = {
-			"description" = "Lists all entries of the channel dictionary.";
+			"description" = "Lists all entries and aliases of the channel dictionary.";
 			"help" = (
 				"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
 				"Lists all entries of the dictionary."
@@ -53,7 +88,9 @@
 			"see_also" = (
 				"chandict.chandict add",
 				"chandict.chandict del",
-				"chandict.chandict list"
+				"chandict.chandict list",
+				"chandict.chandict addalias",
+				"chandict.chandict delalias"
 			);
 		};
 	};
