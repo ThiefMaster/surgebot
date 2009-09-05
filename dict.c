@@ -125,3 +125,12 @@ void dict_clear(struct dict *dict)
 	while(dict->count)
 		dict_delete_node(dict, dict->head);
 }
+
+void dict_rename_key(struct dict *dict, const char *key, const char *newkey)
+{
+	struct dict_node *node = dict_find_node(dict, key);
+	if(!node)
+		return;
+	free(node->key);
+	node->key = strdup(newkey);
+}

@@ -33,6 +33,7 @@ void dict_delete_node(struct dict *dict, struct dict_node *node);
 unsigned int dict_delete(struct dict *dict, const char *key);
 unsigned int dict_delete_key_value(struct dict *dict, const char *key, void *data);
 void dict_clear(struct dict *dict);
+void dict_rename_key(struct dict *dict, const char *key, const char *newkey);
 
 #define dict_size(DICT)		((DICT) ? (DICT)->count : 0)
 #define dict_first_data(DICT)	((DICT) && (DICT)->head ? (DICT)->head->data : NULL)
