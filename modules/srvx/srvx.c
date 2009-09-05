@@ -6,7 +6,7 @@
 #include "timer.h"
 #include "conf.h"
 #include "sock.h"
-#include <sys/time.h> // gettimeofday()
+#include "mtrand.h"
 
 MODULE_DEPENDS("commands", NULL);
 
@@ -46,8 +46,6 @@ static unsigned int srvx_authed = 0;
 MODULE_INIT
 {
 	this = self;
-
-	srand((unsigned int)now); // XXX: That should be done in main()
 
 	requests = dict_create();
 	dict_set_free_funcs(requests, NULL, (dict_free_f *)srvx_request_free);
@@ -102,12 +100,8 @@ static void srvx_conf_reload()
 
 static char *qserv_token()
 {
-	unsigned int rnd;
 	static char token[8];
-
-	rnd = 1 + (unsigned int)(65535.0 * (rand() / (RAND_MAX + 12345.0)));
-	snprintf(token, sizeof(token), "GS%05X", rnd);
-
+	snprintf(token, sizeof(token), "GS%05X", mt_rand(1, 65535));
 	return token;
 }
 
