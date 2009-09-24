@@ -447,16 +447,19 @@ IRC_HANDLER(num_bannedfromchan)
 		return;
 
 	chan->tries++;
-	if(chanjoin_conf.unban_command && chan->tries <= chanjoin_conf.max_tries)
+	if((chanjoin_conf.unban_command || chanjoin_conf.invite_command) && chan->tries <= chanjoin_conf.max_tries)
 	{
 		chan->state = CJ_INACTIVE;
-		irc_send(chanjoin_conf.unban_command, chan->name);
+		if(chanjoin_conf.unban_command)
+			irc_send(chanjoin_conf.unban_command, chan->name);
+		if(chanjoin_conf.invite_command)
+			irc_send(chanjoin_conf.invite_command, chan->name);
 		timer_add(chan, "chanjoin_rejoin", now + chanjoin_conf.rejoin_delay, (timer_f *)chanjoin_rejoin_tmr, NULL, 0, 0);
 		return;
 	}
 
-	if(!chanjoin_conf.unban_command)
-		debug("Banned from %s and no unban command defined.", chan->name);
+	if(!chanjoin_conf.unban_command && !chanjoin_conf.invite_command)
+		debug("Banned from %s and no unban/invite command defined.", chan->name);
 	else if(chan->tries >= chanjoin_conf.max_tries)
 		debug("Banned from %s and max. retries reached.", chan->name);
 
