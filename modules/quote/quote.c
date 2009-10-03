@@ -125,7 +125,7 @@ COMMAND(quote)
 	}
 
 	irc_send("PRIVMSG %s :$bQuote %u$b: %s", reg->channel, item + 1, channel_quotes->data[item]);
-	return 1;
+	return 0;
 }
 
 COMMAND(quotes_add)
