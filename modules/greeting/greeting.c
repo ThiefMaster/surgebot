@@ -21,6 +21,7 @@ static void greeting_db_read(struct dict *db_nodes, struct chanreg *reg);
 static int greeting_db_write(struct database_object *dbo, struct chanreg *reg);
 static int greeting_disabled(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 static void greeting_moved(struct chanreg *reg, const char *from, const char *to);
+int greeting_reply_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 static void greeting_conf_reload(void);
 
 static struct module *this;
@@ -39,6 +40,7 @@ MODULE_INIT
 	dict_set_free_funcs(greetings, free, (dict_free_f *)stringlist_free);
 
 	cmod = chanreg_module_reg("Greeting", 0, greeting_db_read, greeting_db_write, NULL, greeting_disabled, greeting_moved);
+	chanreg_module_setting_reg(cmod, "Reply", "NOTICE", greeting_reply_validator, NULL, NULL);
 	chanreg_module_readdb(cmod);
 
 	reg_irc_handler("JOIN", join);
@@ -95,6 +97,7 @@ static void greeting_moved(struct chanreg *reg, const char *from, const char *to
 IRC_HANDLER(join)
 {
 	struct stringlist *channel_greetings;
+	struct chanreg *reg;
 
 	assert(argc > 1);
 
@@ -104,10 +107,12 @@ IRC_HANDLER(join)
 	if(!(channel_greetings = dict_find(greetings, argv[1])))
 		return;
 
+	assert((reg = chanreg_find(argv[1])));
+
 	for(unsigned int i = 0; i < channel_greetings->count; i++)
 	{
 		if(*channel_greetings->data[i] != '\0')
-			irc_send("NOTICE %s :(%s) %s", src->nick, argv[1], channel_greetings->data[i]);
+			irc_send("%s %s :(%s) %s", chanreg_setting_get(reg, cmod, "Reply"), src->nick, argv[1], channel_greetings->data[i]);
 	}
 }
 
@@ -193,6 +198,21 @@ COMMAND(greeting)
 		reply("  [%d] %s", (i + 1), (*channel_greetings->data[i] ? channel_greetings->data[i] : "(None)"));
 	reply("Found $b%d$b greeting%s.", channel_greetings->count, (channel_greetings->count != 1 ? "s" : ""));
 	return 1;
+}
+
+int greeting_reply_validator(struct chanreg *reg, struct irc_source *src, const char *value)
+{
+	if(!strcasecmp(value, "NOTICE"))
+		return 1;
+
+	if(!strcasecmp(value, "PRIVMSG"))
+	{
+		reply("$b$uBy enabling greetings in PM, you agree with not abusing it to advertise in PM (see http://www.gamesurge.net/aup/). Doing so will result in punishments to the offending user by GameSurge staff.$u$b");
+		return 1;
+	}
+
+	reply("The reply method can be either $bNOTICE$b or $bPRIVMSG$b.");
+	return 0;
 }
 
 static void greeting_conf_reload(void)

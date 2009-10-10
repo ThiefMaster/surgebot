@@ -290,6 +290,11 @@ static int chanreg_db_write(struct database *db)
 	return 0;
 }
 
+const struct dict *chanreg_dict()
+{
+	return chanregs;
+}
+
 struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules)
 {
 	struct chanreg *reg = malloc(sizeof(struct chanreg));
@@ -1665,6 +1670,16 @@ int access_validator(struct chanreg *reg, struct irc_source *src, const char *va
 
 	return 1;
 }
+
+int reply_validator(struct chanreg *reg, struct irc_source *src, const char *value)
+{
+	if(!strcasecmp(value, "NOTICE") || !strcasecmp(value, "PRIVMSG"))
+		return 1;
+
+	reply("The reply method can be either $bNOTICE$b or $bPRIVMSG$b.");
+	return 0;
+}
+
 
 // Formatters
 

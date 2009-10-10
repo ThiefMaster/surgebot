@@ -42,7 +42,7 @@ MODULE_INIT
 {
 	cmod = chanreg_module_reg("UrbanDict", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "MinAccess", "0", access_validator, NULL, NULL);
-	chanreg_module_setting_reg(cmod, "Reply", "NOTICE", ud_reply_validator, NULL, NULL);
+	chanreg_module_setting_reg(cmod, "Reply", "NOTICE", reply_validator, NULL, NULL);
 
 	requests = ptrlist_create();
 	ptrlist_set_free_func(requests, (ptrlist_free_f*)urbandict_request_free);
@@ -207,13 +207,4 @@ static void urbandict_request_free(struct urbandict_request *req)
 	free(req->issuer);
 	free(req->channel);
 	free(req);
-}
-
-int ud_reply_validator(struct chanreg *reg, struct irc_source *src, const char *value)
-{
-	if(!strcasecmp(value, "NOTICE") || !strcasecmp(value, "PRIVMSG"))
-		return 1;
-
-	reply("The reply method can be either $bNOTICE$b or $bPRIVMSG$b.");
-	return 0;
 }

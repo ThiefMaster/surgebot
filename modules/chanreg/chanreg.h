@@ -122,6 +122,8 @@ struct chanreg_module_setting
 extern unsigned int chanreg_staff_rule;
 #define IsStaff()	(chanreg_staff_rule && command_rule_exec(chanreg_staff_rule, src, user, channel, channelname) == CR_ALLOW)
 
+const struct dict *chanreg_dict();
+
 struct chanreg *chanreg_add(const char *channel, const struct stringlist *modules);
 struct chanreg *chanreg_find(const char *channel);
 struct chanreg_user *chanreg_user_add(struct chanreg *reg, const char *accountname, unsigned short level);
@@ -148,6 +150,7 @@ int chanreg_module_disable(struct chanreg *reg, struct chanreg_module *cmod, uns
 // Default validators for module settings
 int boolean_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 int access_validator(struct chanreg *reg, struct irc_source *src, const char *value);
+int reply_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 
 // Default formatters
 const char *null_none(struct chanreg *reg, const char *value);
