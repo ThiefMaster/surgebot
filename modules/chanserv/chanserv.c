@@ -302,6 +302,7 @@ COMMAND(csaccess)
 
 COMMAND(events)
 {
+	int limit = 15;
 	CHANREG_MODULE_COMMAND(cmod);
 
 	if(!event_table)
@@ -310,13 +311,23 @@ COMMAND(events)
 		return 0;
 	}
 
+	if(argc > 1)
+	{
+		limit = atoi(argv[1]);
+		if(limit < 1)
+		{
+			reply("Invalid limit: must be a positive integer.");
+			return 0;
+		}
+	}
+
 	db_async_select(event_table,
 		show_events_cb,
 		strdup(src->nick),
 		free,
 		"channel", reg->channel, NULL,
 		"time", "channel", "nick", "account", "command", "ident", "host", NULL,
-		NULL);
+		"-time", "$LIMIT", limit, NULL);
 
 	return 1;
 }
