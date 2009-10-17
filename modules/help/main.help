@@ -44,7 +44,7 @@
 "*CHANNEL" = {
 	"*" = "Channel management";
 	"*" = (
-		"$b$N$b is channel bot, so you can see all comannds and categories",
+		"$b$N$b is channel bot, so you can see all commands and categories",
 		"depending on channels here",
 
 		"{HELP_COMMAND_LIST}",
