@@ -290,7 +290,7 @@ static int chanreg_db_write(struct database *db)
 	return 0;
 }
 
-const struct dict *chanreg_dict()
+struct dict *chanreg_dict()
 {
 	return chanregs;
 }
