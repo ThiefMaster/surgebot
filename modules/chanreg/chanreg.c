@@ -825,13 +825,20 @@ COMMAND(stats_chanreg)
 {
 	struct table *table;
 	unsigned int i = 0;
+	char *mask = NULL;
 
 	table = table_create(3, dict_size(chanregs));
 	table_set_header(table, "Channel", "State", "Registrar");
 
+	if(argc > 1)
+		mask = argv[1];
+
 	dict_iter(node, chanregs)
 	{
 		struct chanreg *reg = node->data;
+
+		if(mask && match(mask, reg->channel))
+			continue;
 
 		table->data[i][0] = reg->channel;
 		table->data[i][1] = reg->active ? "Active" : reg->last_error;
@@ -839,6 +846,7 @@ COMMAND(stats_chanreg)
 		i++;
 	}
 
+	table->rows = i;
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_channels);
 	table_send(table, src->nick);
 	table_free(table);
