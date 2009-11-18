@@ -235,7 +235,7 @@ int chanserv_db_write(struct database_object *dbo, struct chanreg *reg)
 	return 0;
 }
 
-void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *callback)
+void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *callback, void *ctx)
 {
 	struct chanserv_access_request *req = malloc(sizeof(struct chanserv_access_request));
 	memset(req, 0, sizeof(struct chanserv_access_request));
@@ -244,7 +244,8 @@ void chanserv_get_access_callback(const char *channel, const char *nick, chanser
 	req->callback = callback;
 	req->nick = strdup(nick);
 	req->access = CHANSERV_TIMEOUT;
-	req->timer = timer_add(NULL, "chanserv_get_access", now + 1, (timer_f*)chanserv_access_request_timer, req, 0, 0);
+	req->ctx = ctx;
+	req->timer = timer_add(NULL, "chanserv_get_access", now + 3, (timer_f*)chanserv_access_request_timer, req, 0, 0);
 
 	ptrlist_add(chanserv_access_requests, 0, req);
 	irc_send(sz_chanserv_get_access, channel, nick);
@@ -255,7 +256,7 @@ void chanserv_get_access_callback(const char *channel, const char *nick, chanser
 void chanserv_access_request_timer(void *bound, struct chanserv_access_request *request)
 {
 	if(request->callback)
-		request->callback(request->channel, request->nick, request->access);
+		request->callback(request->channel, request->nick, request->access, request->ctx);
 
 	ptrlist_del_ptr(chanserv_access_requests, request);
 }
@@ -277,7 +278,7 @@ void chanserv_access_request_handle_raw(const char *channel, const char *nick, i
 			continue;
 
 		req->access = access;
-		req->callback(req->channel, req->nick, req->access);
+		req->callback(req->channel, req->nick, req->access, req->ctx);
 		// Trigger timer
 		req->timer->time = now;
 

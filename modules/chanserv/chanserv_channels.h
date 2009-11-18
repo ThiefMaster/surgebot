@@ -4,7 +4,7 @@
 #include "modules/chanserv/chanserv.h"
 #include <time.h>
 
-typedef void (chanserv_access_f)(const char *channel, const char *nick, int access);
+typedef void (chanserv_access_f)(const char *channel, const char *nick, int access, void *ctx);
 
 struct chanserv_channel
 {
@@ -35,6 +35,7 @@ struct chanserv_access_request
 	char *channel;
 	char *nick;
 	struct timer *timer;
+	void *ctx;
 
 	int access; // 0 - 500 or above constants for errors
 
@@ -63,7 +64,7 @@ void chanserv_report(const char *channel, const char *format, ...);
 void chanserv_chanreg_add(struct chanreg *reg);
 void chanserv_chanreg_del(struct chanreg *reg);
 
-void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *);
+void chanserv_get_access_callback(const char *channel, const char *nick, chanserv_access_f *, void *ctx);
 void chanserv_access_request_timer(void *bound, struct chanserv_access_request *request);
 void chanserv_access_request_handle_raw(const char *channel, const char *nick, int access);
 void chanserv_access_request_free(struct chanserv_access_request *);

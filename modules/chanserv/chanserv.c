@@ -194,7 +194,7 @@ unsigned long parse_chanserv_duration(const char *duration)
 	return ret;
 }
 
-static void chanserv_access_callback(const char *channel, const char *nick, int access)
+static void chanserv_access_callback(const char *channel, const char *nick, int access, void *ctx)
 {
 	struct stringbuffer *sbuf = stringbuffer_create();
 
@@ -296,7 +296,7 @@ COMMAND(csaccess)
 		return 0;
 	}
 
-	chanserv_get_access_callback(argv[1], argv[2], chanserv_access_callback);
+	chanserv_get_access_callback(argv[1], argv[2], chanserv_access_callback, NULL);
 	return 0;
 }
 

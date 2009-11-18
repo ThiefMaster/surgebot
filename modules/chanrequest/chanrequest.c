@@ -41,7 +41,7 @@ static void chanrequest_chanjoin_success(struct cj_channel *chan, const char *ke
 static void chanrequest_chanjoin_error(struct cj_channel *chan, const char *key, const char *nick, const char *reason);
 static void chanrequest_success_tmr(struct module *self, char *chan);
 static void chanrequest_cleanup_blockedChannel_tmr(struct module *self, void *ctx);
-static void chanrequest_chanserv_get_access_callback(const char *channel, const char *nick, int access);
+static void chanrequest_chanserv_get_access_callback(const char *channel, const char *nick, int access, void *ctx);
 
 // helper functions
 static void setChannelBlock(const char *nick, const char *channel);
@@ -161,7 +161,7 @@ void chanrequest_chanjoin_success(struct cj_channel *chan, const char *key, cons
 	{
 		if((user = user_find("ChanServ")) && channel_user_find(chan->channel, user))
 		{
-			chanserv_get_access_callback(chan->name, nick, chanrequest_chanserv_get_access_callback);
+			chanserv_get_access_callback(chan->name, nick, chanrequest_chanserv_get_access_callback, NULL);
 			return;
 		}
 		else
@@ -240,7 +240,7 @@ static void chanrequest_cleanup_blockedChannel_tmr(struct module *self, void *ct
 	timer_add(this, "chanrequest_blockedChannel_cleaner", now + chanrequest_conf.cleanInterval, (timer_f *)chanrequest_cleanup_blockedChannel_tmr, NULL, 0, 0);
 }
 
-static void chanrequest_chanserv_get_access_callback(const char *channel, const char *nick, int access)
+static void chanrequest_chanserv_get_access_callback(const char *channel, const char *nick, int access, void *ctx)
 {
 	if(access >= chanrequest_conf.minAccess)
 	{
