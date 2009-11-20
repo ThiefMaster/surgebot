@@ -3,6 +3,7 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "irc.h"
+#include "irc_handler.h"
 #include "timer.h"
 #include "conf.h"
 #include "sock.h"
@@ -25,17 +26,20 @@ static struct
 static void srvx_conf_reload();
 static char *qserv_token();
 static void srvx_request_free(struct srvx_request *r);
-static void srvx_cancel_requests();
+static void srvx_cancel_requests(int shutdown);
 static void srvx_sock_connect();
 static void srvx_sock_event(struct sock *sock, enum sock_event event, int err);
 static void srvx_send_raw(const char *format, ...) PRINTF_LIKE(1,2);
 static void srvx_sock_read(struct sock *sock, char *buf, size_t len);
+static void srvx_handle_qserver_response(char **argv, int argc, char *orig_line);
 static void srvx_sock_timeout(void *bound, void *data);
 static void srvx_sock_schedule_reconnect(unsigned int wait);
 static void srvx_sock_reconnect_tmr(void *bound, void *data);
 static void srvx_auth_response(struct srvx_request *r, void *ctx);
+IRC_HANDLER(msg);
 COMMAND(srvx_reconnect);
 COMMAND(srvx_exec);
+COMMAND(srvx_exec_noq);
 
 static struct module *this;
 static struct dict *requests;
@@ -53,8 +57,12 @@ MODULE_INIT
 	reg_conf_reload_func(srvx_conf_reload);
 	srvx_conf_reload();
 
+	reg_irc_handler("PRIVMSG", msg);
+	reg_irc_handler("NOTICE", msg);
+
 	DEFINE_COMMAND(this, "srvx reconnect",	srvx_reconnect,	1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(this, "srvx exec",	srvx_exec,	1, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "srvx exec",	srvx_exec,	2, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "srvx execnoq",	srvx_exec_noq,	2, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
 	srvx_sock_connect();
 }
 
@@ -62,10 +70,13 @@ MODULE_FINI
 {
 	unreg_conf_reload_func(srvx_conf_reload);
 
+	unreg_irc_handler("PRIVMSG", msg);
+	unreg_irc_handler("NOTICE", msg);
+
 	if(srvx_sock)
 		sock_close(srvx_sock);
 	srvx_sock = NULL;
-	srvx_cancel_requests();
+	srvx_cancel_requests(1);
 
 	dict_free(requests);
 
@@ -80,7 +91,7 @@ static void srvx_conf_reload()
 	srvx_conf.local_host = conf_get("srvx/local_host", DB_STRING);
 
 	str = conf_get("srvx/qserver_host", DB_STRING);
-	srvx_conf.qserver_host = str ? str : "127.0.0.1";
+	srvx_conf.qserver_host = str;
 
 	str = conf_get("srvx/qserver_port", DB_STRING);
 	srvx_conf.qserver_port = str ? atoi(str) : 7702;
@@ -116,18 +127,21 @@ static void srvx_request_free(struct srvx_request *r)
 
 	if(r->free_ctx)
 		free(r->ctx);
+	if(r->nick)
+		free(r->nick);
 	free(r->lines);
 	free(r->token);
 	free(r);
 }
 
-static void srvx_cancel_requests()
+static void srvx_cancel_requests(int shutdown)
 {
 	dict_iter(node, requests)
 	{
 		struct srvx_request *req = node->data;
 		debug("Cancelling srvx request %s", req->token);
-		req->callback(NULL, req->ctx);
+		if(!shutdown)
+			req->callback(NULL, req->ctx);
 		dict_delete(requests, req->token);
 	}
 
@@ -138,6 +152,9 @@ static void srvx_sock_connect()
 {
 	if(srvx_sock)
 		sock_close(srvx_sock);
+
+	if(!srvx_conf.qserver_host)
+		return;
 
 	srvx_authed = 0;
 
@@ -151,7 +168,7 @@ static void srvx_sock_connect()
 	{
 		log_append(LOG_WARNING, "connect() to srvx qserver (%s:%d) failed.", srvx_conf.qserver_host, srvx_conf.qserver_port);
 		srvx_sock = NULL;
-		srvx_cancel_requests();
+		srvx_cancel_requests(0);
 		srvx_sock_schedule_reconnect(15);
 		return;
 	}
@@ -166,14 +183,14 @@ static void srvx_sock_event(struct sock *sock, enum sock_event event, int err)
 	{
 		log_append(LOG_WARNING, "Srvx socket error on socket %d: %s (%d)", sock->fd, strerror(err), err);
 		srvx_sock = NULL;
-		srvx_cancel_requests();
+		srvx_cancel_requests(0);
 		srvx_sock_schedule_reconnect(10);
 	}
 	else if(event == EV_HANGUP)
 	{
 		log_append(LOG_WARNING, "Srvx socket %d hung up", sock->fd);
 		srvx_sock = NULL;
-		srvx_cancel_requests();
+		srvx_cancel_requests(0);
 		srvx_sock_schedule_reconnect(5);
 	}
 	else if(event == EV_CONNECT)
@@ -213,16 +230,30 @@ static void srvx_auth_response(struct srvx_request *r, void *ctx)
 void srvx_send_ctx(srvx_response_f *func, void *ctx, unsigned int free_ctx, const char *format, ...)
 {
 	va_list args;
+	va_start(args, format);
+	srvx_vsend_ctx(func, ctx, free_ctx, 0, format, args);
+	va_end(args);
+}
+
+void srvx_send_ctx_noqserver(srvx_response_f *func, void *ctx, unsigned int free_ctx, const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	srvx_vsend_ctx(func, ctx, free_ctx, 1, format, args);
+	va_end(args);
+}
+
+void srvx_vsend_ctx(srvx_response_f *func, void *ctx, unsigned int free_ctx, unsigned int no_qserver, const char *format, va_list args)
+{
 	char buf[MAXLEN];
 	char *token;
-	struct srvx_request *req;
+	struct srvx_request *req = NULL;
+	int use_qserver;
 
-	assert(srvx_sock);
-	assert(srvx_authed);
+	if(srvx_sock && !no_qserver)
+		assert(srvx_authed);
 
-	va_start(args, format);
 	vsnprintf(buf, sizeof(buf) - 10, format, args); // Leave some space for token
-	va_end(args);
 
 	token = qserv_token();
 
@@ -241,8 +272,24 @@ void srvx_send_ctx(srvx_response_f *func, void *ctx, unsigned int free_ctx, cons
 		dict_insert(requests, req->token, req);
 	}
 
-	sock_write_fmt(srvx_sock, "%s %s\n", token, buf);
-	debug("Sent to srvx: %s", buf);
+	if(srvx_sock && !no_qserver)
+	{
+		sock_write_fmt(srvx_sock, "%s %s\n", token, buf);
+		debug("Sent to srvx: %s", buf);
+	}
+	else
+	{
+		char *nick_end = strchr(buf, ' ');
+		assert(nick_end);
+		*nick_end = '\0';
+
+		if(req)
+			req->nick = strdup(buf);
+		irc_send("PRIVMSG %s :\001PING %s S\001", buf, token);
+		irc_send("PRIVMSG %s :%s", buf, nick_end + 1);
+		irc_send("PRIVMSG %s :\001PING %s E\001", buf, token);
+		debug("Sent to srvx: (%s) %s", buf, nick_end + 1);
+	}
 }
 
 static void srvx_send_raw(const char *format, ...)
@@ -250,21 +297,30 @@ static void srvx_send_raw(const char *format, ...)
 	va_list args;
 	char buf[MAXLEN];
 
-	assert(srvx_sock);
-
 	va_start(args, format);
 	vsnprintf(buf, sizeof(buf), format, args);
 	va_end(args);
 
-	sock_write_fmt(srvx_sock, "%s\n", buf);
-	debug("Sent to srvx: %s", buf);
+	if(srvx_sock)
+	{
+		sock_write_fmt(srvx_sock, "%s\n", buf);
+		debug("Sent to srvx: %s", buf);
+	}
+	else
+	{
+		char *nick_end = strchr(buf, ' ');
+		assert(nick_end);
+		*nick_end = '\0';
+
+		irc_send("PRIVMSG %s :%s", buf, nick_end + 1);
+		debug("Sent to srvx: (%s) %s", buf, nick_end + 1);
+	}
 }
 
 
 static void srvx_sock_read(struct sock *sock, char *buf, size_t len)
 {
 	char *orig;
-	struct srvx_response_line *line;
 	char *argv[4];
 	int argc;
 
@@ -272,10 +328,82 @@ static void srvx_sock_read(struct sock *sock, char *buf, size_t len)
 	argc = itokenize(buf, argv, sizeof(argv), ' ', ':');
 	assert(argc > 1);
 
+	srvx_handle_qserver_response(argv, argc, orig);
+
+	free(orig);
+}
+
+IRC_HANDLER(msg)
+{
+	assert(argc > 2);
+	if(!src || strcmp(argv[1], bot.nickname))
+		return;
+
+	// CTCP PING
+	if(!strncasecmp(argv[2], "\001PING ", 6) && !strcmp(argv[0], "NOTICE"))
+	{
+		char *msg;
+		char token[8];
+		char type;
+
+		msg = argv[2] + 6;
+		if(strlen(msg) != 10) // "GSxxxxx X\1"
+			return;
+
+		strlcpy(token, msg, 8);
+		type = msg[8];
+
+		if(type == 'S')
+		{
+			debug("Start: %s", token);
+			assert(!active_request);
+			active_request = dict_find(requests, token);
+			assert(active_request);
+		}
+		else if(type == 'E')
+		{
+			debug("End: %s", token);
+			assert(active_request);
+			assert(!strcmp(active_request->token, token));
+			active_request->callback(active_request, active_request->ctx);
+			dict_delete(requests, token);
+			active_request = NULL;
+		}
+		else
+		{
+			char tmp = msg[strlen(msg) - 1];
+			msg[strlen(msg) - 1] = '\0';
+			log_append(LOG_WARNING, "Unexpected response ping from srvx: %s", msg);
+			msg[strlen(msg) - 1] = tmp;
+		}
+	}
+	else if(active_request && active_request->nick && !strcasecmp(src->nick, active_request->nick))
+	{
+		struct srvx_response_line *line = malloc(sizeof(struct srvx_response_line));
+		memset(line, 0, sizeof(struct srvx_response_line));
+		line->nick = strdup(src->nick);
+		line->msg = strdup(argv[2]);
+
+		if(active_request->count == active_request->size) // list is full, we need to allocate more memory
+		{
+			active_request->size <<= 1; // double size
+			active_request->lines = realloc(active_request->lines, active_request->size * sizeof(struct srvx_response_line *));
+		}
+
+		debug("Line: %s", line->msg);
+		active_request->lines[active_request->count++] = line;
+	}
+}
+
+static void srvx_handle_qserver_response(char **argv, int argc, char *orig_line)
+{
+	struct srvx_response_line *line;
+
 	if(*argv[1] == 'P' || *argv[1] == 'N') // PRIVMSG/NOTICE
 	{
 		assert(argc > 2);
 		assert(active_request);
+		assert(!active_request->nick); // should not be for requests using qserver
 
 		line = malloc(sizeof(struct srvx_response_line));
 		memset(line, 0, sizeof(struct srvx_response_line));
@@ -309,10 +437,8 @@ static void srvx_sock_read(struct sock *sock, char *buf, size_t len)
 	}
 	else
 	{
-		log_append(LOG_WARNING, "Unexpected response from srvx qserver: %s", orig);
+		log_append(LOG_WARNING, "Unexpected response from srvx qserver: %s", orig_line);
 	}
-
-	free(orig);
 }
 
 static void srvx_sock_timeout(void *bound, void *data)
@@ -320,7 +446,7 @@ static void srvx_sock_timeout(void *bound, void *data)
 	log_append(LOG_WARNING, "Could not connect to srvx qserver %s:%d; timeout.", srvx_conf.qserver_host, srvx_conf.qserver_port);
 	sock_close(srvx_sock);
 	srvx_sock = NULL;
-	srvx_cancel_requests();
+	srvx_cancel_requests(0);
 	srvx_sock_schedule_reconnect(30);
 }
 
@@ -333,6 +459,8 @@ static void srvx_sock_schedule_reconnect(unsigned int wait)
 
 static void srvx_sock_reconnect_tmr(void *bound, void *data)
 {
+	if(!srvx_conf.qserver_host)
+		return;
 	debug("Reconnecting to srvx qserver %s:%d", srvx_conf.qserver_host, srvx_conf.qserver_port);
 	srvx_sock_connect();
 }
@@ -343,7 +471,7 @@ COMMAND(srvx_reconnect)
 	if(srvx_sock)
 		sock_close(srvx_sock);
 	srvx_sock = NULL;
-	srvx_cancel_requests();
+	srvx_cancel_requests(0);
 	srvx_sock_schedule_reconnect(1);
 
 	reply("Reconnecting to srvx.");
@@ -366,6 +494,15 @@ COMMAND(srvx_exec)
 {
 	char *line = untokenize(argc - 1, argv + 1, " ");
 	srvx_send_ctx((srvx_response_f *)srvx_exec_cb, strdup(src->nick), 1, "%s", line);
+	free(line);
+	reply("Sent command to srvx.");
+	return 1;
+}
+
+COMMAND(srvx_exec_noq)
+{
+	char *line = untokenize(argc - 1, argv + 1, " ");
+	srvx_send_ctx_noqserver((srvx_response_f *)srvx_exec_cb, strdup(src->nick), 1, "%s", line);
 	free(line);
 	reply("Sent command to srvx.");
 	return 1;
