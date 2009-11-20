@@ -195,7 +195,7 @@ void chanrequest_chanjoin_success(struct cj_channel *chan, const char *key, cons
 	removeChannelFromActiveRequests(chan->name);
 
 	// delete channel from chanjoin module as soon as possible (its impossible to call chanjoin_del() here)
-	timer_add(chan, "chanrequest_success_cleaner", now, (timer_f *)chanrequest_success_tmr, strdup(chan->name), 1, 0);
+	timer_add(this, "chanrequest_success_cleaner", now, (timer_f *)chanrequest_success_tmr, strdup(chan->name), 1, 0);
 }
 
 static void chanrequest_chanjoin_error(struct cj_channel *chan, const char *key, const char *nick, const char *reason)

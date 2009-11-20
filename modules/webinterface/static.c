@@ -137,9 +137,9 @@ HTTP_HANDLER(static_handler)
 	strftime(modbuf, sizeof(modbuf), RFC1123FMT, gmtime(&mod));
 	mod = mktime(gmtime(&mod));
 
-	http_reply_header("Date", nowbuf);
-	http_reply_header("Last-Modified", modbuf);
-	http_reply_header("Content-Type", file->content_type);
+	http_reply_header("Date", "%s", nowbuf);
+	http_reply_header("Last-Modified", "%s", modbuf);
+	http_reply_header("Content-Type", "%s", file->content_type);
 	http_reply_header("Cache-Control", "must-revalidate");
 
 	if(mod <= client->if_modified_since) // same as cached version -> send 304 instead of file
