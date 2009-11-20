@@ -9,7 +9,7 @@
 #include "module-config.h"
 #include "app-core.h"
 
-MODULE_DEPENDS("httpd", "tools", "parser",
+MODULE_DEPENDS("httpd", "tools", "parser", "chanreg",
 #ifdef WITH_MODULE_chanserv
 		"chanserv",
 #endif

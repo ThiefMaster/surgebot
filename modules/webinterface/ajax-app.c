@@ -2,10 +2,10 @@
 #include "module-config.h"
 #include "modules/httpd/http.h"
 #include "modules/tools/tools.h"
+#include "modules/chanreg/chanreg.h"
 
 #ifdef WITH_MODULE_chanserv
 #include "modules/db/db.h"
-#include "modules/chanreg/chanreg.h"
 #include "modules/chanserv/chanserv.h"
 #endif
 
