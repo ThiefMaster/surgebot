@@ -1,6 +1,5 @@
 #include "global.h"
 #include "chanserv_eventlog.h"
-#include "string.h"
 #include "chanuser.h"
 #include "module.h"
 #include "timer.h"
