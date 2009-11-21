@@ -579,9 +579,10 @@ static void chanserv_parse_name(struct chanserv_channel *cschan, const char *ite
 	unsigned long access;
 	struct irc_user *user;
 
+	if(*item == 's') // Suspended: s<access>:<nick>(account)
+		item++;
+
 	access = strtoul(item, &ptr2, 10);
-	if(*ptr2 != ':')
-		log_append(LOG_WARNING, "Odd item in chanserv_parse_name: %s - *ptr2 = %c (%u)", item, *ptr2, *ptr2);
 
 	assert(*ptr2 == ':');
 	assert(access <= 500);
