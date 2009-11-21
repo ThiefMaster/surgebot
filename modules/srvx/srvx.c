@@ -366,7 +366,7 @@ IRC_HANDLER(msg)
 			debug("End: %s", token);
 			assert(active_request_irc);
 			assert(!strcmp(active_request_irc->token, token));
-			active_request->callback(active_request_irc, active_request_irc->ctx);
+			active_request_irc->callback(active_request_irc, active_request_irc->ctx);
 			dict_delete(requests, token);
 			active_request_irc = NULL;
 		}
