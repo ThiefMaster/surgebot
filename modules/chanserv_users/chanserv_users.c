@@ -398,7 +398,10 @@ static void chanserv_fetch_users(struct chanserv_channel *cschan)
 	cschan->tmp_users = dict_create();
 	dict_set_free_funcs(cschan->tmp_users, NULL, (dict_free_f *)csuser_free);
 
-	srvx_send_ctx((srvx_response_f *)srvx_response_users, strdup(cschan->channel->name), 1, "ChanServ USERS %s", cschan->channel->name);
+	if(cschan->channel->modes & (MODE_INVITEONLY|MODE_KEYED|MODE_SECRET))
+		srvx_send_ctx_noqserver((srvx_response_f *)srvx_response_users, strdup(cschan->channel->name), 1, "ChanServ USERS %s", cschan->channel->name);
+	else
+		srvx_send_ctx((srvx_response_f *)srvx_response_users, strdup(cschan->channel->name), 1, "ChanServ USERS %s", cschan->channel->name);
 }
 
 static void srvx_response_users(struct srvx_request *r, const char *channelname)
@@ -438,7 +441,10 @@ static void srvx_response_users(struct srvx_request *r, const char *channelname)
 	}
 
 	debug("Fetched userlist from channel %s, requesting names", cschan->channel->name);
-	srvx_send_ctx((srvx_response_f *)srvx_response_names, strdup(cschan->channel->name), 1, "ChanServ NAMES %s", cschan->channel->name);
+	if(cschan->channel->modes & (MODE_INVITEONLY|MODE_KEYED|MODE_SECRET))
+		srvx_send_ctx_noqserver((srvx_response_f *)srvx_response_names, strdup(cschan->channel->name), 1, "ChanServ NAMES %s", cschan->channel->name);
+	else
+		srvx_send_ctx((srvx_response_f *)srvx_response_names, strdup(cschan->channel->name), 1, "ChanServ NAMES %s", cschan->channel->name);
 }
 
 static void chanserv_parse_user(struct chanserv_channel *cschan, const char *line, int argc, char **argv)
