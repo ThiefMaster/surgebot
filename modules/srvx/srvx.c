@@ -44,6 +44,7 @@ COMMAND(srvx_exec_noq);
 static struct module *this;
 static struct dict *requests;
 static struct srvx_request *active_request = NULL;
+static struct srvx_request *active_request_irc = NULL;
 static struct sock *srvx_sock = NULL;
 static unsigned int srvx_authed = 0;
 
@@ -356,18 +357,18 @@ IRC_HANDLER(msg)
 		if(type == 'S')
 		{
 			debug("Start: %s", token);
-			assert(!active_request);
-			active_request = dict_find(requests, token);
-			assert(active_request);
+			assert(!active_request_irc);
+			active_request_irc = dict_find(requests, token);
+			assert(active_request_irc);
 		}
 		else if(type == 'E')
 		{
 			debug("End: %s", token);
-			assert(active_request);
-			assert(!strcmp(active_request->token, token));
-			active_request->callback(active_request, active_request->ctx);
+			assert(active_request_irc);
+			assert(!strcmp(active_request_irc->token, token));
+			active_request->callback(active_request_irc, active_request_irc->ctx);
 			dict_delete(requests, token);
-			active_request = NULL;
+			active_request_irc = NULL;
 		}
 		else
 		{
@@ -377,21 +378,21 @@ IRC_HANDLER(msg)
 			msg[strlen(msg) - 1] = tmp;
 		}
 	}
-	else if(active_request && active_request->nick && !strcasecmp(src->nick, active_request->nick))
+	else if(active_request_irc && active_request_irc->nick && !strcasecmp(src->nick, active_request_irc->nick))
 	{
 		struct srvx_response_line *line = malloc(sizeof(struct srvx_response_line));
 		memset(line, 0, sizeof(struct srvx_response_line));
 		line->nick = strdup(src->nick);
 		line->msg = strdup(argv[2]);
 
-		if(active_request->count == active_request->size) // list is full, we need to allocate more memory
+		if(active_request_irc->count == active_request_irc->size) // list is full, we need to allocate more memory
 		{
-			active_request->size <<= 1; // double size
-			active_request->lines = realloc(active_request->lines, active_request->size * sizeof(struct srvx_response_line *));
+			active_request_irc->size <<= 1; // double size
+			active_request_irc->lines = realloc(active_request_irc->lines, active_request_irc->size * sizeof(struct srvx_response_line *));
 		}
 
 		debug("Line: %s", line->msg);
-		active_request->lines[active_request->count++] = line;
+		active_request_irc->lines[active_request_irc->count++] = line;
 	}
 }
 
