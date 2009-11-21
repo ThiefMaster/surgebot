@@ -4,9 +4,9 @@
 #include "modules/tools/tools.h"
 #include "modules/chanreg/chanreg.h"
 
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 #include "modules/db/db.h"
-#include "modules/chanserv/chanserv.h"
+#include "modules/chanserv_events/chanserv_events.h"
 #endif
 
 #ifdef WITH_MODULE_chandict
@@ -70,7 +70,7 @@ struct menu
 };
 
 HTTP_HANDLER(ajax_index_handler);
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 HTTP_HANDLER(ajax_events_handler);
 #endif
 #ifdef WITH_MODULE_chandict
@@ -91,7 +91,7 @@ static void menu_free(struct menu *menu);
 
 static struct http_handler handlers[] = {
 	{ "/ajax/index/*", ajax_index_handler },
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 	{ "/ajax/events/*", ajax_events_handler },
 #endif
 #ifdef WITH_MODULE_chandict
@@ -112,7 +112,7 @@ static struct http_handler handlers[] = {
 };
 
 static struct dict *menu_items;
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 static unsigned int events_rule = 0;
 #endif
 #ifdef WITH_MODULE_chandict
@@ -121,7 +121,7 @@ static unsigned int chandict_rule = 0;
 static unsigned int raw_rule = 0;
 static unsigned int channels_rule = 0;
 
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 static struct db_table *event_table = NULL;
 #endif
 
@@ -137,7 +137,7 @@ void ajaxapp_init()
 	menu_add("signup", "Signup", "!loggedin()");
 	// user menu
 	menu_add("index", "Index", "loggedin()");
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 	events_rule = menu_add("events", "ChanServ Events", "loggedin()");
 #endif
 #ifdef WITH_MODULE_chandict
@@ -147,7 +147,7 @@ void ajaxapp_init()
 	channels_rule = menu_add("channels", "Channels", "group(helpers) || group(admins)");
 	menu_add("logout", "Logout", "loggedin()");
 
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 	event_table = db_table_open("chanserv_events", chanserv_event_table_cols());
 	if(!event_table)
 		log_append(LOG_ERROR, "Could not open eventlog table.");
@@ -156,13 +156,13 @@ void ajaxapp_init()
 
 void ajaxapp_fini()
 {
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 	if(event_table)
 		db_table_close(event_table);
 #endif
 
 	menu_del("index");
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 	menu_del("events");
 #endif
 #ifdef WITH_MODULE_chandict
@@ -198,7 +198,7 @@ HTTP_HANDLER(ajax_index_handler)
 	json_object_put(response);
 }
 
-#ifdef WITH_MODULE_chanserv
+#ifdef WITH_MODULE_chanserv_events
 DB_SELECT_CB(events_cb)
 {
 	struct json_object *response;

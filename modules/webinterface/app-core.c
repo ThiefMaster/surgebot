@@ -10,8 +10,8 @@
 #include "app-core.h"
 
 MODULE_DEPENDS("httpd", "tools", "parser", "chanreg",
-#ifdef WITH_MODULE_chanserv
-		"chanserv",
+#ifdef WITH_MODULE_chanserv_events
+		"chanserv_events",
 #endif
 #ifdef WITH_MODULE_chandict
 		"chandict",

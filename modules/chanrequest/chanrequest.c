@@ -13,11 +13,11 @@
 // header files from module depends
 #include "modules/commands/commands.h"
 #include "modules/chanjoin/chanjoin.h"
-#include "modules/chanserv/chanserv.h"
+#include "modules/chanserv_access/chanserv_access.h"
 #include "modules/chanreg/chanreg.h"
 
 // module depends
-MODULE_DEPENDS("chanserv", "chanjoin", "chanreg", "commands", NULL);
+MODULE_DEPENDS("chanserv_access", "chanjoin", "chanreg", "commands", NULL);
 
 // some variables
 static struct module *this;
