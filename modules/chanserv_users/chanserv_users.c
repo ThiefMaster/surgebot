@@ -123,6 +123,12 @@ COMMAND(users)
 		return 0;
 	}
 
+	if(!cschan->users)
+	{
+		reply("The $b%s$b userlist is not synced yet.", channel->name);
+		return 0;
+	}
+
 	assert_return(cschan->users->count, 0);
 
 	table = table_create(5, cschan->users->count);
