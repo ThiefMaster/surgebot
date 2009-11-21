@@ -99,7 +99,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "users", users, 1, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
 	DEFINE_COMMAND(this, "update", update, 1, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
 
-	timer_add(this, "chanserv_update_users", now + 10, chanserv_update_users, NULL, 0, 1);
+	timer_add(this, "chanserv_update_users", now + CHANSERV_UPDATE_USERS_INTERVAL, chanserv_update_users, NULL, 0, 1);
 }
 
 MODULE_FINI
