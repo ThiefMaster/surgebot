@@ -3,12 +3,10 @@
 #include "chanuser.h"
 #include "module.h"
 #include "ptrlist.h"
-#include "modules/commands/commands.h"
-#include "modules/db/db.h"
 #include "modules/tools/tools.h"
 #include "modules/srvx/srvx.h"
 
-MODULE_DEPENDS("commands", "tools", "srvx", NULL);
+MODULE_DEPENDS("tools", "srvx", NULL);
 
 struct chanserv_access_request
 {
