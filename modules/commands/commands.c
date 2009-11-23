@@ -159,7 +159,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	argc = tokenize(msg_dup, orig_argv, MAXARG, ' ', 0);
 	argv = orig_argv;
 
-	if(IsChannelName(argv[0]))
+	if(argc && IsChannelName(argv[0]))
 	{
 		channel_arg = argv[0];
 		argv++;
