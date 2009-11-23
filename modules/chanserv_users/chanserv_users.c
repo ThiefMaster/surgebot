@@ -108,6 +108,7 @@ MODULE_FINI
 	command_rule_unreg("chanserv");
 	dict_free(chanserv_channels);
 	dict_free(chanserv_accounts);
+	unreg_irc_handler("JOIN", join);
 	unreg_channel_complete_hook(channel_complete_hook);
 	unreg_channel_del_hook(channel_del_hook);
 }
