@@ -24,7 +24,7 @@ static struct
 
 
 static void srvx_conf_reload();
-static char *qserv_token();
+static char *qserv_token(char type);
 static void srvx_request_free(struct srvx_request *r);
 static void srvx_cancel_requests(int shutdown);
 static void srvx_sock_connect();
@@ -110,10 +110,10 @@ static void srvx_conf_reload()
 	// but if that happens, you can simply use the "srvx reconnect" command.
 }
 
-static char *qserv_token()
+static char *qserv_token(char type)
 {
-	static char token[8];
-	snprintf(token, sizeof(token), "GS%05X", mt_rand(1, 65535));
+	static char token[9];
+	snprintf(token, sizeof(token), "GS%c%05X", type, mt_rand(1, 65535));
 	return token;
 }
 
@@ -198,7 +198,7 @@ static void srvx_sock_event(struct sock *sock, enum sock_event event, int err)
 	{
 		timer_del_boundname(this, "srvx_connect_timeout");
 		if(strlen(srvx_conf.qserver_pass))
-			srvx_send_raw("%s PASS %s", qserv_token(), srvx_conf.qserver_pass);
+			srvx_send_raw("%s PASS %s", qserv_token('A'), srvx_conf.qserver_pass);
 
 		// This is hackish but the only way to send the auth command without failing the "authed" assertion.
 		srvx_authed = 1;
@@ -256,7 +256,7 @@ void srvx_vsend_ctx(srvx_response_f *func, void *ctx, unsigned int free_ctx, uns
 
 	vsnprintf(buf, sizeof(buf) - 10, format, args); // Leave some space for token
 
-	token = qserv_token();
+	token = qserv_token((srvx_sock && !no_qserver) ? 'Q' : 'I');
 
 	if(func)
 	{
@@ -344,15 +344,17 @@ IRC_HANDLER(msg)
 	if(!strncasecmp(argv[2], "\001PING ", 6) && !strcmp(argv[0], "NOTICE"))
 	{
 		char *msg;
-		char token[8];
+		char token[9];
 		char type;
 
 		msg = argv[2] + 6;
-		if(strlen(msg) != 10) // "GSxxxxx X\1"
+		if(strlen(msg) != 11) // "GSIxxxxx X\1"
 			return;
 
-		strlcpy(token, msg, 8);
-		type = msg[8];
+		assert(msg[2] == 'I'); // IRC
+
+		strlcpy(token, msg, 9);
+		type = msg[9];
 
 		if(type == 'S')
 		{
@@ -423,6 +425,7 @@ static void srvx_handle_qserver_response(char **argv, int argc, char *orig_line)
 	else if(*argv[1] == 'S') // Response begin
 	{
 		debug("Start: %s", argv[0]);
+		assert(argv[0][2] == 'Q'); // qserver
 		assert(!active_request);
 		active_request = dict_find(requests, argv[0]);
 		assert(active_request);
@@ -430,6 +433,7 @@ static void srvx_handle_qserver_response(char **argv, int argc, char *orig_line)
 	else if(*argv[1] == 'E') // Response end
 	{
 		debug("End: %s", argv[0]);
+		assert(argv[0][2] == 'Q'); // qserver
 		assert(active_request);
 		assert(!strcmp(active_request->token, argv[0]));
 		active_request->callback(active_request, active_request->ctx);
