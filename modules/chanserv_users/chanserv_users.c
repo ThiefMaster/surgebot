@@ -364,7 +364,7 @@ static void cschan_free(struct chanserv_channel *cschan)
 	if(cschan->users)
 		dict_free(cschan->users);
 	if(cschan->tmp_users)
-		dict_free(cschan->users);
+		dict_free(cschan->tmp_users);
 	free(cschan);
 }
 
