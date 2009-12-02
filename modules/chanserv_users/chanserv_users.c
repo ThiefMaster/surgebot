@@ -54,6 +54,7 @@ COMMAND(users);
 COMMAND(update);
 PARSER_FUNC(chanserv);
 static void chanuser_del_hook(struct irc_chanuser *chanuser, unsigned int del_type, const char *reason);
+static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason);
 static void channel_complete_hook(struct irc_channel *channel);
 static void channel_del_hook(struct irc_channel *channel, const char *reason);
 static struct chanserv_channel *cschan_find(const char *channelname);
@@ -80,6 +81,8 @@ MODULE_INIT
 	this = self;
 	reg_channel_del_hook(channel_del_hook);
 	reg_channel_complete_hook(channel_complete_hook);
+	reg_chanuser_del_hook(chanuser_del_hook);
+	reg_user_del_hook(user_del_hook);
 	reg_irc_handler("JOIN", join);
 
 	chanserv_accounts = dict_create();
@@ -109,6 +112,8 @@ MODULE_FINI
 	dict_free(chanserv_channels);
 	dict_free(chanserv_accounts);
 	unreg_irc_handler("JOIN", join);
+	unreg_user_del_hook(user_del_hook);
+	unreg_chanuser_del_hook(chanuser_del_hook);
 	unreg_channel_complete_hook(channel_complete_hook);
 	unreg_channel_del_hook(channel_del_hook);
 }
@@ -311,6 +316,15 @@ static void chanuser_del_hook(struct irc_chanuser *chanuser, unsigned int del_ty
 
 	debug("chanserv_users: Deleting %s (ChanServ left: %s)", chanuser->channel->name, reason);
 	cschan_del(cschan);
+}
+
+static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason)
+{
+	dict_iter(node, chanserv_accounts)
+	{
+		struct chanserv_account *csaccount = node->data;
+		ptrlist_del_ptr(csaccount->irc_users, user);
+	}
 }
 
 static void channel_complete_hook(struct irc_channel *channel)
