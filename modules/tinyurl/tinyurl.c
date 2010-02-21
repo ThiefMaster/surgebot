@@ -18,9 +18,11 @@ struct {
 	const char *domain;
 	const char *servicename;
 } tinyurl_services[] = {
-	{ "i8t.de", "i8t" },
+	{ "bit.ly", "bit.ly" },
+	{ "i8t.de", "i8t.de" },
 	{ "tiny.cc", "tiny.cc" },
 	{ "tinyurl.com", "TinyURL" },
+	{ "to.", "to."}
 };
 
 struct tinyurl {
