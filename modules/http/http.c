@@ -8,11 +8,7 @@
 #include "sock.h"
 #include "log.h"
 
-/*
- * Todo:
- *
- * - Implement timer of maybe 20 seconds for timeout (or provide it as argument?)
- */
+//Todo: Implement timer of maybe 20 seconds for timeout (or provide it as argument?)
 
 MODULE_DEPENDS(NULL);
 
@@ -68,6 +64,7 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 
 	http->in_headers = 1;
 	http->forward_request = 1;
+	http->forward_request_foreign = 1;
 	http->id = strdup(tmp);
 
 	// Set appropriate struct settings
@@ -256,17 +253,25 @@ static void http_sock_read(struct sock *sock, char *buf, size_t len)
 			// Not the first line of headers, in the format "Name: Content"
 			str[tmp - str] = '\0';
 			tmp += 2;
+			dict_insert(http->response_headers, strdup(str), strdup(tmp));
+
 			// In case we got a Location-header, we need to redirect the query
-			if(http->forward_request && !strcasecmp(str, "Location"))
+			if(!strcasecmp(str, "Location"))
 			{
-				debug("Redirecting HTTP Request %s to %s", http->id, tmp);
-				HTTPRequest_disconnect(http);
-				HTTPRequest_set_host(http, tmp);
-				HTTPRequest_connect(http);
+				if(http->forward_request)
+				{
+					struct HTTPHost *host = parse_host(tmp);
+					if(http->forward_request_foreign || !strcasecmp(http->host->host, host->host))
+					{
+						debug("Redirecting HTTP Request %s to %s", http->id, tmp);
+						HTTPRequest_disconnect(http);
+						HTTPRequest_set_host(http, tmp);
+						HTTPRequest_connect(http);
+					}
+				}
 				free(str);
 				return;
 			}
-			dict_insert(http->response_headers, strdup(str), strdup(tmp));
 		}
 
 		free(str);
@@ -295,7 +300,13 @@ static struct HTTPHost *parse_host(const char *host)
 {
 	struct HTTPHost *hhost = malloc(sizeof(struct HTTPHost));
 	char *tmp;
-
+	
+	// Remove http part
+	if(!strncasecmp(host, "https://", 8))
+		host += 8;
+	else if(!strncasecmp(host, "http://", 7))
+		host += 7;
+	
 	// Is there a slash introducing a possible path?
 	if((tmp = strstr(host, "/")))
 	{
@@ -320,13 +331,7 @@ static void HTTPRequest_set_host(struct HTTPRequest *http, const char *new_host)
 		free(http->host);
 	}
 
-	// Remove http part
-	if(!strncasecmp(new_host, "https://", 8))
-		new_host += 8;
-	else if(!strncasecmp(new_host, "http://", 7))
-		new_host += 7;
-
 	http->host = parse_host(new_host);
-
 	HTTPRequest_add_header(http, "Host", http->host->host);
 }
+

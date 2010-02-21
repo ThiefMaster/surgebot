@@ -44,6 +44,8 @@ struct HTTPRequest
 
 	// Follow redirecting headers
 	unsigned char forward_request;
+	// Follow redirecting headers only on local site
+	unsigned char forward_request_foreign;
 	// Pass the HTTP response line by line to the read function
 	unsigned char read_linewise;
 };
@@ -65,3 +67,4 @@ void HTTPRequest_del_header(struct HTTPRequest *, const char *name);
 void HTTPRequest_connect(struct HTTPRequest *);
 void HTTPRequest_disconnect(struct HTTPRequest *);
 #endif // __HTTP_H__
+
