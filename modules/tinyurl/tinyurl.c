@@ -29,10 +29,10 @@ struct tinyurl {
 	char *alias;
 	char *target;
 	unsigned int service_index;
-	
+
 	struct stringlist *channels;
 	struct HTTPRequest *http;
-	
+
 	time_t fetched;
 };
 
@@ -66,6 +66,7 @@ MODULE_FINI
 {
 	dict_free(tinyurls);
 	unreg_irc_handler("PRIVMSG", privmsg);
+	chanreg_module_unreg(cmod);
 }
 
 IRC_HANDLER(privmsg)
@@ -81,7 +82,7 @@ IRC_HANDLER(privmsg)
 	// Channel registered and module enabled?
 	if(!(reg = chanreg_find(argv[1])) || (stringlist_find(reg->active_modules, cmod->name) == -1))
 		return;
-	
+
 	// Iterate through all services to see if we need to parse this
 	for(unsigned int i = 0; i < ArraySize(tinyurl_services); i++) {
 		if(!(tmp = strcasestr(argv[2], tinyurl_services[i].domain)))
@@ -208,7 +209,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 
 		return;
 	}
-	
+
 	assert((location = HTTPRequest_get_response_header(http, "Location")));
 
 	tinyurl->target = strdup(location);
