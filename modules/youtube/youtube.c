@@ -267,30 +267,21 @@ static void youtube_report(struct youtube_request *req)
 
 static void read_func(struct HTTPRequest *http, const char *buf, unsigned int len)
 {
-	// Youtube sends the movie's title in several ways, I'll use the title-<div>
+       // Youtube sends the movie's title in several ways, I'll use the meta title
 
 	char *tmp, *tmp2;
 
 	struct youtube_request *req = youtube_request_find(http);
 	assert(req);
 
-	// Find beginning of <div>
-	if(!(tmp = strstr(buf, "<div id=\"watch-vid-title\"")))
+       // Find <meta name="title" content="
+       if(!(tmp = strstr(buf, "<meta name=\"title\" content=\"")))
 		return;
 
-	tmp += 25; // strlen("<div id=\"watch-vid-title\"")
-	// Find <h1> containing the title
-	if(!(tmp = strstr(buf, "<h1")))
-		return;
+       tmp += 28; // strlen("<meta name=\"title\" content=\"")
 
-	// Find end of <h1> tag
-	tmp += 3; // strlen("<h1");
-	if(!(tmp = strchr(tmp, '>')))
-		return;
-
-	tmp++;
-	// Find end of <h1>
-	if(!(tmp2 = strstr(tmp, "</h1>")))
+       // Find end of attribute
+       if(!(tmp2 = strchr(tmp, '"')))
 		return;
 
 	// Duplicate title string
