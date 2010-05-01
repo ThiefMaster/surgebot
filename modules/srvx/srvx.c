@@ -141,7 +141,7 @@ static void srvx_cancel_requests(int shutdown)
 	{
 		struct srvx_request *req = node->data;
 		debug("Cancelling srvx request %s", req->token);
-		if(!shutdown)
+		if(!shutdown && req->callback)
 			req->callback(NULL, req->ctx);
 		dict_delete(requests, req->token);
 	}
@@ -258,20 +258,17 @@ void srvx_vsend_ctx(srvx_response_f *func, void *ctx, unsigned int free_ctx, uns
 
 	token = qserv_token((srvx_sock && !no_qserver) ? 'Q' : 'I');
 
-	if(func)
-	{
-		req = malloc(sizeof(struct srvx_request));
-		memset(req, 0, sizeof(struct srvx_request));
-		req->callback = func;
-		req->ctx = ctx;
-		req->free_ctx = free_ctx;
-		req->token = strdup(token);
-		req->count = 0;
-		req->size = 2;
-		req->lines = calloc(req->size, sizeof(struct srvx_response_line *));
+	req = malloc(sizeof(struct srvx_request));
+	memset(req, 0, sizeof(struct srvx_request));
+	req->callback = func;
+	req->ctx = ctx;
+	req->free_ctx = free_ctx;
+	req->token = strdup(token);
+	req->count = 0;
+	req->size = 2;
+	req->lines = calloc(req->size, sizeof(struct srvx_response_line *));
 
-		dict_insert(requests, req->token, req);
-	}
+	dict_insert(requests, req->token, req);
 
 	if(srvx_sock && !no_qserver)
 	{
@@ -368,7 +365,8 @@ IRC_HANDLER(msg)
 			debug("End: %s", token);
 			assert(active_request_irc);
 			assert(!strcmp(active_request_irc->token, token));
-			active_request_irc->callback(active_request_irc, active_request_irc->ctx);
+			if(active_request_irc->callback)
+				active_request_irc->callback(active_request_irc, active_request_irc->ctx);
 			dict_delete(requests, token);
 			active_request_irc = NULL;
 		}
@@ -436,7 +434,8 @@ static void srvx_handle_qserver_response(char **argv, int argc, char *orig_line)
 		assert(argv[0][2] == 'Q'); // qserver
 		assert(active_request);
 		assert(!strcmp(active_request->token, argv[0]));
-		active_request->callback(active_request, active_request->ctx);
+		if(active_request->callback)
+			active_request->callback(active_request, active_request->ctx);
 		dict_delete(requests, argv[0]);
 		active_request = NULL;
 	}
