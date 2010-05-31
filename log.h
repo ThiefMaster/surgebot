@@ -14,7 +14,7 @@ enum log_level
 
 void log_init(const char *file);
 void log_fini();
-void log_append(enum log_level level, char *text, ...) PRINTF_LIKE(2, 3);
+void log_append(enum log_level level, const char *text, ...) PRINTF_LIKE(2, 3);
 
 #define debug(text...)		log_append(LOG_DEBUG, ## text)
 

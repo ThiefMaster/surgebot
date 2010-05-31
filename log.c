@@ -17,7 +17,7 @@ void log_fini()
 		fclose(logfile);
 }
 
-void log_append(enum log_level level, char *text, ...)
+void log_append(enum log_level level, const char *text, ...)
 {
 	va_list	va;
 
