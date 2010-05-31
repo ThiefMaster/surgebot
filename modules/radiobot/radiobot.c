@@ -21,7 +21,7 @@
 
 // %s: DJ
 // %s: Show title
-#define TOPIC_FMT	"-=={{ Radio eXodus }}=={{ OnAir: %s }}=={{ Showtitel: %s }}=={{ http://www.radio-eXodus.de }}=={{ Befehle: *dj *stream *status *wunsch *gruss }}==-"
+#define TOPIC_FMT	"-=={{ Radio eXodus }}=={{ OnAir: %s }}=={{ Showtitel: %s }}=={{ %s }}=={{ Befehle: *dj *stream *status *title *wunsch *gruss }}==-"
 // only used if CACHE_STATS is defined:
 #define STATS_DELAY	15
 // #define CACHE_STATS
@@ -39,9 +39,13 @@ static struct
 	const char *stream_ip_stats;
 	unsigned int stream_port_stats;
 	const char *stream_pass_stats;
+	const char *site_url;
+	const char *schedule_url;
+	const char *teamspeak_url;
 	const char *stream_url;
-	const char *stream_url_2;
-	const char *stream_url_3;
+	const char *stream_url_pls;
+	const char *stream_url_asx;
+	const char *stream_url_ram;
 	const char *radiochan;
 	const char *teamchan;
 	const char *cmd_sock_host;
@@ -79,6 +83,7 @@ DECLARE_LIST(http_client_list, struct http_client *)
 IMPLEMENT_LIST(http_client_list, struct http_client *)
 
 HTTP_HANDLER(http_root);
+HTTP_HANDLER(http_stream_info);
 HTTP_HANDLER(http_stream_status);
 PARSER_FUNC(mod_active);
 IRC_HANDLER(nick);
@@ -153,6 +158,7 @@ static time_t queue_full = 0;
 
 static struct http_handler handlers[] = {
 	{ "/", http_root },
+	{ "/stream-info", http_stream_info },
 	{ "/stream-status", http_stream_status },
 	{ NULL, NULL }
 };
@@ -280,15 +286,28 @@ static void radiobot_conf_reload()
 	str = conf_get("radiobot/stream_pass_stats", DB_STRING);
 	radiobot_conf.stream_pass_stats = str ? str : radiobot_conf.stream_pass;
 
-	// url listeners can use
+	// various urls
+	str = conf_get("radiobot/site_url", DB_STRING);
+	radiobot_conf.site_url = str ? str : "n/a";
+
+	str = conf_get("radiobot/schedule_url", DB_STRING);
+	radiobot_conf.schedule_url = str ? str : "n/a";
+
+	str = conf_get("radiobot/teamspeak_url", DB_STRING);
+	radiobot_conf.teamspeak_url = str ? str : "n/a";
+
 	str = conf_get("radiobot/stream_url", DB_STRING);
 	radiobot_conf.stream_url = str ? str : "n/a";
 
-	str = conf_get("radiobot/stream_url_2", DB_STRING);
-	radiobot_conf.stream_url_2 = str ? str : "n/a";
+	// stream urls listeners can use
+	str = conf_get("radiobot/stream_url_pls", DB_STRING);
+	radiobot_conf.stream_url_pls = str ? str : "n/a";
 
-	str = conf_get("radiobot/stream_url_3", DB_STRING);
-	radiobot_conf.stream_url_3 = str ? str : "n/a";
+	str = conf_get("radiobot/stream_url_asx", DB_STRING);
+	radiobot_conf.stream_url_asx = str ? str : "n/a";
+
+	str = conf_get("radiobot/stream_url_ram", DB_STRING);
+	radiobot_conf.stream_url_ram = str ? str : "n/a";
 
 	str = conf_get("radiobot/radiochan", DB_STRING);
 	radiobot_conf.radiochan = str;
@@ -442,8 +461,23 @@ static time_t strtotime(const char *str)
 
 HTTP_HANDLER(http_root)
 {
-	http_reply_redir("http://www.radio-exodus.de");
+	http_reply_redir("%s", radiobot_conf.site_url);
+}
 
+HTTP_HANDLER(http_stream_info)
+{
+	struct json_object *response = json_object_new_object();
+	json_object_object_add(response, "stream", json_object_new_string(radiobot_conf.stream_url));
+	json_object_object_add(response, "site", json_object_new_string(radiobot_conf.site_url));
+	json_object_object_add(response, "schedule", json_object_new_string(radiobot_conf.schedule_url));
+	json_object_object_add(response, "teamspeak", json_object_new_string(radiobot_conf.teamspeak_url));
+
+	http_reply_header("Content-Type", "application/json");
+        http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
+        http_reply_header("Cache-Control", "must-revalidate");
+        http_reply_header("Pragma", "no-cache");
+	http_reply("%s", json_object_to_json_string(response));
+	json_object_put(response);
 }
 
 static void http_stream_status_send(struct http_client *client, int timeout)
@@ -460,12 +494,15 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	struct json_object *response = json_object_new_object();
 	json_object_object_add(response, "timeout", json_object_new_boolean(timeout));
 	json_object_object_add(response, "mod", current_mod ? json_object_new_string(current_mod) : NULL);
-	json_object_object_add(response, "show", current_show ? json_object_new_string(current_show): NULL);
+	json_object_object_add(response, "show", current_show ? json_object_new_string(current_show) : NULL);
 	json_object_object_add(response, "song", current_title ? json_object_new_string(current_title) : NULL);
 	json_object_object_add(response, "listeners", json_object_new_int(stream_stats.listeners_current));
 	json_object_object_add(response, "bitrate", json_object_new_int(stream_stats.bitrate));
 
 	http_reply_header("Content-Type", "application/json");
+        http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
+        http_reply_header("Cache-Control", "must-revalidate");
+        http_reply_header("Pragma", "no-cache");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);
 	http_request_finalize(client);
@@ -553,7 +590,7 @@ COMMAND(setmod)
 	current_streamtitle = strdup(showtitle);
 	queue_full = 0;
 
-	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? current_mod : "Playlist"), current_show);
+	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? current_mod : "Playlist"), current_show, radiobot_conf.site_url);
 	irc_send("PRIVMSG %s :Mod geändert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), current_show);
 	reply("Aktueller Mod: $b%s$b (Showtitel/Streamtitel: $b%s$b)", (current_mod ? current_mod : "[Playlist]"), current_show);
 	database_write(radiobot_db);
@@ -661,19 +698,19 @@ COMMAND(dj)
 
 COMMAND(stream)
 {
-	reply("Stream: $b%s$b / $b%s$b / $b%s$b", radiobot_conf.stream_url, radiobot_conf.stream_url_2, radiobot_conf.stream_url_3);
+	reply("Stream: $b%s$b / $b%s$b / $b%s$b", radiobot_conf.stream_url_pls, radiobot_conf.stream_url_asx, radiobot_conf.stream_url_ram);
 	return 1;
 }
 
 COMMAND(schedule)
 {
-	reply("Sendeplan: $bhttp://www.radio-exodus.de/schedule.php$b");
+	reply("Sendeplan: $b%s$b", radiobot_conf.schedule_url);
 	return 1;
 }
 
 COMMAND(teamspeak)
 {
-	reply("Teamspeak: $bts.radio-exodus.de:8767$b");
+	reply("Teamspeak: $b%s$b", radiobot_conf.teamspeak_url);
 	return 1;
 }
 
@@ -740,8 +777,10 @@ COMMAND(listener)
 static void send_status(const char *nick)
 {
 	irc_send_msg(nick, "NOTICE", "Im Moment onAir: $b%s$b", (current_mod ? current_mod : "[Playlist]"));
+	if(current_title)
+		irc_send_msg(nick, "NOTICE", "Songtitel: $b%s$b", (current_title ? current_title : "n/a"));
 	irc_send_msg(nick, "NOTICE", "Listener: $b%d$b/%d (%d unique); Peak: %d ~~~ Quali: %d kbps ~~~ %s", stream_stats.listeners_current, stream_stats.listeners_max, stream_stats.listeners_unique, stream_stats.listeners_peak, stream_stats.bitrate, stream_stats.title);
-	irc_send_msg(nick, "NOTICE", "Stream: $b%s$b", radiobot_conf.stream_url);
+	irc_send_msg(nick, "NOTICE", "Stream: $b%s$b", radiobot_conf.stream_url_pls);
 }
 
 COMMAND(title)
