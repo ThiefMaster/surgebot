@@ -43,6 +43,7 @@ struct http_client
 	struct header_list *headers; // request headers
 
 	char *uri;
+	char *query_string;
 	enum http_method method;
 	unsigned int ppos; // last parsed position
 	unsigned int content_start;

@@ -504,6 +504,7 @@ void http_handler_del_handler(struct http_handler *handler)
 static int http_parse_request_line(struct http_client *client, const char *line, unsigned int len)
 {
 	unsigned int ii, uri, pos = 0;
+	char *query_string;
 
 	/* Extract the method portion of the Request-Line. */
 	for(ii = 0; ii < ArraySize(http_methods); ii++)
@@ -533,6 +534,14 @@ static int http_parse_request_line(struct http_client *client, const char *line,
 	client->uri = malloc(ii - uri + 1);
 	strncpy(client->uri, line + uri, ii - uri);
 	client->uri[ii - uri] = '\0';
+
+	client->query_string = NULL;
+	if((query_string = strchr(client->uri, '?')))
+	{
+		*query_string++ = '\0';
+		client->query_string = strdup(query_string);
+	}
+
 	client->uri = urldecode(client->uri);
 
 	/* Map the URI to a handler. */
@@ -808,6 +817,7 @@ static void http_request_complete(struct http_client *client)
 	memmove(client->rbuf->string, client->rbuf->string + size, client->rbuf->len);
 
 	MyFree(client->uri);
+	MyFree(client->query_string);
 	http_headers_flush(client->headers);
 	stringbuffer_flush(client->hbuf);
 	stringbuffer_flush(client->wbuf);
@@ -837,16 +847,11 @@ struct dict *http_parse_vars(struct http_client *client, enum http_method type)
 	vars = dict_create();
 	dict_set_free_funcs(vars, free, free);
 
+	str = NULL;
 	if(type == HTTP_POST)
 		str = strdup(client->content);
-	else if(type == HTTP_GET)
-	{
-		str = strchr(client->uri, '?');
-		if(str)
-			str = strdup(str + 1);
-		else
-			return vars;
-	}
+	else if(type == HTTP_GET && client->query_string)
+		str = strdup(client->query_string);
 
 	if(!str || strlen(str) == 0)
 	{
@@ -1013,6 +1018,7 @@ static void http_client_del(struct http_client *client, unsigned char close_sock
 	http_headers_flush(client->headers);
 	header_list_free(client->headers);
 	MyFree(client->uri);
+	MyFree(client->query_string);
 #ifdef HTTP_THREADS
 	if(client->thread)
 		pthread_cancel(client->thread);
