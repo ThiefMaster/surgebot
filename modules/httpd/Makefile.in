@@ -1,1 +1,1 @@
-LIBS_mod += "-lpthread"
+LIBS_mod += -lpthread

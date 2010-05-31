@@ -71,6 +71,7 @@ struct http_client
 #define HTTP_CONNECTION_SERVED	0x02
 #define HTTP_HEADERS_SENT	0x04
 #define HTTP_HEADERS_DONE	0x08
+#define HTTP_CLIENT_DEAD	0x10
 
 void http_init();
 void http_fini();
@@ -90,10 +91,9 @@ const char *http_header_get(struct http_client *client, const char *key);
 struct dict *http_parse_vars(struct http_client *client, enum http_method type);
 struct dict *http_parse_cookies(struct http_client *client);
 void http_request_finalize(struct http_client *client);
-#ifdef HTTP_THREADS
+int http_client_dead(struct http_client *client);
 void http_request_detach(struct http_client *client, http_thread_f *func);
 void http_request_finish_int(struct http_client *client);
-#endif
 
 #define HTTP_HANDLER(X) static void X(struct http_client *client, char *uri, int argc, char **argv)
 #define http_reply_redir(FMT, ...)		http_write_header_redirect(client, FMT, ##__VA_ARGS__)
@@ -105,6 +105,8 @@ void http_request_finish_int(struct http_client *client);
 					http_request_finish_int((CLIENT)); \
 					pthread_exit(NULL); \
 					} while(0)
+#else
+#define http_request_finish(CLIENT)	http_request_finish_int((CLIENT))
 #endif
 
 #endif

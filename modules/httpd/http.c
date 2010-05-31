@@ -93,9 +93,7 @@ static struct {
 
 
 static void http_conf_reload();
-#ifdef HTTP_THREADS
 static void check_detached_clients();
-#endif
 static void listener_event(struct sock *sock, enum sock_event event, int err);
 static void listener_start();
 static void http_client_event(struct sock *sock, enum sock_event event, int err);
@@ -112,15 +110,13 @@ static void http_request_complete(struct http_client *client);
 static void http_request_timeout(void *bound, struct http_client *client);
 static void http_writesock(struct http_client *client);
 static struct http_client *http_client_accept(struct sock *listen_sock);
-static void http_client_del(struct http_client *client, unsigned char close_sock);
+static void http_client_del(struct http_client *client, unsigned char close_sock, unsigned char force);
 static struct http_client *http_client_bysock(struct sock *sock);
 static http_handler_f *http_handler_find(const char *uri);
 static void http_handler_del_handler(struct http_handler *handler);
 
 static struct client_list *clients;
-#ifdef HTTP_THREADS
 static struct client_list *detached_clients;
-#endif
 static struct handler_list *handlers;
 static struct sock *listener, *listener_ssl;
 #ifdef HTTP_THREADS
@@ -137,32 +133,24 @@ MODULE_INIT
 	http_conf_reload();
 
 	clients = client_list_create();
-#ifdef HTTP_THREADS
 	detached_clients = client_list_create();
-#endif
 	handlers = handler_list_create();
 	listener_start();
-#ifdef HTTP_THREADS
 	reg_loop_func(check_detached_clients);
-#endif
 }
 
 MODULE_FINI
 {
-#ifdef HTTP_THREADS
 	unreg_loop_func(check_detached_clients);
-#endif
 	if(listener)
 		sock_close(listener);
 	if(listener_ssl)
 		sock_close(listener_ssl);
 	timer_del(this, "http_client_timeout", 0, NULL, NULL, TIMER_IGNORE_ALL & ~(TIMER_IGNORE_NAME|TIMER_IGNORE_BOUND));
 	while(clients->count)
-		http_client_del(clients->data[clients->count - 1], 1);
+		http_client_del(clients->data[clients->count - 1], 1, 1);
 	client_list_free(clients);
-#ifdef HTTP_THREADS
 	client_list_free(detached_clients);
-#endif
 	while(handlers->count)
 		http_handler_del_handler(handlers->data[handlers->count - 1]);
 	handler_list_free(handlers);
@@ -202,10 +190,11 @@ static void http_conf_reload()
 	}
 }
 
-#ifdef HTTP_THREADS
 static void check_detached_clients()
 {
+#ifdef HTTP_THREADS
 	pthread_mutex_lock(&http_detached_clients_mutex);
+#endif
 	for(unsigned int i = 0; i < detached_clients->count; i++)
 	{
 		struct http_client *client = detached_clients->data[i];
@@ -213,9 +202,10 @@ static void check_detached_clients()
 		client_list_del(detached_clients, client);
 		i--;
 	}
+#ifdef HTTP_THREADS
 	pthread_mutex_unlock(&http_detached_clients_mutex);
-}
 #endif
+}
 
 static void listener_event(struct sock *sock, enum sock_event event, int err)
 {
@@ -282,7 +272,7 @@ static void http_client_event(struct sock *sock, enum sock_event event, int err)
 			log_append(LOG_WARNING, "Socket error on socket %d: %s (%d)", sock->fd, strerror(err), err);
 		else
 			log_append(LOG_INFO, "Socket %d hung up", sock->fd);
-		http_client_del(http_client_bysock(sock), 1);
+		http_client_del(http_client_bysock(sock), 1, 0);
 	}
 	else if(event == EV_WRITE)
 	{
@@ -769,6 +759,15 @@ static void http_process_request(struct http_client *client)
 		http_request_finalize(client);
 }
 
+int http_client_dead(struct http_client *client)
+{
+	if(!(client->state & HTTP_CLIENT_DEAD))
+		return 0;
+
+	http_client_del(client, 1, 1);
+	return 1;
+}
+
 void http_request_finalize(struct http_client *client)
 {
 	debug("Finalizing client %p", client);
@@ -777,10 +776,10 @@ void http_request_finalize(struct http_client *client)
 	http_writesock(client);
 }
 
-#ifdef HTTP_THREADS
 void http_request_detach(struct http_client *client, http_thread_f *func)
 {
 	client->delay = 1;
+#ifdef HTTP_THREADS
 	client->thread = 0;
 	if(func)
 	{
@@ -789,16 +788,22 @@ void http_request_detach(struct http_client *client, http_thread_f *func)
 #undef __pthread_f
 	//	pthread_detach(client->thread);
 	}
+#else
+	assert(!func);
+#endif
 }
 
 void http_request_finish_int(struct http_client *client)
 {
+#ifdef HTTP_THREADS
 	client->thread = 0;
 	pthread_mutex_lock(&http_detached_clients_mutex);
 	client_list_add(detached_clients, client);
 	pthread_mutex_unlock(&http_detached_clients_mutex);
-}
+#else
+	client_list_add(detached_clients, client);
 #endif
+}
 
 static void http_request_complete(struct http_client *client)
 {
@@ -808,7 +813,7 @@ static void http_request_complete(struct http_client *client)
 	requests_served++;
 	if(client->state & HTTP_CONNECTION_CLOSE)
 	{
-		http_client_del(client, 1);
+		http_client_del(client, 1, 0);
 		return;
 	}
 
@@ -925,9 +930,6 @@ static void http_request_timeout(void *bound, struct http_client *client)
 {
 	if(client->delay)
 	{
-#ifndef HTTP_THREADS
-		log_append(LOG_WARNING, "Client %p has delay flag but httpd is compiled without threads.", client);
-#endif
 		debug("Ignoring timeout for detached client %p", client);
 		timer_add(this, "http_client_timeout", now + REQUEST_TIMEOUT, (timer_f*)http_request_timeout, client, 0, 0);
 		return;
@@ -936,7 +938,7 @@ static void http_request_timeout(void *bound, struct http_client *client)
 	if(client->state & HTTP_CONNECTION_SERVED)
 	{
 		debug("Client %p timed out (served request: yes)", client);
-		http_client_del(client, 1);
+		http_client_del(client, 1, 0);
 		return;
 	}
 
@@ -1003,10 +1005,16 @@ static struct http_client *http_client_bysock(struct sock *sock)
 	return NULL;
 }
 
-static void http_client_del(struct http_client *client, unsigned char close_sock)
+static void http_client_del(struct http_client *client, unsigned char close_sock, unsigned char force)
 {
 	if(!client)
 		return;
+
+	if(client->delay && !force)
+	{
+		client->state |= HTTP_CLIENT_DEAD;
+		return;
+	}
 
 	client_list_del(clients, client);
 	if(close_sock)
