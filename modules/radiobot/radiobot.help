@@ -1,0 +1,75 @@
+"*" = (
+	"Folgende Befehle sind verfügbar:",
+	"  STATUS    Informationen über den Stream",
+	"  DJ        Zeigt den aktuellen Moderator an",
+	"  STREAM    Zeigt die URL zum Stream an",
+	"  LISTENER  Zeigt die aktuelle Listener-Anzahl an",
+	"  PLAYLIST  Zeigt die URL zur Playlist des Moderators an",
+	"  PEAK      Zeigt die bisher höchste Listener-Anzahl an",
+	"  NEXTMOD   Zeigt den nächsten Moderator an",
+	"  SENDEPLAN Zeigt die URL zum Sendeplan an",
+	"  WUNSCH    Sendet einen Wunsch an den Moderator",
+	"  GRUSS     Sendet einen Gruß an den Moderator",
+	"Für weitere Hilfe zu einem bestimmten Befehl benutze $b*help <befehl>$b."
+);
+
+"status" = (
+	"Syntax: /msg $N status",
+	"Gesamtübersicht des aktuellen Streams. Zeigt den aktuellen Moderator,",
+	"die Anzahl an Listenern, die Qualität des Streams und seine Adresse.",
+	"$uSiehe auch:$u listener, playlist, dj, stream, peak"
+);
+
+"dj" = (
+	"Syntax: /msg $N dj",
+	"Zeigt den Namen des Moderators, der sich gerade auf dem Stream befindet.",
+	"$uSiehe auch:$u status, listener, playlist, stream, peak"
+);
+
+"stream" = (
+	"Syntax: /msg $N stream",
+	"Zeigt die URL des Streams an.",
+	"$uSiehe auch:$u status, listener, playlist, dj, peak"
+);
+
+"listener" = (
+	"Syntax: /msg $N listener",
+	"Zeigt die aktuelle Listener-Anzahl an.",
+	"$uSiehe auch:$u status, playlist, dj, stream, peak"
+);
+
+"playlist" = (
+	"Syntax: /msg $N playlist",
+	"Zeigt die URL der Playlist des Moderators.",
+	"$uSiehe auch:$u status, dj, stream, peak"
+);
+
+"peak" = (
+	"Syntax: /msg $N peak",
+	"Zeigt die bisher höchste erreichbar Anzahl an Listener inkl. Moderator und Datum.",
+	"$uSiehe auch:$u status, listener, playlist, dj, stream"
+);
+
+"nextmod" = (
+	"Syntax: *nextmod",
+	"Zeigt an, wer laut Sendeplan als nächstes auf den Stream geht.",
+	"$uSiehe auch:$u sendeplan"
+);
+
+"schedule" = (
+	"Syntax: *sendeplan",
+	"Zeigt die URL vom Sendeplan an.",
+	"$uSiehe auch:$u nextmod"
+);
+
+"wish" = (
+	"Syntax: *wunsch <text>",
+	"Sendet einen Wunsch an den Moderator.",
+	"$uSiehe auch:$u gruss"
+);
+
+"greet" = (
+	"Syntax: *gruss <text>",
+	"Sendet einen Gruß an den Moderator.",
+	"$uSiehe auch:$u wunsch"
+);
