@@ -190,9 +190,9 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	}
 
 	tmp = buf;
-	while(i < i_max_results && (tmp = strstr(tmp, "<h3 class=r>")))
+	while(i < i_max_results && (tmp = strstr(tmp, "<h3 class=\"r\">")))
 	{
-		tmp += 12;
+		tmp += 14; // strlen(<h3 class="r">)
 
 		// Find end of match
 		if(!(tmp2 = strstr(tmp, "</h3")))
@@ -207,6 +207,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 		// Find start of link
 		if((tmp3 = strstr(tmp, "<a")) && (tmp3 < tmp2))
 		{
+			debug("Link found: %s", tmp3);
 			// First result
 			if(i == 1)
 			{

@@ -155,8 +155,10 @@ char *stringbuffer_shift(struct stringbuffer *sbuf, const char *delim, unsigned 
 		// No delimiter was found, could the end of the line be the beginning of the delimiter?
 		unsigned int i;
 		for(i = 0, tmp = sbuf->string + sbuf->len - 1; i < delim_len; i++, tmp--)
+		{
 			if(!strncasecmp(tmp, delim, i))
 				return NULL;
+		}
 
 		// return whole string (even if empty) in case the token is not required
 		if(!require_token)

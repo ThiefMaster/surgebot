@@ -6,7 +6,7 @@
 #ifdef SURGEBOT_MODULE
 #include "surgebot.h"
 #else
- #include "main.h"
+#include "main.h"
 #endif
 #include "http.h"
 #ifdef HTTP_THREADS
