@@ -18,6 +18,7 @@ struct http_client;
 struct header_list;
 
 typedef void (http_handler_f)(struct http_client *client, char *uri, int argc, char **argv);
+typedef void (http_dead_f)(struct http_client *client);
 typedef void* (http_thread_f)(struct http_client *client);
 
 struct http_handler
@@ -54,11 +55,13 @@ struct http_client
 	time_t if_modified_since;
 
 	http_handler_f *handler;
+	http_dead_f *dead_callback;
 
 	unsigned char delay;
 
 	void *custom; // for custom data. never touched by http module
 	void *custom2; // for custom data. never touched by http module
+
 #ifdef HTTP_THREADS
 	pthread_t thread;
 	pthread_mutex_t thread_mutex;
@@ -71,7 +74,6 @@ struct http_client
 #define HTTP_CONNECTION_SERVED	0x02
 #define HTTP_HEADERS_SENT	0x04
 #define HTTP_HEADERS_DONE	0x08
-#define HTTP_CLIENT_DEAD	0x10
 
 void http_init();
 void http_fini();
@@ -91,7 +93,6 @@ const char *http_header_get(struct http_client *client, const char *key);
 struct dict *http_parse_vars(struct http_client *client, enum http_method type);
 struct dict *http_parse_cookies(struct http_client *client);
 void http_request_finalize(struct http_client *client);
-int http_client_dead(struct http_client *client);
 void http_request_detach(struct http_client *client, http_thread_f *func);
 void http_request_finish_int(struct http_client *client);
 

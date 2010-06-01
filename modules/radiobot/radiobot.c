@@ -483,14 +483,9 @@ HTTP_HANDLER(http_stream_info)
 
 static void http_stream_status_send(struct http_client *client, int timeout)
 {
+	client->dead_callback = NULL;
 	http_client_list_del(http_clients, client);
 	timer_del(this, "http_poll_timeout", 0, NULL, client, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
-
-	if(http_client_dead(client))
-	{
-		debug("Client is dead");
-		return;
-	}
 
 	struct json_object *response = json_object_new_object();
 	json_object_object_add(response, "timeout", json_object_new_boolean(timeout));
@@ -507,7 +502,8 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	http_reply_header("Access-Control-Allow-Origin", "*");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);
-	http_request_finalize(client);
+	if(client->delay)
+		http_request_finalize(client);
 }
 
 static void http_stream_status_timeout(void *bound, struct http_client *client)
@@ -515,21 +511,27 @@ static void http_stream_status_timeout(void *bound, struct http_client *client)
 	http_stream_status_send(client, 1);
 }
 
+static void http_stream_status_dead(struct http_client *client)
+{
+	http_client_list_del(http_clients, client);
+	timer_del(this, "http_poll_timeout", 0, NULL, client, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
+}
+
 HTTP_HANDLER(http_stream_status)
 {
 	struct dict *get_vars = http_parse_vars(client, HTTP_GET);
 	int wait = true_string(dict_find(get_vars, "wait"));
 	dict_free(get_vars);
-	http_request_detach(client, NULL);
-	if(wait)
-	{
-		timer_add(this, "http_poll_timeout", now + HTTP_POLL_DURATION, (timer_f *)http_stream_status_timeout, client, 0, 1);
-		http_client_list_add(http_clients, client);
-	}
-	else
+	if(!wait)
 	{
 		http_stream_status_send(client, 0);
+		return;
 	}
+
+	http_request_detach(client, NULL);
+	client->dead_callback = http_stream_status_dead;
+	timer_add(this, "http_poll_timeout", now + HTTP_POLL_DURATION, (timer_f *)http_stream_status_timeout, client, 0, 1);
+	http_client_list_add(http_clients, client);
 }
 
 PARSER_FUNC(mod_active)
@@ -1070,7 +1072,9 @@ static void show_updated_readonly()
 	for(unsigned int i = 0; i < http_clients->count; i++)
 	{
 		struct http_client *client = http_clients->data[i];
+		debug("Notifying client %p", client);
 		http_stream_status_send(client, 0);
+		i--;
 	}
 }
 
@@ -1171,7 +1175,7 @@ static void stats_sock_connect()
 		return;
 	}
 
-	timer_add(this, "stats_timeout", now + 15, stats_sock_timeout, NULL, 0, 1);
+	timer_add(this, "stats_timeout", now + 15, stats_sock_timeout, NULL, 0, 0);
 }
 
 static void stats_sock_event(struct sock *sock, enum sock_event event, int err)
@@ -1181,7 +1185,7 @@ static void stats_sock_event(struct sock *sock, enum sock_event event, int err)
 		log_append(LOG_WARNING, "Socket error on stats socket: %s (%d)", strerror(err), err);
 		timer_del_boundname(this, "stats_timeout");
 		stats_sock = NULL;
-		timer_add(this, "update_stats", now + 60, stats_update_tmr, NULL, 0, 1);
+		timer_add(this, "update_stats", now + 60, stats_update_tmr, NULL, 0, 0);
 
 		if(status_nick)
 		{
@@ -1201,7 +1205,7 @@ static void stats_sock_event(struct sock *sock, enum sock_event event, int err)
 		stats_sock = NULL;
 		stats_received();
 		stringbuffer_flush(stats_data);
-		timer_add(this, "update_stats", now + STATS_DELAY, stats_update_tmr, NULL, 0, 1);
+		timer_add(this, "update_stats", now + STATS_DELAY, stats_update_tmr, NULL, 0, 0);
 	}
 	else if(event == EV_CONNECT)
 	{
@@ -1237,7 +1241,7 @@ static void stats_sock_timeout(void *bound, void *data)
 		sock_close(stats_sock);
 	stats_sock = NULL;
 
-	timer_add(this, "update_stats", now + 120, stats_update_tmr, NULL, 0, 1);
+	timer_add(this, "update_stats", now + 120, stats_update_tmr, NULL, 0, 0);
 }
 
 static void stats_update_tmr(void *bound, void *data)

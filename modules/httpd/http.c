@@ -110,7 +110,7 @@ static void http_request_complete(struct http_client *client);
 static void http_request_timeout(void *bound, struct http_client *client);
 static void http_writesock(struct http_client *client);
 static struct http_client *http_client_accept(struct sock *listen_sock);
-static void http_client_del(struct http_client *client, unsigned char close_sock, unsigned char force);
+static void http_client_del(struct http_client *client, unsigned char close_sock);
 static struct http_client *http_client_bysock(struct sock *sock);
 static http_handler_f *http_handler_find(const char *uri);
 static void http_handler_del_handler(struct http_handler *handler);
@@ -148,7 +148,7 @@ MODULE_FINI
 		sock_close(listener_ssl);
 	timer_del(this, "http_client_timeout", 0, NULL, NULL, TIMER_IGNORE_ALL & ~(TIMER_IGNORE_NAME|TIMER_IGNORE_BOUND));
 	while(clients->count)
-		http_client_del(clients->data[clients->count - 1], 1, 1);
+		http_client_del(clients->data[clients->count - 1], 1);
 	client_list_free(clients);
 	client_list_free(detached_clients);
 	while(handlers->count)
@@ -272,7 +272,7 @@ static void http_client_event(struct sock *sock, enum sock_event event, int err)
 			log_append(LOG_WARNING, "Socket error on socket %d: %s (%d)", sock->fd, strerror(err), err);
 		else
 			log_append(LOG_INFO, "Socket %d hung up", sock->fd);
-		http_client_del(http_client_bysock(sock), 1, 0);
+		http_client_del(http_client_bysock(sock), 1);
 	}
 	else if(event == EV_WRITE)
 	{
@@ -700,7 +700,7 @@ static int http_parse(struct http_client *client)
 			/* Parse the first non-blank line as the Request-Line. */
 			code = http_parse_request_line(client, header + start, size);
 			if(!code)
-				log_append(LOG_INFO, "Requested URI: %s", client->uri);
+				log_append(LOG_INFO, "Requested URI: %s?%s", client->uri, client->query_string);
 		}
 		else
 		{
@@ -759,18 +759,9 @@ static void http_process_request(struct http_client *client)
 		http_request_finalize(client);
 }
 
-int http_client_dead(struct http_client *client)
-{
-	if(!(client->state & HTTP_CLIENT_DEAD))
-		return 0;
-
-	http_client_del(client, 1, 1);
-	return 1;
-}
-
 void http_request_finalize(struct http_client *client)
 {
-	debug("Finalizing client %p", client);
+	debug("Finalizing client %p %s?%s", client, client->uri, client->query_string);
 	client->delay = 0;
 	http_write_header_default(client);
 	http_writesock(client);
@@ -813,13 +804,15 @@ static void http_request_complete(struct http_client *client)
 	requests_served++;
 	if(client->state & HTTP_CONNECTION_CLOSE)
 	{
-		http_client_del(client, 1, 0);
+		http_client_del(client, 1);
 		return;
 	}
 
 	size = client->content_start + client->content_length;
 	client->rbuf->len -= size;
-	memmove(client->rbuf->string, client->rbuf->string + size, client->rbuf->len);
+	if(client->rbuf->len)
+		memmove(client->rbuf->string, client->rbuf->string + size, client->rbuf->len);
+	client->rbuf->string[client->rbuf->len] = '\0';
 
 	MyFree(client->uri);
 	MyFree(client->query_string);
@@ -930,7 +923,7 @@ static void http_request_timeout(void *bound, struct http_client *client)
 {
 	if(client->delay)
 	{
-		debug("Ignoring timeout for detached client %p", client);
+		//debug("Ignoring timeout for detached client %p", client);
 		timer_add(this, "http_client_timeout", now + REQUEST_TIMEOUT, (timer_f*)http_request_timeout, client, 0, 0);
 		return;
 	}
@@ -938,7 +931,7 @@ static void http_request_timeout(void *bound, struct http_client *client)
 	if(client->state & HTTP_CONNECTION_SERVED)
 	{
 		debug("Client %p timed out (served request: yes)", client);
-		http_client_del(client, 1, 0);
+		http_client_del(client, 1);
 		return;
 	}
 
@@ -1005,16 +998,13 @@ static struct http_client *http_client_bysock(struct sock *sock)
 	return NULL;
 }
 
-static void http_client_del(struct http_client *client, unsigned char close_sock, unsigned char force)
+static void http_client_del(struct http_client *client, unsigned char close_sock)
 {
 	if(!client)
 		return;
 
-	if(client->delay && !force)
-	{
-		client->state |= HTTP_CLIENT_DEAD;
-		return;
-	}
+	if(client->dead_callback)
+		client->dead_callback(client);
 
 	client_list_del(clients, client);
 	if(close_sock)
