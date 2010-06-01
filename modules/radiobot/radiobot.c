@@ -11,6 +11,7 @@
 #include "conf.h"
 #include "sock.h"
 #include "stringbuffer.h"
+#include "stringlist.h"
 #include "list.h"
 #include "database.h"
 
@@ -43,6 +44,7 @@ static struct
 	const char *site_url;
 	const char *schedule_url;
 	const char *teamspeak_url;
+	struct stringlist *sanitize_nick_regexps;
 	const char *stream_url;
 	const char *stream_url_pls;
 	const char *stream_url_asx;
@@ -287,7 +289,7 @@ static void radiobot_conf_reload()
 	str = conf_get("radiobot/stream_pass_stats", DB_STRING);
 	radiobot_conf.stream_pass_stats = str ? str : radiobot_conf.stream_pass;
 
-	// various urls
+	// various stuff, mainly for json information interface
 	str = conf_get("radiobot/site_url", DB_STRING);
 	radiobot_conf.site_url = str ? str : "n/a";
 
@@ -296,6 +298,8 @@ static void radiobot_conf_reload()
 
 	str = conf_get("radiobot/teamspeak_url", DB_STRING);
 	radiobot_conf.teamspeak_url = str ? str : "n/a";
+
+	radiobot_conf.sanitize_nick_regexps = conf_get("radiobot/sanitize_nick_regexps", DB_STRINGLIST);
 
 	str = conf_get("radiobot/stream_url", DB_STRING);
 	radiobot_conf.stream_url = str ? str : "n/a";
@@ -467,11 +471,17 @@ HTTP_HANDLER(http_root)
 
 HTTP_HANDLER(http_stream_info)
 {
+	struct json_object *list;
 	struct json_object *response = json_object_new_object();
 	json_object_object_add(response, "stream", json_object_new_string(radiobot_conf.stream_url));
 	json_object_object_add(response, "site", json_object_new_string(radiobot_conf.site_url));
 	json_object_object_add(response, "schedule", json_object_new_string(radiobot_conf.schedule_url));
 	json_object_object_add(response, "teamspeak", json_object_new_string(radiobot_conf.teamspeak_url));
+	list = json_object_new_array();
+	if(radiobot_conf.sanitize_nick_regexps)
+		for(unsigned int i = 0; i < radiobot_conf.sanitize_nick_regexps->count; i++)
+			json_object_array_add(list, json_object_new_string(radiobot_conf.sanitize_nick_regexps->data[i]));
+	json_object_object_add(response, "sanitize_nick_regexps", list);
 
 	http_reply_header("Content-Type", "application/json");
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
