@@ -12,6 +12,19 @@ char *rtrim(char * const str);
 char *urlencode(const char *s);
 char *urldecode(char *uri);
 char *html_encode(const char *str);
+int is_utf8(const char *buf);
+void make_utf8(const char *str, char *buf, size_t bufsize);
+
+static inline const char *to_utf8(const char *str)
+{
+	static char buf[1024];
+	if(!is_utf8(str))
+		make_utf8(str, buf, sizeof(buf));
+	else
+		strlcpy(buf, str, sizeof(buf));
+	return buf;
+}
+
 
 static inline char *trim(char * const str)
 {

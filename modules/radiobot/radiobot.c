@@ -4,6 +4,7 @@
 #include "modules/commands/command_rule.h"
 #include "modules/help/help.h"
 #include "modules/httpd/http.h"
+#include "modules/tools/tools.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "timer.h"
@@ -29,7 +30,7 @@
 // duration after which a polling ajax request is finished
 #define HTTP_POLL_DURATION 1800
 
-MODULE_DEPENDS("commands", "help", "httpd", NULL);
+MODULE_DEPENDS("commands", "help", "httpd", "tools", NULL);
 
 static struct
 {
@@ -490,8 +491,8 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	struct json_object *response = json_object_new_object();
 	json_object_object_add(response, "timeout", json_object_new_boolean(timeout));
 	json_object_object_add(response, "mod", current_mod ? json_object_new_string(current_mod) : NULL);
-	json_object_object_add(response, "show", current_show ? json_object_new_string(current_show) : NULL);
-	json_object_object_add(response, "song", current_title ? json_object_new_string(current_title) : NULL);
+	json_object_object_add(response, "show", current_show ? json_object_new_string(to_utf8(current_show)) : NULL);
+	json_object_object_add(response, "song", current_title ? json_object_new_string(to_utf8(current_title)) : NULL);
 	json_object_object_add(response, "listeners", json_object_new_int(stream_stats.listeners_current));
 	json_object_object_add(response, "bitrate", json_object_new_int(stream_stats.bitrate));
 

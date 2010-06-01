@@ -316,3 +316,103 @@ char *html_encode(const char *str)
 	return string;
 }
 
+/*
+ * check if string is utf8
+ * 0: invalid utf8, -1: plain ascii, 1: utf8
+ */
+int is_utf8(const char *buf)
+{
+	unsigned int i, j, gotone = 0;
+	unsigned int len = strlen((const char *)buf);
+	unsigned int ascii = 1;
+
+
+	for(i = 0; i < len; i++) {
+		if((buf[i] & 0x80) == 0) {  /* 0xxxxxxx is plain ASCII */
+
+		} else if((buf[i] & 0x40) == 0) { /* 10xxxxxx never 1st byte */
+			return 0;
+		} else {         /* 11xxxxxx begins UTF-8 */
+			ascii = 0;
+			unsigned int following;
+
+			if((buf[i] & 0x20) == 0) {    /* 110xxxxx */
+				/* c = buf[i] & 0x1f; */
+				following = 1;
+			} else if((buf[i] & 0x10) == 0) {  /* 1110xxxx */
+				/* c = buf[i] & 0x0f; */
+				following = 2;
+			} else if((buf[i] & 0x08) == 0) {  /* 11110xxx */
+				/* c = buf[i] & 0x07; */
+				following = 3;
+			} else if((buf[i] & 0x04) == 0) {  /* 111110xx */
+				/* c = buf[i] & 0x03; */
+				following = 4;
+			} else if((buf[i] & 0x02) == 0) {  /* 1111110x */
+				/* c = buf[i] & 0x01; */
+				following = 5;
+			} else {
+				return 0;
+			}
+
+			for(j = 0; j < following; j++) {
+				if(++i >= len)
+					return gotone ? 1 : (ascii ? -1 : 0);
+
+				if((buf[i] & 0x80) == 0 || (buf[i] & 0x40))
+					return 0;
+
+				/* c = (c << 6) + (buf[i] & 0x3f); */
+			}
+
+			gotone = 1;
+		}
+	}
+
+	return gotone ? 1 : (ascii ? -1 : 0);
+}
+
+/*
+ * convert string to utf8
+ */
+void make_utf8(const char *str, char *buf, size_t bufsize)
+{
+	unsigned int i = 0;
+	unsigned char *c;
+
+	for (c = (unsigned char *)str; *c && i < bufsize - 1; c++) {
+		if ((*c & 0x80) == 0) // plain ascii
+			buf[i++] = *c;
+		else if (*c == 128) { // euro sign
+			if(i >= bufsize - 3)
+				buf[i++] = '?';
+			else
+			{
+				buf[i++] = '\xE2';
+				buf[i++] = '\x82';
+				buf[i++] = '\xAC';
+			}
+		}
+		else if (*c == 133) { // "..." sign
+			if(i >= bufsize - 3)
+				buf[i++] = '?';
+			else
+			{
+				buf[i++] = '\xE2';
+				buf[i++] = '\x80';
+				buf[i++] = '\xA6';
+			}
+		}
+		else {
+			if(i >= bufsize - 2)
+				buf[i++] = '?';
+			else
+			{
+				buf[i++] = (*c >> 6) | 192;
+				buf[i++] = (*c & 63) | 128;
+			}
+		}
+	}
+
+	buf[i] = '\0';
+}
