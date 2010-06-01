@@ -239,9 +239,9 @@ MODULE_FINI
 		free(client);
 	}
 
-	for(unsigned int i = 0; i < http_clients->count; i++)
+	while(http_clients->count)
 	{
-		struct http_client *client = http_clients->data[i];
+		struct http_client *client = http_clients->data[http_clients->count - 1];
 		http_stream_status_send(client, 0);
 	}
 
