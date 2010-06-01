@@ -476,6 +476,7 @@ HTTP_HANDLER(http_stream_info)
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
         http_reply_header("Cache-Control", "must-revalidate");
         http_reply_header("Pragma", "no-cache");
+	http_reply_header("Access-Control-Allow-Origin", "*");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);
 }
@@ -503,6 +504,7 @@ static void http_stream_status_send(struct http_client *client, int timeout)
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
         http_reply_header("Cache-Control", "must-revalidate");
         http_reply_header("Pragma", "no-cache");
+	http_reply_header("Access-Control-Allow-Origin", "*");
 	http_reply("%s", json_object_to_json_string(response));
 	json_object_put(response);
 	http_request_finalize(client);
