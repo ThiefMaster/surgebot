@@ -207,7 +207,6 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 		// Find start of link
 		if((tmp3 = strstr(tmp, "<a")) && (tmp3 < tmp2))
 		{
-			debug("Link found: %s", tmp3);
 			// First result
 			if(i == 1)
 			{
