@@ -88,6 +88,7 @@ IMPLEMENT_LIST(http_client_list, struct http_client *)
 HTTP_HANDLER(http_root);
 HTTP_HANDLER(http_stream_info);
 HTTP_HANDLER(http_stream_status);
+HTTP_HANDLER(http_wish_greet);
 PARSER_FUNC(mod_active);
 IRC_HANDLER(nick);
 COMMAND(setmod);
@@ -163,6 +164,7 @@ static struct http_handler handlers[] = {
 	{ "/", http_root },
 	{ "/stream-info", http_stream_info },
 	{ "/stream-status", http_stream_status },
+	{ "/wish-greet", http_wish_greet },
 	{ NULL, NULL }
 };
 
@@ -543,6 +545,62 @@ HTTP_HANDLER(http_stream_status)
 	client->dead_callback = http_stream_status_dead;
 	timer_add(this, "http_poll_timeout", now + HTTP_POLL_DURATION, (timer_f *)http_stream_status_timeout, client, 0, 1);
 	http_client_list_add(http_clients, client);
+}
+
+HTTP_HANDLER(http_wish_greet)
+{
+	struct dict *get_vars = http_parse_vars(client, HTTP_GET);
+	struct json_object *response = json_object_new_object();
+
+	const char *type = dict_find(get_vars, "type");
+	const char *name = dict_find(get_vars, "name");
+	const char *msg = dict_find(get_vars, "msg");
+
+	if(!type || !name || !msg || !*type || !*name || !*msg)
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "message", json_object_new_string("data_missing"));
+		json_object_object_add(response, "type", type ? json_object_new_string(type) : NULL);
+	}
+	else if(strcasecmp(type, "wish") && strcasecmp(type, "greet"))
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "message", json_object_new_string("invalid_type"));
+		json_object_object_add(response, "type", json_object_new_string(type));
+	}
+	else if(strpbrk(name, "\r\n") || strpbrk(msg, "\r\n"))
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "message", json_object_new_string("security_violation"));
+		json_object_object_add(response, "type", json_object_new_string(type));
+	}
+	else if(!current_mod)
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(0));
+		json_object_object_add(response, "message", json_object_new_string("no_mod"));
+		json_object_object_add(response, "type", json_object_new_string(type));
+	}
+	else
+	{
+		json_object_object_add(response, "success", json_object_new_boolean(1));
+		json_object_object_add(response, "message", NULL);
+		json_object_object_add(response, "type", json_object_new_string(type));
+		json_object_object_add(response, "queue_full", json_object_new_int(check_queue_full()));
+
+		if(!strcasecmp(type, "wish"))
+			irc_send("PRIVMSG %s :Desktop-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, name, msg);
+		else if(!strcasecmp(type, "greet"))
+			irc_send("PRIVMSG %s :Desktop-Gruﬂ von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, name, msg);
+	}
+
+	http_reply_header("Content-Type", "application/json");
+        http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
+        http_reply_header("Cache-Control", "must-revalidate");
+        http_reply_header("Pragma", "no-cache");
+	http_reply_header("Access-Control-Allow-Origin", "*");
+	http_reply("%s", json_object_to_json_string(response));
+	json_object_put(response);
+	dict_free(get_vars);
 }
 
 PARSER_FUNC(mod_active)
