@@ -89,6 +89,7 @@ static struct {
 	unsigned int listen_port;
 	unsigned int listen_port_ssl;
 	char *listen_pem;
+	char *ip_header;
 } http_conf;
 
 
@@ -172,6 +173,7 @@ static void http_conf_reload()
 	http_conf.listen_port		= ((str = conf_get("httpd/listen_port", DB_STRING)) ? atoi(str) : 0);
 	http_conf.listen_port_ssl	= ((str = conf_get("httpd/listen_port_ssl", DB_STRING)) ? atoi(str) : 0);
 	http_conf.listen_pem		= ((str = conf_get("httpd/listen_pem", DB_STRING)) ? str : NULL);
+	http_conf.ip_header		= ((str = conf_get("httpd/ip_header", DB_STRING)) ? str : NULL);
 
 	if(!http_conf.listen_pem)
 		http_conf.listen_port_ssl = 0;
@@ -213,7 +215,7 @@ static void listener_event(struct sock *sock, enum sock_event event, int err)
 	{
 		struct http_client *client = http_client_accept(sock);
 		if(client)
-			log_append(LOG_INFO, "New connection from %s on socket %d", inet_ntoa(((struct sockaddr_in *)client->sock->sockaddr_remote)->sin_addr), client->sock->fd);
+			log_append(LOG_INFO, "New connection from %s on socket %d", client->ip, client->sock->fd);
 	}
 }
 
@@ -573,10 +575,12 @@ static int http_parse_header(struct http_client *client, const char *line, unsig
 	field->klen = cpos;
 	field->vlen = n - vpos;
 
+	/*
 	char tmp1[128], tmp2[256];
 	strlcpy(tmp1, field->key, min(field->klen + 1, 128));
 	strlcpy(tmp2, field->value, min(field->vlen + 1, 256));
-	//debug("Header: %s: %s", tmp1, tmp2);
+	debug("Header: %s: %s", tmp1, tmp2);
+	*/
 	header_list_add(client->headers, field);
 
 	/* Extract the values of some key headers for internal use. */
@@ -601,6 +605,11 @@ static int http_parse_header(struct http_client *client, const char *line, unsig
 		   identity). */
 		if(strncasecmp("identity", field->value, field->vlen))
 			return 501;
+	}
+	else if(http_conf.ip_header && !strncasecmp(http_conf.ip_header, field->key, field->klen))
+	{
+		free(client->ip);
+		client->ip = strndup(field->value, field->vlen);
 	}
 	else if(!strncasecmp("If-Modified-Since", field->key, field->klen))
 	{
@@ -699,8 +708,6 @@ static int http_parse(struct http_client *client)
 		{
 			/* Parse the first non-blank line as the Request-Line. */
 			code = http_parse_request_line(client, header + start, size);
-			if(!code)
-				log_append(LOG_INFO, "Requested URI: %s?%s", client->uri, client->query_string);
 		}
 		else
 		{
@@ -745,6 +752,11 @@ static void http_process_request(struct http_client *client)
 	unsigned int size = client->content_start + client->content_length;
 	if(client->rbuf->len < size) // do we have to read more data?
 		return;
+
+	if(client->query_string)
+		log_append(LOG_INFO, "Requested URI: %s?%s [%s]", client->uri, client->query_string, client->ip);
+	else
+		log_append(LOG_INFO, "Requested URI: %s [%s]", client->uri, client->ip);
 
 	client->content = client->rbuf->string + client->content_start;
 
@@ -978,6 +990,7 @@ struct http_client *http_client_accept(struct sock *listen_sock)
 	client = malloc(sizeof(struct http_client));
 	memset(client, 0, sizeof(struct http_client));
 	client->sock = sock;
+	client->ip = strdup(inet_ntoa(((struct sockaddr_in *)sock->sockaddr_remote)->sin_addr));
 	client->rbuf = stringbuffer_create();
 	client->hbuf = stringbuffer_create();
 	client->wbuf = stringbuffer_create();
@@ -1021,5 +1034,6 @@ static void http_client_del(struct http_client *client, unsigned char close_sock
 	if(client->thread)
 		pthread_cancel(client->thread);
 #endif
+	free(client->ip);
 	free(client);
 }

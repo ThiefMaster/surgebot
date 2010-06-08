@@ -38,6 +38,7 @@ enum http_method
 struct http_client
 {
 	struct sock *sock;
+	char *ip;
 	struct stringbuffer *rbuf; // read buf
 	struct stringbuffer *hbuf; // response header buf
 	struct stringbuffer *wbuf; // response content buf
