@@ -590,7 +590,7 @@ HTTP_HANDLER(http_wish_greet)
 		if(!strcasecmp(type, "wish"))
 			irc_send("PRIVMSG %s :Desktop-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, name, msg);
 		else if(!strcasecmp(type, "greet"))
-			irc_send("PRIVMSG %s :Desktop-Gruﬂ von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, name, msg);
+			irc_send("PRIVMSG %s :Desktop-Gru\xc3\x9f von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, name, msg);
 	}
 
 	http_reply_header("Content-Type", "application/json");
@@ -925,7 +925,10 @@ COMMAND(greet)
 	}
 
 	msg = untokenize(argc - 1, argv + 1, " ");
-	irc_send("PRIVMSG %s :IRC-Gruﬂ von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, src->nick, msg);
+	const char *sz = "ﬂ";
+	if(is_utf8(msg))
+		sz = "\xc3\x9f";
+	irc_send("PRIVMSG %s :IRC-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, sz, src->nick, msg);
 	reply("Dein Gruﬂ wurde weitergeleitet.");
 	free(msg);
 
@@ -1065,8 +1068,11 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 			return;
 		}
 
-		irc_send("PRIVMSG %s :%s-Gruﬂ von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
-			 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), argv[1], argv[2]);
+		const char *sz = "ﬂ";
+		if(is_utf8(argv[2]))
+			sz = "\xc3\x9f";
+		irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
+			 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
 		sock_write_fmt(sock, "SUCCESS 0\n");
 		return;
 	}
