@@ -1,3 +1,2 @@
-LIBS_mod += `pth-config --ldflags --libs` -lshout -lid3tag -lm
+LIBS_mod += `pth-config --ldflags --libs` -lshout -lid3tag -lm -lmp3lame
 CFLAGS_mod += `pth-config --cflags`
-
