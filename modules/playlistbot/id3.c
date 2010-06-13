@@ -116,7 +116,7 @@ void ices_id3v2_parse(struct mp3_file *source)
 	tag.minor_version = *(buf + 4);
 	tag.flags = *(buf + 5);
 	tag.len = id3v2_decode_synchsafe(buf + 6);
-	debug("ID3v2: version %d.%d. Tag size is %d bytes.", tag.major_version, tag.minor_version, tag.len);
+	debug("ID3v2: version %d.%d. Tag size is %d bytes.", tag.major_version, tag.minor_version, (int)tag.len);
 	if (tag.major_version > 4)
 	{
 		debug("ID3v2: Version greater than maximum supported (4), skipping");
@@ -172,7 +172,7 @@ static int id3v2_read_exthdr(struct mp3_file *source, struct id3v2_tag *tag)
 	tag->pos += 6;
 
 	len = id3v2_decode_synchsafe((unsigned char *)hdr);
-	debug("ID3v2: %d byte extended header found, skipping.", len);
+	debug("ID3v2: %d byte extended header found, skipping.", (int)len);
 
 	if (len > 6)
 		return id3v2_skip_data(source, tag, len - 6);
@@ -215,7 +215,7 @@ ssize_t id3v2_read_frame(struct mp3_file *source, struct id3v2_tag *tag)
 
 	if (len > tag->len - tag->pos)
 	{
-		log_append(LOG_WARNING, "Error parsing ID3v2 frame header: Frame too large (%d bytes)", len);
+		log_append(LOG_WARNING, "Error parsing ID3v2 frame header: Frame too large (%d bytes)", (int)len);
 		return -1;
 	}
 
