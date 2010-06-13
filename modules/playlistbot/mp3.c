@@ -145,7 +145,7 @@ static int ices_mp3_parse(struct mp3_file *source)
 					}
 				}
 				if (!rc)
-					debug("Bad frame at offset %d", source->bytes_read + source->data.pos);
+					debug("Bad frame at offset %d", (int)(source->bytes_read + source->data.pos));
 			}
 			source->data.pos++;
 			off++;
@@ -335,11 +335,11 @@ static void mp3_trim_file(struct mp3_file *self, struct mp3_header *header)
 				if ((unsigned)(start + len + framelen) < self->filesize)
 				{
 					self->filesize = start + len + framelen;
-					debug("Trimmed file to %d bytes", self->filesize);
+					debug("Trimmed file to %d bytes", (int)self->filesize);
 				}
 				else if ((unsigned)(start + len + framelen) > self->filesize)
 				{
-					debug("Trimmed short frame (%d bytes missing) at offset %d", (int)(start + len + framelen) - self->filesize, (int)start + len);
+					debug("Trimmed short frame (%d bytes missing) at offset %d", (int)((start + len + framelen) - self->filesize), (int)(start + len));
 					self->filesize = start + len;
 				}
 
