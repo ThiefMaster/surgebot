@@ -8,11 +8,14 @@
 #include "surgebot.h"
 #include "stringbuffer.h"
 #include "mp3c.h"
+#include "mp3.h"
 
 #include <math.h>
 #include <shout/shout.h>
 #include <pthread.h>
 #include <lame/lame.h>
+
+#define STREAM_BITRATE 192
 
 MODULE_DEPENDS("commands", NULL);
 
@@ -66,27 +69,6 @@ static pthread_mutex_t playlist_loading_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t status_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static lame_global_flags *lame = NULL;
-
-static unsigned int bitrates[2][3][15] = {
-	/* MPEG-1 */
-	{
-		{0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448},
-		{0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384},
-		{0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320}
-	},
-	/* MPEG-2 LSF, MPEG-2.5 */
-	{
-		{0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256},
-		{0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160},
-		{0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160}
-	},
-};
-
-static unsigned int samplerates[3][4] = {
-	{44100, 48000, 32000, 0},
-	{22050, 24000, 16000, 0},
-	{11025, 8000, 8000, 0}
-};
 
 static struct {
 	char *artist;
@@ -266,7 +248,7 @@ static void set_metadata(shout_t *shout, const struct playlist_node *pl_node)
 
 /* For each song, reset the liblame engine, otherwise it craps out if
  * the bitrate or sample rate changes */
-static void ices_reencode_reset(int samplerate, int channels)
+static void ices_reencode_reset(struct mp3_file *source)
 {
 	static int init_decoder = 1;
 
@@ -285,20 +267,20 @@ static void ices_reencode_reset(int samplerate, int channels)
 	/* only reset encoder if audio format changes */
 	if(lame)
 	{
-		if(lame_get_in_samplerate(lame) == samplerate)
+		if(lame_get_in_samplerate(lame) == (int)source->samplerate)
 			return;
 
 		lame_close(lame);
 	}
 
 	lame = lame_init();
-	lame_set_in_samplerate(lame, samplerate);
+	lame_set_in_samplerate(lame, source->samplerate);
 	/* Lame won't reencode mono to stereo for some reason, so we have to
 	 * duplicate left into right by hand. */
-	if(channels == 1)
-		lame_set_num_channels(lame, 1);
+	if(source->channels == 1)
+		lame_set_num_channels(lame, source->channels);
 
-	lame_set_brate(lame, 192);
+	lame_set_brate(lame, STREAM_BITRATE);
 	lame_set_out_samplerate(lame, 44100);
 
 	lame_init_params(lame);
@@ -310,7 +292,18 @@ static void ices_reencode_reset(int samplerate, int channels)
  * for ices_reencode_reencode_chunk. */
 static int ices_reencode_decode(unsigned char *buf, size_t blen, size_t olen, int16_t *left, int16_t *right)
 {
-	return lame_decode(buf, blen, left, right);
+	int outlen = lame_decode(buf, blen, left, right);
+	/*
+	debug("lame_decode(%p, %u, %p, %p) = %u", buf, blen, left, right, outlen);
+	printf("%p = \"", buf);
+	for(size_t i = 0; i < blen; i++)
+		if(isprint(buf[i]))
+			printf("%c", buf[i]);
+		else
+			printf("\\%o", buf[i]);
+	printf("\"\n");
+	*/
+	return outlen;
 }
 
 /* reencode buff, of len buflen, put max outlen reencoded bytes in outbuf */
@@ -323,6 +316,186 @@ static int ices_reencode(int nsamples, int16_t *left, int16_t *right, unsigned c
 static int ices_reencode_flush(unsigned char *outbuf, int maxlen)
 {
 	return lame_encode_flush_nogap(lame, outbuf, maxlen);
+}
+
+static int stream_needs_reencoding(struct mp3_file *source)
+{
+	if ((source->bitrate != STREAM_BITRATE) || (source->samplerate != 44100) || (source->channels != 2))
+		return 1;
+	return 0;
+}
+
+static int stream_send_data(unsigned char* buf, size_t len)
+{
+	if (shout_get_connected(shout) != SHOUTERR_CONNECTED)
+		return -1;
+
+	shout_sync(shout);
+	if (shout_send(shout, buf, len) == SHOUTERR_SUCCESS)
+		return 0;
+
+	log_append(LOG_WARNING, "Libshout reported send error, !disconnecting: %s", shout_get_error(shout));
+	//shout_close(shout);
+
+	return -1;
+}
+
+static int stream_send(struct mp3_file *source)
+{
+	unsigned char ibuf[INPUT_BUFSIZE];
+	ssize_t len;
+	ssize_t olen;
+	int samples;
+	int rc;
+	int do_sleep;
+	int decode = 0;
+	struct {
+		unsigned char *data;
+		size_t len;
+	} obuf;
+	/* worst case decode: 22050 Hz at 8kbs = 44.1 samples/byte */
+	static int16_t left[INPUT_BUFSIZE * 45];
+	static int16_t right[INPUT_BUFSIZE * 45];
+	static int16_t* rightp;
+
+	obuf.data = NULL;
+	obuf.len = 0;
+
+	ices_reencode_reset(source);
+	decode = stream_needs_reencoding(source);
+	debug("Recoding needed: %s", decode ? "yes" : "no");
+
+	if (decode)
+	{
+		obuf.len = OUTPUT_BUFSIZE;
+		if (!(obuf.data = malloc(OUTPUT_BUFSIZE)))
+		{
+			log_append(LOG_ERROR, "Error allocating encode buffer");
+			return -1;
+		}
+	}
+
+	debug("Playing %s", source->path);
+
+	while(stream_stop != 2)
+	{
+		if(stream_next)
+		{
+			pthread_mutex_lock(&options_mutex);
+			stream_next = 0;
+			pthread_mutex_unlock(&options_mutex);
+			break;
+		}
+
+		len = samples = 0;
+		/* fetch input buffer */
+		len = source->read (source, ibuf, sizeof (ibuf));
+		if (decode)
+			samples = ices_reencode_decode (ibuf, len, sizeof (left), left, right);
+
+		if (len == 0)
+		{
+			debug("Done sending");
+			break;
+		}
+		else if (len < 0)
+		{
+			log_append(LOG_WARNING, "Read error: %s", strerror(errno));
+			goto err;
+		}
+
+		do_sleep = 1;
+		while (do_sleep)
+		{
+			rc = olen = 0;
+			/* don't reencode if the source is MP3 and the same bitrate */
+			if (stream_needs_reencoding(source))
+			{
+				if (samples > 0)
+				{
+					/* for some reason we have to manually duplicate right from left to get
+					 * LAME to output stereo from a mono source */
+					if (source->channels == 1)
+						rightp = left;
+					else
+						rightp = right;
+					if (obuf.len < (unsigned int) (7200 + samples + samples / 4))
+					{
+						unsigned char *tmpbuf;
+
+						/* pessimistic estimate from lame.h */
+						obuf.len = 7200 + 5 * samples / 2;
+						if (!(tmpbuf = realloc(obuf.data, obuf.len)))
+						{
+							log_append(LOG_WARNING, "Error growing output buffer, aborting track");
+							goto err;
+						}
+						obuf.data = tmpbuf;
+						debug("Grew output buffer to %d bytes", obuf.len);
+					}
+
+					if ((olen = ices_reencode(samples, left, rightp, obuf.data, obuf.len)) < -1)
+					{
+						log_append(LOG_WARNING, "Reencoding error, aborting track");
+						goto err;
+					}
+					else if (olen == -1)
+					{
+						unsigned char *tmpbuf;
+						if ((tmpbuf = realloc(obuf.data, obuf.len + OUTPUT_BUFSIZE)))
+						{
+							obuf.data = tmpbuf;
+							obuf.len += OUTPUT_BUFSIZE;
+							debug("Grew output buffer to %d bytes", obuf.len);
+						}
+						else
+						{
+							log_append(LOG_ERROR, "%d byte output buffer is too small", obuf.len);
+						}
+					}
+					else if (olen > 0)
+					{
+						rc = stream_send_data(obuf.data, olen);
+					}
+				}
+			}
+			else
+			{
+				rc = stream_send_data(ibuf, len);
+			}
+
+			if (rc < 0)
+				log_append(LOG_WARNING, "Error during send");
+			else
+				do_sleep = 0;
+			/* this is so if we have errors on every stream we pause before
+			 * attempting to reconnect */
+			if (do_sleep)
+			{
+				struct timeval delay;
+				delay.tv_sec = 1;
+				delay.tv_usec = 0;
+				select(1, NULL, NULL, NULL, &delay);
+			}
+		}
+	}
+
+	if (stream_needs_reencoding(source))
+	{
+		len = ices_reencode_flush(obuf.data, obuf.len);
+		if (len > 0)
+			rc = stream_send_data(obuf.data, len);
+	}
+
+	if (obuf.data)
+		free(obuf.data);
+
+	return 0;
+
+err:
+	if (obuf.data)
+		free(obuf.data);
+	return -1;
 }
 
 static void *stream_thread(void *arg)
@@ -357,13 +530,17 @@ static void *stream_thread(void *arg)
 	while(stream_stop < 2)
 	{
 		struct playlist_node *node;
+		struct mp3_file source;
 
 		pthread_mutex_lock(&playlist_mutex);
 		node = playlist_next(playlist);
 
-		mp3_fp = fopen(node->file, "r");
-		if(!mp3_fp)
+		source.path = node->file;
+		if(stream_open_source(&source) < 0)
+		{
+			log_append(LOG_WARNING, "Error opening %s", source.path);
 			continue;
+		}
 
 		set_metadata(shout, node);
 		pthread_mutex_lock(&status_mutex);
@@ -392,62 +569,10 @@ static void *stream_thread(void *arg)
 			pthread_mutex_unlock(&options_mutex);
 		}
 
-		unsigned char tmp[10] = { 0 };
-		fread(tmp, 1, 10, mp3_fp);
-		if(!strncmp((char *)tmp, "ID3", 3))
-		{
-			// We got an ID3 tag.
-			size_t id3_size = (((tmp[6] & 0x7f) << 21)
-					 | ((tmp[7] & 0x7f) << 14)
-					 | ((tmp[8] & 0x7f) << 7)
-					 | (tmp[9] & 0x7f))
-					 + 10;
-			fseek(mp3_fp, id3_size, SEEK_SET);
-			fread(tmp, 1, 4, mp3_fp);
-		}
+		stream_send(&source);
+		source.close(&source);
 
-		if(((tmp[0] << 4) | ((tmp[1] >> 4) & 0xE)) != 0xFFE)
-		{
-			log_append(LOG_WARNING, "Invalid mp3 file: %s", node->file);
-			continue;
-		}
-
-		int version = 0, layer = 0, samplerate = 0, channels = 0, bitrate = 0;
-		switch ((tmp[1] >> 3 & 0x3))
-		{
-			case 3:
-				version = 0;
-				break;
-			case 2:
-				version = 1;
-				break;
-			case 0:
-				version = 2;
-				break;
-		}
-
-		int bitrate_idx = (tmp[2] >> 4) & 0xF;
-		int samplerate_idx = (tmp[2] >> 2) & 0x3;
-		layer = 4 - ((tmp[1] >> 1) & 0x3);
-		channels = (((tmp[3] >> 6) & 0x3) == 3) ? 1 : 2;
-		if(version == 0)
-			bitrate = bitrates[0][layer - 1][bitrate_idx];
-		else
-			bitrate = bitrates[1][layer - 1][bitrate_idx];
-		samplerate = samplerates[version][samplerate_idx];
-
-		debug("Bitrate: %u; Samplerate: %u; Channels: %u", bitrate, samplerate, channels);
-		if(!samplerate || !channels || !bitrate)
-		{
-			log_append(LOG_WARNING, "Invalid mp3 file: %s (samplerate field: %x)", node->file, tmp[0]);
-			continue;
-		}
-
-		// Jump back to file beginning
-		fseek(mp3_fp, 0, SEEK_SET);
-
-		#define INPUT_BUFSIZE 4096
-		#define OUTPUT_BUFSIZE 32768
+		/*
 		unsigned char ibuf[INPUT_BUFSIZE];
 		ssize_t len, olen;
 		int samples, rc, decode = 0;
@@ -488,7 +613,7 @@ static void *stream_thread(void *arg)
 				break;
 
 			len = samples = 0;
-			/* fetch input buffer */
+			// fetch input buffer
 			len = fread(ibuf, 1, sizeof(ibuf), mp3_fp);
 			if (decode)
 				samples = ices_reencode_decode(ibuf, len, sizeof(left), left, right);
@@ -499,13 +624,13 @@ static void *stream_thread(void *arg)
 			while(1)
 			{
 				rc = olen = 0;
-				/* don't reencode if the source is MP3 and the same bitrate */
+				// don't reencode if the source is MP3 and the same bitrate
 				if(decode)
 				{
 					if(samples > 0)
 					{
-						/* for some reason we have to manually duplicate right from left to get
-						 * LAME to output stereo from a mono source */
+						// for some reason we have to manually duplicate right from left to get
+						// LAME to output stereo from a mono source
 						if (channels == 1)
 							rightp = left;
 						else
@@ -513,7 +638,7 @@ static void *stream_thread(void *arg)
 
 						if(obuf.len < (unsigned int) (7200 + samples + samples / 4))
 						{
-							/* pessimistic estimate from lame.h */
+							// pessimistic estimate from lame.h
 							obuf.len = 7200 + 5 * samples / 2;
 							obuf.data = realloc(obuf.data, obuf.len);
 						}
@@ -560,12 +685,10 @@ static void *stream_thread(void *arg)
 		if (obuf.data)
 			free(obuf.data);
 
-		#undef INPUT_BUFSIZE
-		#undef OUTPUT_BUFSIZE
+		source.close(&source);
+		*/
 
 		pthread_cancel(duration_thread);
-		fclose(mp3_fp);
-		mp3_fp = NULL;
 
 		if(stream_stop == 1)
 			stream_stop = 2;
