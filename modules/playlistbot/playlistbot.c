@@ -431,7 +431,7 @@ static int stream_send(struct mp3_file *source)
 							goto err;
 						}
 						obuf.data = tmpbuf;
-						debug("Grew output buffer to %d bytes", obuf.len);
+						debug("Grew output buffer to %d bytes", (int)obuf.len);
 					}
 
 					if ((olen = ices_reencode(samples, left, rightp, obuf.data, obuf.len)) < -1)
@@ -446,11 +446,11 @@ static int stream_send(struct mp3_file *source)
 						{
 							obuf.data = tmpbuf;
 							obuf.len += OUTPUT_BUFSIZE;
-							debug("Grew output buffer to %d bytes", obuf.len);
+							debug("Grew output buffer to %d bytes", (int)obuf.len);
 						}
 						else
 						{
-							log_append(LOG_ERROR, "%d byte output buffer is too small", obuf.len);
+							log_append(LOG_ERROR, "%d byte output buffer is too small", (int)obuf.len);
 						}
 					}
 					else if (olen > 0)
