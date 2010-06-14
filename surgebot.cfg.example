@@ -31,6 +31,13 @@
 	"stealth" = "0";
 };
 
+"bitly" = {
+	// Sign up on http://bit.ly to get an API key
+	"api_user" = "";
+	"api_key" = "";
+	"timeout" = "5";
+};
+
 "perform" = {
 	"file" = "perform.cfg";
 };
