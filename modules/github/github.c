@@ -64,6 +64,12 @@ HTTP_HANDLER(http_github)
 	json_object *payload = NULL;
 	struct stringlist *messages = NULL;
 
+	if(!channel_raw)
+	{
+		debug("Got no channel name from github: %s", channel);
+		goto out;
+	}
+
 	if(channel_raw && *channel_raw == '#')
 		channel = strdup(channel_raw);
 	else
@@ -72,9 +78,9 @@ HTTP_HANDLER(http_github)
 		snprintf(channel, strlen(channel_raw) + 2, "#%s", channel_raw);
 	}
 
-	if(!channel || !IsChannelName(channel))
+	if(!IsChannelName(channel))
 	{
-		debug("Got no/invalid channel name from github: %s", channel);
+		debug("Got invalid channel name from github: %s", channel);
 		goto out;
 	}
 
