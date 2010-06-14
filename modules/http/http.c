@@ -87,9 +87,9 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 
 void HTTPRequest_free(struct HTTPRequest *http)
 {
-	debug("Freeing HTTP Request %s", http->id);
 	if(http)
 	{
+		debug("Freeing HTTP Request %s", http->id);
 		if(http->sock)
 			sock_close(http->sock);
 
@@ -106,6 +106,12 @@ void HTTPRequest_free(struct HTTPRequest *http)
 		free(http->host);
 		free(http);
 	}
+}
+
+void HTTPRequest_cancel(struct HTTPRequest *http)
+{
+	debug("Cancelling http request %s (http://%s/%s)", http->id, http->host->host, http->host->path);
+	dict_delete(requests, http->id);
 }
 
 void HTTPRequest_add_header(struct HTTPRequest *http, const char *name, const char *content)
@@ -300,13 +306,13 @@ static struct HTTPHost *parse_host(const char *host)
 {
 	struct HTTPHost *hhost = malloc(sizeof(struct HTTPHost));
 	char *tmp;
-	
+
 	// Remove http part
 	if(!strncasecmp(host, "https://", 8))
 		host += 8;
 	else if(!strncasecmp(host, "http://", 7))
 		host += 7;
-	
+
 	// Is there a slash introducing a possible path?
 	if((tmp = strstr(host, "/")))
 	{

@@ -60,6 +60,8 @@ enum HTTPRequest_event
 // The host is meant to contain the port or assume 80 by default
 struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *, http_read_f *);
 void HTTPRequest_free(struct HTTPRequest *);
+void HTTPRequest_cancel(struct HTTPRequest *);
+
 
 void HTTPRequest_add_header(struct HTTPRequest *, const char *name, const char *content);
 void HTTPRequest_del_header(struct HTTPRequest *, const char *name);
