@@ -1,0 +1,17 @@
+"*MODULE" = {
+        "*GITHUB" = {
+		"*" = "Allows $N to receive GitHub commit/push notifications.";
+		"*" = (
+			"$b$uGitHub Module:$b$u",
+			"If you enable this module in a channel, $b$N$b will respond to",
+			"Post-Receive notifications from www.github.com.",
+			"To use this module, you have to set-up the following 'Post-Receive URL'",
+			"in your GitHub repository: $bhttp://bot.surgebot.net/github/<channel>[/key]$b",
+			"Note that the channel name must be provided without the leading '#'.",
+			"The key is optional and allows you to prevent random people from sending",
+			"commit notifications to your channel. To use a key, use $b*cset GitHub.Key <key>$b",
+			"and include the key in the notification URL."
+		);
+	};
+};
+
