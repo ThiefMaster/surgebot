@@ -149,9 +149,12 @@ HTTP_HANDLER(http_github)
 		struct stringlist *dirs = stringlist_create();
 		for(int i = 0; i < files->length; i++)
 		{
-			const char *dir = dirname(files->array[i]);
+			assert_continue(json_object_is_type(files->array[i], json_type_string));
+			char *file = strdup(json_object_get_string(files->array[i]));
+			const char *dir = dirname(file);
 			if(stringlist_find(dirs, dir) == -1)
 				stringlist_add(dirs, strdup(dir));
+			free(file);
 		}
 
         	snprintf(commitbuf, sizeof(commitbuf),
