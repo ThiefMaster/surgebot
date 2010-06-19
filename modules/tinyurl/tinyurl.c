@@ -1,7 +1,5 @@
-#define _GNU_SOURCE
-#include <time.h>
-#include "module.h"
 #include "global.h"
+#include "module.h"
 #include "irc_handler.h"
 #include "irc.h"
 #include "dict.h"

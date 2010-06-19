@@ -20,5 +20,7 @@ int stringlist_find(struct stringlist *list, const char *string);
 void stringlist_sort(struct stringlist *list);
 void stringlist_sort_irc(struct stringlist *list);
 struct stringlist *stringlist_to_irclines(const char *target, struct stringlist *list);
+struct stringlist *stringlist_build(const char *str, ...) NULL_SENTINEL;
+struct stringlist *stringlist_build_n(unsigned int count, ...);
 
 #endif

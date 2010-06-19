@@ -321,7 +321,7 @@ size_t strlcpy(char *out, const char *in, size_t len)
 		memcpy(out, in, len);
 		out[len] = '\0';
 	}
-	return in_len;
+	return (in_len > len) ? len : in_len;
 }
 
 size_t strlcat(char *out, const char *in, size_t len)

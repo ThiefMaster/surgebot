@@ -11,12 +11,14 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <netdb.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +40,7 @@
 #undef HAVE_IPV6
 #define HAVE_MMAP
 #define HAVE_SSL
-#define HTTP_THREADS
+//#define HTTP_THREADS
 //#define IRC_HANDLER_DEBUG
 
 #ifdef HAVE_SSL
@@ -84,9 +86,15 @@ extern time_t now;
 extern struct surgebot bot;
 
 #if __GNUC__ >= 2
-#define UNUSED_ARG(ARG) ARG __attribute__((unused))
+# define UNUSED_ARG(ARG) ARG __attribute__((unused))
+# if __GNUC__ >= 4
+#  define NULL_SENTINEL __attribute__((sentinel))
+# else
+#  define NULL_SENTINEL
+# endif
 #else
-#define UNUSED_ARG(ARG) ARG
+# define NULL_SENTINEL
+# define UNUSED_ARG(ARG) ARG
 #endif
 
 #endif

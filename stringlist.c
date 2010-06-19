@@ -134,3 +134,31 @@ struct stringlist *stringlist_to_irclines(const char *target, struct stringlist 
 
 	return lines;
 }
+
+struct stringlist *stringlist_build(const char *str, ...)
+{
+	va_list args;
+	struct stringlist *list = stringlist_create();
+
+	stringlist_add(list, strdup(str));
+	va_start(args, str);
+	while((str = va_arg(args, const char *)))
+		stringlist_add(list, strdup(str));
+	va_end(args);
+	return list;
+}
+
+struct stringlist *stringlist_build_n(unsigned int count, ...)
+{
+	va_list args;
+	struct stringlist *list = stringlist_create();
+
+	va_start(args, count);
+	for(unsigned int i = 0; i < count; i++)
+	{
+		const char *str = va_arg(args, const char *);
+		stringlist_add(list, str ? strdup(str) : NULL);
+	}
+	va_end(args);
+	return list;
+}
