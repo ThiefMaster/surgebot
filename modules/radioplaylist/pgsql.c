@@ -122,7 +122,7 @@ PGresult *pgsql_query_bin(struct pgsql *conn, const char *query, int want_result
 
 		for(unsigned int i = 0; i < params->count; i++)
 		{
-			paramLengths[i] = strlen(params->data[i]);
+			paramLengths[i] = params->data[i] ? strlen(params->data[i]) : 0;
 			paramFormats[i] = (binary_flags >> i) ? 1 : 0;
 		}
 	}
