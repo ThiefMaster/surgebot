@@ -3,6 +3,7 @@
 #include "stringlist.h"
 #include "pgsql.h"
 
+#include <libgen.h>
 #include <math.h>
 #include <sys/mman.h>
 
@@ -30,6 +31,7 @@ static int32_t playlist_scan_dir(const char *path, struct pgsql *conn, struct pl
 static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct stat *sb, struct playlist *playlist);
 static const mad_timer_t *get_mp3_duration(const char *file, struct stat *sb);
 static char *get_id3_entry(const struct id3_tag *tag, const char *id);
+static const char *make_absolute_path(const char *relative);
 
 
 struct playlist *playlist_load(struct pgsql *conn, uint8_t flags)
@@ -269,9 +271,7 @@ static int8_t playlist_blacklist_node(struct playlist *playlist, struct playlist
 
 static struct playlist_node *playlist_make_node(struct playlist *playlist, const char *file)
 {
-	char real_file[PATH_MAX];
-	const char *tmp;
-	size_t pathlen;
+	const char *real_file;
 	struct id3_file *i3f;
 	struct playlist_node *node, *existing;
 	const mad_timer_t *duration;
@@ -280,12 +280,7 @@ static struct playlist_node *playlist_make_node(struct playlist *playlist, const
 	if(!(existing = playlist_find_file(playlist, file)) && *file != '/')
 	{
 		// Try using the absolute path of the file
-		getcwd(real_file, sizeof(real_file));
-		pathlen = strlen(real_file);
-		tmp = file;
-		if(!strncmp(tmp, "./", 2))
-			tmp += 2;
-		snprintf(real_file + pathlen, sizeof(real_file) - pathlen, "/%s", tmp);
+		real_file = make_absolute_path(file);
 		if(strcmp(file, real_file))
 			existing = playlist_find_file(playlist, real_file);
 	}
@@ -421,8 +416,6 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 {
 	int32_t count = 0;
 	struct playlist *playlist = NULL;
-	char real_path[PATH_MAX];
-	size_t pathlen = 0;
 
 	if((mode & PL_S_REMOVE_MISSING) && mode != PL_S_REMOVE_MISSING)
 	{
@@ -463,19 +456,7 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 	if(!(mode & (PL_S_TRUNCATE | PL_S_PARSE_ALL)))
 		playlist = playlist_load(conn, PL_L_ALL);
 
-	// lame realpath implementation which only replaces leading ./ with the current working dir but doesn't resolve symlinks
-	if(*path == '/')
-		strlcpy(real_path, path, sizeof(real_path));
-	else
-	{
-		assert_return(getcwd(real_path, sizeof(real_path)), -1);
-		pathlen = strlen(real_path);
-		if(!strncmp(path, "./", 2))
-			path += 2;
-		snprintf(real_path + pathlen, sizeof(real_path) - pathlen, "/%s", path);
-	}
-
-	count = playlist_scan_dir(real_path, conn, playlist, 0);
+	count = playlist_scan_dir(make_absolute_path(path), conn, playlist, 0);
 
 	if(playlist)
 		playlist_free(playlist);
@@ -484,23 +465,8 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 
 int8_t playlist_add_file(const char *file, struct pgsql *conn, struct stat *sb)
 {
-	char real_path[PATH_MAX];
-	size_t pathlen = 0;
 	int8_t rc;
-
-	// lame realpath implementation which only replaces leading ./ with the current working dir but doesn't resolve symlinks
-	if(*file == '/')
-		strlcpy(real_path, file, sizeof(real_path));
-	else
-	{
-		assert_return(getcwd(real_path, sizeof(real_path)), -1);
-		pathlen = strlen(real_path);
-		if(!strncmp(file, "./", 2))
-			file += 2;
-		snprintf(real_path + pathlen, sizeof(real_path) - pathlen, "/%s", file);
-	}
-
-	rc = playlist_scan_file(conn, real_path, sb, NULL);
+	rc = playlist_scan_file(conn, make_absolute_path(file), sb, NULL);
 	return (rc <= 0) ? -1 : 0;
 }
 
@@ -582,7 +548,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	{
 		uint8_t modified = 0;
 		char *tmp = strdup(file);
-		debug("found old record for %s", basename(file));
+		debug("found old record for %s", basename(tmp));
 		free(tmp);
 
 		if(node->inode != sb->st_ino)
@@ -742,4 +708,73 @@ static char *get_id3_entry(const struct id3_tag *tag, const char *id)
 		ucs4 = id3_genre_name(ucs4);
 
 	return (char *)id3_ucs4_utf8duplicate(ucs4);
+}
+
+static const char *make_absolute_path(const char *relative)
+{
+	static char absolute[PATH_MAX];
+	char old_cwd[PATH_MAX], new_cwd[PATH_MAX];
+	char *relative_dup = NULL, *relative_dup2 = NULL;
+	const char *filename, *ret, *relative_path;
+	size_t pathlen;
+	struct stat sb, sb2;
+	int stat_rc;
+
+	assert_return(strlen(relative) < PATH_MAX, relative);
+
+	// Save current working dir
+	getcwd(old_cwd, sizeof(old_cwd));
+
+	if((stat_rc = stat(relative, &sb)) == -1)
+		log_append(LOG_WARNING, "could not stat(%s): %s", relative, strerror(errno));
+
+	if(S_ISDIR(sb.st_mode) && stat_rc == 0)
+	{
+		filename = NULL;
+		relative_path = relative;
+	}
+	else
+	{
+		relative_dup = strdup(relative);
+		relative_dup2 = strdup(relative);
+		filename = basename(relative_dup);
+		relative_path = dirname(relative_dup2);
+	}
+
+	if(chdir(relative_path) == -1)
+	{
+		log_append(LOG_WARNING, "could not chdir(%s): %s", relative_path, strerror(errno));
+		MyFree(relative_dup);
+		MyFree(relative_dup2);
+		return relative;
+	}
+
+	getcwd(new_cwd, sizeof(new_cwd));
+
+	// Go back to old working dir
+	if(chdir(old_cwd) == -1)
+		log_append(LOG_WARNING, "could not chdir(%s): %s", old_cwd, strerror(errno));
+
+	if(filename)
+	{
+		snprintf(absolute, sizeof(absolute), "%s/%s", new_cwd, filename);
+		ret = absolute;
+	}
+	else
+	{
+		// No filename -> we can just return the new working dir
+		ret = new_cwd;
+	}
+
+	if(stat(ret, &sb2) == -1)
+		log_append(LOG_WARNING, "could not stat(%s): %s", ret, strerror(errno));
+	else if(stat_rc == 0 && sb.st_ino != sb2.st_ino) // check if the new path points at the same destination
+	{
+		log_append(LOG_ERROR, "absolute path points to different target than relative path");
+		ret = relative;
+	}
+
+	MyFree(relative_dup);
+	MyFree(relative_dup2);
+	return ret;
 }
