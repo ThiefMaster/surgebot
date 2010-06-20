@@ -82,10 +82,7 @@ char *pgsql_nvalue_bytea(PGresult *res, int row, const char *col)
 		return NULL;
 
 	value = (char *)PQunescapeBytea((unsigned char *)PQgetvalue(res, row, fnum), &len);
-	dup = malloc(len + 1);
-	memcpy(dup, value, len);
-	dup[len] = '\0';
-	debug("dup: %s", dup);
+	dup = strndup(value, len);
 	PQfreemem(value);
 	return dup;
 }
