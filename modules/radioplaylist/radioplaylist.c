@@ -495,29 +495,35 @@ COMMAND(playlist_reload)
 
 COMMAND(playlist_add)
 {
+	char *filename;
 	struct pgsql *conn;
 	struct stat sb;
 	int8_t rc;
 
-	if(stat(argv[1], &sb) == -1)
+	filename = untokenize(argc - 1, argv + 1, " ");
+
+	if(stat(filename, &sb) == -1)
 	{
 		reply("Ungültige Datei: %s", strerror(errno));
+		free(filename);
 		return 0;
 	}
 
 	if(!S_ISREG(sb.st_mode))
 	{
 		reply("Es können nur einzelne Dateien hinzugefügt werden");
+		free(filename);
 		return 0;
 	}
 
 	if(!(conn = pgsql_init(radioplaylist_conf.db_conn_string)))
 	{
 		reply("Konnte keine Verbindung zur Datenbank aufbauen");
+		free(filename);
 		return 0;
 	}
 
-	rc = playlist_add_file(argv[1], conn, &sb);
+	rc = playlist_add_file(filename, conn, &sb);
 
 	if(rc == 0)
 		reply("Datei wurde zur Playlist hinzugefügt");
@@ -525,11 +531,13 @@ COMMAND(playlist_add)
 		reply("Datei konnte nicht zur Playlist hinzugefügt werden");
 
 	pgsql_fini(conn);
+	free(filename);
 	return (rc == 0);
 }
 
 COMMAND(playlist_scan)
 {
+	char *path;
 	struct stat sb;
 	pthread_attr_t attr;
 
@@ -539,21 +547,25 @@ COMMAND(playlist_scan)
 		return 0;
 	}
 
-	if(stat(argv[1], &sb) == -1)
+	path = untokenize(argc - 1, argv + 1, " ");
+
+	if(stat(path, &sb) == -1)
 	{
 		reply("Ungültiger Ordner: %s", strerror(errno));
+		free(path);
 		return 0;
 	}
 
 	if(!S_ISDIR(sb.st_mode))
 	{
 		reply("Es können nur komplette Ordner hinzugefügt werden");
+		free(path);
 		return 0;
 	}
 
 	memset(&scan_state, 0, sizeof(scan_state));
 	scan_state.state = SCAN_ACTIVE;
-	scan_state.path = strdup(argv[1]);
+	scan_state.path = path;
 	scan_state.nick = strdup(src->nick);
 
 	pthread_attr_init(&attr);
