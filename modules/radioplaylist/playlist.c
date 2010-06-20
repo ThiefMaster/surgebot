@@ -64,8 +64,10 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t flags)
 	for(int i = 0; i < rows; i++)
 	{
 		const char *tmp;
+		char *file = pgsql_nvalue_bytea(res, i, "file");
 		uint32_t id = strtoul(pgsql_nvalue(res, i, "id"), NULL, 10);
-		struct playlist_node *node = playlist_node_create(id, pgsql_nvalue(res, i, "file"));
+		struct playlist_node *node = playlist_node_create(id, file);
+		free(file);
 		if((tmp = pgsql_nvalue(res, i, "artist")))
 			node->artist = strdup(tmp);
 		if((tmp = pgsql_nvalue(res, i, "album")))
@@ -640,12 +642,12 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	snprintf(sizebuf, sizeof(sizebuf), "%ld", sb->st_size);
 	snprintf(mtimebuf, sizeof(mtimebuf), "%ld", sb->st_mtime);
 
-	pgsql_query(conn, "DELETE FROM playlist WHERE file = $1", 0, stringlist_build_n(1, file));
-	res = pgsql_query(conn, "INSERT INTO playlist \
+	pgsql_query_bin(conn, "DELETE FROM playlist WHERE file = $1", 0, stringlist_build_n(1, file), 1);
+	res = pgsql_query_bin(conn, "INSERT INTO playlist \
 					(file, artist, album, title, duration, st_inode, st_size, st_mtime) \
-				 VALUES \
-					($1, $2, $3, $4, $5, $6, $7, $8)",
-			  1, stringlist_build_n(8, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf));
+				     VALUES \
+					($1::bytea, $2, $3, $4, $5, $6, $7, $8)",
+			  1, stringlist_build_n(8, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
 	rc = res ? 1 : -1;
 	if(res)
 		pgsql_free(res);

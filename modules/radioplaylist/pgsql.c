@@ -67,9 +67,38 @@ const char *pgsql_nvalue(PGresult *res, int row, const char *col)
 	return PQgetvalue(res, row, fnum);
 }
 
+char *pgsql_nvalue_bytea(PGresult *res, int row, const char *col)
+{
+	char *value, *dup;
+	size_t len;
+	int fnum = PQfnumber(res, col);
+	if(fnum == -1)
+	{
+		log_append(LOG_WARNING, "field '%s' does not exist", col);
+		return NULL;
+	}
+
+	if(PQgetisnull(res, row, fnum))
+		return NULL;
+
+	value = (char *)PQunescapeBytea((unsigned char *)PQgetvalue(res, row, fnum), &len);
+	dup = malloc(len + 1);
+	memcpy(dup, value, len);
+	dup[len] = '\0';
+	debug("dup: %s", dup);
+	PQfreemem(value);
+	return dup;
+}
+
 PGresult *pgsql_query(struct pgsql *conn, const char *query, int want_result, struct stringlist *params)
 {
+	return pgsql_query_bin(conn, query, want_result, params, 0);
+}
+
+PGresult *pgsql_query_bin(struct pgsql *conn, const char *query, int want_result, struct stringlist *params, uint32_t binary_flags)
+{
 	PGresult *res = NULL;
+	int *paramLengths, *paramFormats;
 
 	if(PQstatus(conn->conn) == CONNECTION_BAD)
 	{
@@ -84,7 +113,21 @@ PGresult *pgsql_query(struct pgsql *conn, const char *query, int want_result, st
 		}
 	}
 
-	res = PQexecParams(conn->conn, query, params ? params->count : 0, NULL, params ? (const char*const*)params->data : NULL, NULL, NULL, 0);
+	if(!binary_flags || !params)
+		paramLengths = paramFormats = NULL;
+	else
+	{
+		paramLengths = calloc(params->count, sizeof(int));
+		paramFormats = calloc(params->count, sizeof(int));
+
+		for(unsigned int i = 0; i < params->count; i++)
+		{
+			paramLengths[i] = strlen(params->data[i]);
+			paramFormats[i] = (binary_flags >> i) ? 1 : 0;
+		}
+	}
+
+	res = PQexecParams(conn->conn, query, params ? params->count : 0, NULL, params ? (const char*const*)params->data : NULL, paramLengths, paramFormats, 0);
 
 	// If the connection is bad now, our query was most likely not processed -> reconnect and retry
 	if(PQstatus(conn->conn) == CONNECTION_BAD)
@@ -98,17 +141,23 @@ PGresult *pgsql_query(struct pgsql *conn, const char *query, int want_result, st
 		if(PQstatus(conn->conn) != CONNECTION_OK)
 		{
 			log_append(LOG_WARNING, "connection to database failed: %s", PQerrorMessage(conn->conn));
+			MyFree(paramLengths);
+			MyFree(paramFormats);
 			return NULL;
 		}
 
 		res = PQexecParams(conn->conn, query, params ? params->count : 0, NULL, params ? (const char*const*)params->data : NULL, NULL, NULL, 0);
 	}
 
+	MyFree(paramLengths);
+	MyFree(paramFormats);
+
 	if(!res)
 	{
 		log_append(LOG_WARNING, "pgsql query failed: %s", PQerrorMessage(conn->conn));
 		if(params)
 			stringlist_free(params);
+
 		return NULL;
 	}
 
