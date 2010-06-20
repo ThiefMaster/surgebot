@@ -178,6 +178,10 @@ int main(int argc, char **argv)
 	now = time(NULL);
 	srand(now);
 
+	// Always generate core dumps when crashing
+	struct rlimit rl = {RLIM_INFINITY, RLIM_INFINITY};
+	setrlimit(RLIMIT_CORE, &rl);
+
 	signal_init();
 	tools_init();
 	if(conf_init() != 0)
