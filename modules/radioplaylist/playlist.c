@@ -290,9 +290,9 @@ static struct playlist_node *playlist_make_node(struct playlist *playlist, const
 		debug("creating node for %s; using metadata from existing entry", file);
 		node = playlist_node_create(existing->id, existing->file);
 		node->duration = existing->duration;
-		node->artist = strdup(existing->artist);
-		node->album = strdup(existing->album);
-		node->title = strdup(existing->title);
+		node->artist = existing->artist ? strdup(existing->artist) : NULL;
+		node->album = existing->album ? strdup(existing->album) : NULL;
+		node->title = existing->title ? strdup(existing->title) : NULL;
 	}
 	else
 	{
@@ -339,9 +339,9 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 	debug("cloning node with id %"PRIu32" (%s)", existing->id, existing->file);
 	node = playlist_node_create(existing->id, existing->file);
 	node->duration = existing->duration;
-	node->artist = strdup(existing->artist);
-	node->album = strdup(existing->album);
-	node->title = strdup(existing->title);
+	node->artist = existing->artist ? strdup(existing->artist) : NULL;
+	node->album = existing->album ? strdup(existing->album) : NULL;
+	node->title = existing->title ? strdup(existing->title) : NULL;
 	return node;
 }
 
