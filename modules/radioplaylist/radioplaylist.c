@@ -1080,7 +1080,7 @@ static enum mad_flow error_cb(void *data, struct mad_stream *stream, struct mad_
 	if((stream->this_frame - ctx->start) == 0 && stream->error == MAD_ERROR_LOSTSYNC)
 		return MAD_FLOW_CONTINUE;
 
-	debug("decoding error 0x%04x (%s) at byte offset %u",
+	debug("decoding error 0x%04x (%s) at byte offset %zu",
 		stream->error, mad_stream_errorstr(stream),
 		stream->this_frame - ctx->start);
 
