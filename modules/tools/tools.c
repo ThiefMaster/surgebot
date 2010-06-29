@@ -24,7 +24,7 @@ entities[] =
 	{ "apos",	'\'' }
 };
 
-unsigned char hexchars[] = "0123456789ABCDEF";
+const unsigned char hexchars[] = "0123456789ABCDEF";
 const char whitespace_chars[] = " \t\n\v\f\r";
 
 MODULE_DEPENDS(NULL);

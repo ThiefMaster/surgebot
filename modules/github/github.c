@@ -186,7 +186,7 @@ HTTP_HANDLER(http_github)
 		ctx->ref = strdup(ref_name);
 		ctx->before = strndup(before, 6);
 		ctx->after = strndup(after, 6);
-		bitly_shorten(urlbuf, (bitly_shortened_f *)url_shortened, ctx);
+		bitly_shorten(urlbuf, (bitly_shortened_f *)url_shortened, ctx, NULL);
 	}
 	else if(messages->count == 1 && commits->length)
 	{
@@ -198,7 +198,7 @@ HTTP_HANDLER(http_github)
 		ctx->messages = messages;
 		messages = NULL; // so it's not free'd at the end of this function
 		ctx->channel = strdup(channel);
-		bitly_shorten(url, (bitly_shortened_f *)url_shortened, ctx);
+		bitly_shorten(url, (bitly_shortened_f *)url_shortened, ctx, NULL);
 	}
 	else
 	{
