@@ -542,6 +542,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	char durationbuf[8], inodebuf[16], sizebuf[16], mtimebuf[16];
 	PGresult *res;
 	struct playlist_node *node = NULL;
+	const char *blacklist = "false";
 	int8_t rc;
 
 	if(playlist && (node = playlist_find_file(playlist, file)))
@@ -551,11 +552,13 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 		debug("found old record for %s", basename(tmp));
 		free(tmp);
 
+		/*
 		if(node->inode != sb->st_ino)
 		{
 			modified = 1;
 			debug("inode differs: %"PRIu32" -> %lu", node->inode, sb->st_ino);
 		}
+		*/
 		if(node->size != sb->st_size)
 		{
 			modified = 1;
@@ -566,6 +569,9 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 			modified = 1;
 			debug("mtime differs: %"PRIu32" -> %ld", node->mtime, sb->st_mtime);
 		}
+
+		if(node->blacklist)
+			blacklist = "true";
 
 		if(!modified)
 			return 0;
@@ -610,10 +616,10 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 
 	pgsql_query_bin(conn, "DELETE FROM playlist WHERE file = $1", 0, stringlist_build_n(1, file), 1);
 	res = pgsql_query_bin(conn, "INSERT INTO playlist \
-					(file, artist, album, title, duration, st_inode, st_size, st_mtime) \
+					(file, artist, album, title, duration, st_inode, st_size, st_mtime, blacklist) \
 				     VALUES \
-					($1::bytea, $2, $3, $4, $5, $6, $7, $8)",
-			  1, stringlist_build_n(8, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
+					($1::bytea, $2, $3, $4, $5, $6, $7, $8, $9)",
+			  1, stringlist_build_n(9, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf, blacklist), 1);
 	rc = res ? 1 : -1;
 	if(res)
 		pgsql_free(res);
