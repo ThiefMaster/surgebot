@@ -40,11 +40,11 @@ MODULE_FINI
 COMMAND(stats_timers)
 {
 	struct dict *timers = timer_dict();
-	struct table *table = table_create(4, dict_size(timers));
+	struct table *table = table_create(3, dict_size(timers));
 	unsigned int i = 0;
 	const char *wildmask = (argc > 1 ? argv[1] : NULL);
 
-	table_set_header(table, "Id", "Name", "Execute in", "Data");
+	table_set_header(table, "Id", "Name", "Execute in");
 	dict_iter(node, timers)
 	{
 		struct timer *tmr = node->data;
@@ -58,19 +58,23 @@ COMMAND(stats_timers)
 
 		*triggering = tmr->time - now;
 
-		table->data[i][0] = strtab(tmr->id);
+		char *timestamp = malloc(21);
+		snprintf(timestamp, 21, "%lu", tmr->id);
+		timestamp[20] = '\0';
+
+		table->data[i][0] = strdupa(timestamp);
 		table->data[i][1] = tmr->name;
 		// To compare the timers, this needs to stay an int, so no 'real' converting for now
 		table->data[i][2] = (char*)triggering;
-		table->data[i][3] = tmr->data ? strdupa(tmr->data) : "-";
-
+		
+		free(timestamp);
 		i++;
 	}
 
 	table->rows = i;
 	qsort(table->data, table->rows, sizeof(table->data[0]), sort_timers);
 	// Now convert all triggering times to 'true' strings
-	for(unsigned int i = 0; i < table->rows; i++)
+	for(unsigned int i = 0; i < table->rows; ++i)
 	{
 		time_t *backup = (time_t*)table->data[i][2];
 		table->data[i][2] = strdupa(duration2string(*backup));
@@ -84,7 +88,7 @@ COMMAND(stats_timers)
 		reply("There are $b%d$b active timers matching $b%s$b.", i, wildmask);
 	else
 		reply("There are $b%d$b active timers.", i);
-
+	
 	table->rows = dict_size(timers); // restore old row count so all rows get free()'d
 	table_free(table);
 	return 1;
