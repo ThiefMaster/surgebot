@@ -455,7 +455,7 @@ COMMAND(playlist_blacklist)
 	else
 		reply("Song %"PRIu32" konnte nicht zur Blacklist hinzugefügt werden", id);
 
-	return rc ? 1 : 0;
+	return rc ? 0 : 1;
 }
 
 COMMAND(playlist_reload)
