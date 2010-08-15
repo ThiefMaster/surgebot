@@ -706,9 +706,9 @@ COMMAND(stats_clients)
 		struct rb_http_client *client = http_clients->data[i];
 		table->data[i][0] = client->client->ip;
 		table->data[i][1] = client->uuid;
-		table->data[i][2] = client->nick;
-		table->data[i][3] = client->clientname;
-		table->data[i][4] = client->clientver;
+		table->data[i][2] = client->nick ? client->nick : "";
+		table->data[i][3] = client->clientname ? client->clientname : "";
+		table->data[i][4] = client->clientver ? client->clientver : "";
 	}
 
 	table_send(table, src->nick);
