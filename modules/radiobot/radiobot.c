@@ -602,10 +602,13 @@ HTTP_HANDLER(http_stream_status)
 	rb_client = malloc(sizeof(struct rb_http_client));
 	memset(rb_client, 0, sizeof(struct rb_http_client));
 	rb_client->client = client;
-	rb_client->clientname = (str = dict_find(get_vars, "client")) ? strdup(str) : NULL;
-	rb_client->clientver = (str = dict_find(get_vars, "clientver")) ? strdup(str) : NULL;
-	rb_client->nick = (str = dict_find(get_vars, "nick")) ? strdup(str) : NULL;
-	if((str = dict_find(get_vars, "uuid")))
+	if((str = dict_find(get_vars, "client")) && !strpbrk(str, "\r\n"))
+		rb_client->clientname = strdup(str);
+	if((str = dict_find(get_vars, "clientver")) && !strpbrk(str, "\r\n"))
+		rb_client->clientver = strdup(str);
+	if((str = dict_find(get_vars, "nick")) && !strpbrk(str, "\r\n"))
+		rb_client->nick = strdup(str);
+	if((str = dict_find(get_vars, "uuid")) && !strpbrk(str, "\r\n"))
 		strlcpy(rb_client->uuid, str, sizeof(rb_client->uuid));
 	debug("Client connected: %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
 	rb_http_client_list_add(http_clients, rb_client);
