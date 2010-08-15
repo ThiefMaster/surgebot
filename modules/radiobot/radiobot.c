@@ -14,6 +14,7 @@
 #include "stringlist.h"
 #include "list.h"
 #include "database.h"
+#include "table.h"
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -80,10 +81,19 @@ struct cmd_client
 	unsigned int showinfo : 1;
 };
 
+struct rb_http_client
+{
+	struct http_client *client;
+	char *clientname;
+	char *clientver;
+	char *nick;
+	char uuid[37];
+};
+
 DECLARE_LIST(cmd_client_list, struct cmd_client *)
 IMPLEMENT_LIST(cmd_client_list, struct cmd_client *)
-DECLARE_LIST(http_client_list, struct http_client *)
-IMPLEMENT_LIST(http_client_list, struct http_client *)
+DECLARE_LIST(rb_http_client_list, struct rb_http_client *)
+IMPLEMENT_LIST(rb_http_client_list, struct rb_http_client *)
 
 HTTP_HANDLER(http_root);
 HTTP_HANDLER(http_stream_info);
@@ -91,6 +101,7 @@ HTTP_HANDLER(http_stream_status);
 HTTP_HANDLER(http_wish_greet);
 PARSER_FUNC(mod_active);
 IRC_HANDLER(nick);
+COMMAND(stats_clients);
 COMMAND(setmod);
 COMMAND(setplaylist);
 COMMAND(settitle);
@@ -129,6 +140,9 @@ static void send_status(const char *nick);
 static void send_showinfo(struct cmd_client *client);
 static void show_updated();
 static void show_updated_readonly();
+static void rb_http_client_free(struct rb_http_client *client);
+static void rb_http_client_list_del_client(struct rb_http_client_list *list, struct http_client *client);
+static struct rb_http_client *rb_http_client_by_uuid(const char *uuid);
 static void http_stream_status_send(struct http_client *client, int timeout);
 void set_current_title(const char *title);
 const char *get_streamtitle();
@@ -146,7 +160,7 @@ static struct sock *kicksrc_sock = NULL;
 static struct sock *stats_sock = NULL;
 static struct sock *cmd_sock = NULL;
 static struct cmd_client_list *cmd_clients;
-static struct http_client_list *http_clients;
+static struct rb_http_client_list *http_clients;
 static struct stringbuffer *stats_data;
 static char *current_mod = NULL;
 static char *current_playlist = NULL;
@@ -178,7 +192,7 @@ MODULE_INIT
 
 	stats_data = stringbuffer_create();
 	cmd_clients = cmd_client_list_create();
-	http_clients = http_client_list_create();
+	http_clients = rb_http_client_list_create();
 
 	reg_conf_reload_func(radiobot_conf_reload);
 	radiobot_conf_reload();
@@ -194,6 +208,7 @@ MODULE_INIT
 
 	http_handler_add_list(handlers);
 
+	DEFINE_COMMAND(this, "stats clients",	stats_clients,	1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setmod",		setmod,		1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "settitle",	settitle,	1, 0, "group(admins)");
@@ -246,12 +261,12 @@ MODULE_FINI
 
 	while(http_clients->count)
 	{
-		struct http_client *client = http_clients->data[http_clients->count - 1];
-		http_stream_status_send(client, 0);
+		struct rb_http_client *client = http_clients->data[http_clients->count - 1];
+		http_stream_status_send(client->client, 0);
 	}
 
 	cmd_client_list_free(cmd_clients);
-	http_client_list_free(http_clients);
+	rb_http_client_list_free(http_clients);
 	stringbuffer_free(stats_data);
 
 	MyFree(current_mod);
@@ -494,10 +509,47 @@ HTTP_HANDLER(http_stream_info)
 	json_object_put(response);
 }
 
+static void rb_http_client_free(struct rb_http_client *client)
+{
+	MyFree(client->clientname);
+	MyFree(client->clientver);
+	MyFree(client->nick);
+	free(client);
+}
+
+static void rb_http_client_list_del_client(struct rb_http_client_list *list, struct http_client *client)
+{
+	for(unsigned int i = 0; i < list->count; i++)
+	{
+		struct rb_http_client *rb_client = list->data[i];
+		if(rb_client->client == client)
+		{
+			rb_http_client_list_del(list, rb_client);
+			rb_http_client_free(rb_client);
+			break;
+		}
+	}
+}
+
+static struct rb_http_client *rb_http_client_by_uuid(const char *uuid)
+{
+	if(!uuid || !*uuid)
+		return NULL;
+
+	for(unsigned int i = 0; i < http_clients->count; i++)
+	{
+		struct rb_http_client *rb_client = http_clients->data[i];
+		if(!strcmp(rb_client->uuid, uuid))
+			return rb_client;
+	}
+
+	return NULL;
+}
+
 static void http_stream_status_send(struct http_client *client, int timeout)
 {
 	client->dead_callback = NULL;
-	http_client_list_del(http_clients, client);
+	rb_http_client_list_del_client(http_clients, client);
 	timer_del(this, "http_poll_timeout", 0, NULL, client, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 
 	struct json_object *response = json_object_new_object();
@@ -526,25 +578,38 @@ static void http_stream_status_timeout(void *bound, struct http_client *client)
 
 static void http_stream_status_dead(struct http_client *client)
 {
-	http_client_list_del(http_clients, client);
+	rb_http_client_list_del_client(http_clients, client);
 	timer_del(this, "http_poll_timeout", 0, NULL, client, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 }
 
 HTTP_HANDLER(http_stream_status)
 {
+	struct rb_http_client *rb_client;
+	char *str;
 	struct dict *get_vars = http_parse_vars(client, HTTP_GET);
 	int wait = true_string(dict_find(get_vars, "wait"));
-	dict_free(get_vars);
 	if(!wait)
 	{
 		http_stream_status_send(client, 0);
+		dict_free(get_vars);
 		return;
 	}
 
 	http_request_detach(client, NULL);
 	client->dead_callback = http_stream_status_dead;
 	timer_add(this, "http_poll_timeout", now + HTTP_POLL_DURATION, (timer_f *)http_stream_status_timeout, client, 0, 1);
-	http_client_list_add(http_clients, client);
+
+	rb_client = malloc(sizeof(struct rb_http_client));
+	memset(rb_client, 0, sizeof(struct rb_http_client));
+	rb_client->client = client;
+	rb_client->clientname = (str = dict_find(get_vars, "client")) ? strdup(str) : NULL;
+	rb_client->clientver = (str = dict_find(get_vars, "clientver")) ? strdup(str) : NULL;
+	rb_client->nick = (str = dict_find(get_vars, "nick")) ? strdup(str) : NULL;
+	if((str = dict_find(get_vars, "uuid")))
+		strlcpy(rb_client->uuid, str, sizeof(rb_client->uuid));
+	debug("Client connected: %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
+	rb_http_client_list_add(http_clients, rb_client);
+	dict_free(get_vars);
 }
 
 HTTP_HANDLER(http_wish_greet)
@@ -555,6 +620,7 @@ HTTP_HANDLER(http_wish_greet)
 	const char *type = dict_find(get_vars, "type");
 	const char *name = dict_find(get_vars, "name");
 	const char *msg = dict_find(get_vars, "msg");
+	struct rb_http_client *rb_client = rb_http_client_by_uuid(dict_find(get_vars, "uuid"));
 
 	if(!type || !name || !msg || !*type || !*name || !*msg)
 	{
@@ -587,6 +653,9 @@ HTTP_HANDLER(http_wish_greet)
 		json_object_object_add(response, "type", json_object_new_string(type));
 		json_object_object_add(response, "queue_full", json_object_new_int(check_queue_full()));
 
+		if(rb_client)
+			debug("Wish/Greet: %p %s %s %s %s", rb_client, rb_client->uuid, rb_client->nick, name, type);
+
 		if(!strcasecmp(type, "wish"))
 			irc_send("PRIVMSG %s :Desktop-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, name, msg);
 		else if(!strcasecmp(type, "greet"))
@@ -617,6 +686,34 @@ IRC_HANDLER(nick)
 		MyFree(current_mod);
 		current_mod = strdup(argv[1]);
 	}
+}
+
+COMMAND(stats_clients)
+{
+	struct table *table;
+
+	if(!http_clients->count)
+	{
+		reply("Derzeit sind keine HTTP-Clients verbunden.");
+		return 1;
+	}
+
+	table = table_create(5, http_clients->count);
+	table_set_header(table, "IP", "UUID", "Nick", "Client", "Version");
+
+	for(unsigned int i = 0; i < http_clients->count; i++)
+	{
+		struct rb_http_client *client = http_clients->data[i];
+		table->data[i][0] = client->client->ip;
+		table->data[i][1] = client->uuid;
+		table->data[i][2] = client->nick;
+		table->data[i][3] = client->clientname;
+		table->data[i][4] = client->clientver;
+	}
+
+	table_send(table, src->nick);
+	table_free(table);
+	return 1;
 }
 
 COMMAND(setmod)
@@ -1146,9 +1243,9 @@ static void show_updated_readonly()
 
 	for(unsigned int i = 0; i < http_clients->count; i++)
 	{
-		struct http_client *client = http_clients->data[i];
-		debug("Notifying client %p", client);
-		http_stream_status_send(client, 0);
+		struct rb_http_client *client = http_clients->data[i];
+		debug("Notifying client %p %s %s", client, client->uuid, client->nick);
+		http_stream_status_send(client->client, 0);
 		i--;
 	}
 }
