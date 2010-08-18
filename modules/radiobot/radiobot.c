@@ -1578,7 +1578,7 @@ static void stats_parse_row(const char *key, const char *value)
 	else if(!strcasecmp(key, "REPORTEDLISTENERS"))
 		stream_stats.listeners_unique = atoi(value);
 	else if(!strcasecmp(key, "BITRATE"))
-		stream_stats.bitrate = 128; // atoi(value);
+		stream_stats.bitrate = 192; // atoi(value);
 	else if(!strcasecmp(key, "SONGTITLE"))
 	{
 		MyFree(stream_stats.title);
