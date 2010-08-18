@@ -15,6 +15,7 @@
 #include "list.h"
 #include "database.h"
 #include "table.h"
+#include "versioning.h"
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -60,6 +61,8 @@ static struct
 	const char *rrdtool_path;
 	const char *rrd_dir;
 	const char *graph_dir;
+	const char *gadget_update_url;
+	const char *gadget_current_version;
 } radiobot_conf;
 
 static struct
@@ -143,6 +146,8 @@ static void show_updated_readonly();
 static void rb_http_client_free(struct rb_http_client *client);
 static void rb_http_client_list_del_client(struct rb_http_client_list *list, struct http_client *client);
 static struct rb_http_client *rb_http_client_by_uuid(const char *uuid);
+static struct rb_http_client *rb_http_client_by_httpclient(struct http_client *client);
+static int rb_http_client_outdated(struct rb_http_client *rb_client);
 static void http_stream_status_send(struct http_client *client, int timeout);
 void set_current_title(const char *title);
 const char *get_streamtitle();
@@ -364,6 +369,13 @@ static void radiobot_conf_reload()
 	str = conf_get("radiobot/graph_dir", DB_STRING);
 	radiobot_conf.graph_dir = str ? str : ".";
 
+	// sidebar update
+	str = conf_get("radiobot/gadget_update_url", DB_STRING);
+	radiobot_conf.gadget_update_url = (str && *str) ? str : NULL;
+
+	str = conf_get("radiobot/gadget_current_version", DB_STRING);
+	radiobot_conf.gadget_current_version = (str && *str) ? str : NULL;
+
 	// special config-related actions
 	if(cmd_sock)
 	{
@@ -546,10 +558,34 @@ static struct rb_http_client *rb_http_client_by_uuid(const char *uuid)
 	return NULL;
 }
 
+static struct rb_http_client *rb_http_client_by_httpclient(struct http_client *client)
+{
+	if(!client)
+		return NULL;
+
+	for(unsigned int i = 0; i < http_clients->count; i++)
+	{
+		struct rb_http_client *rb_client = http_clients->data[i];
+		if(rb_client->client == client)
+			return rb_client;
+	}
+
+	return NULL;
+}
+
+static int rb_http_client_outdated(struct rb_http_client *rb_client)
+{
+	if(!radiobot_conf.gadget_current_version)
+		return 0;
+	return version_compare(rb_client->clientver, radiobot_conf.gadget_current_version) == -1;
+}
+
 static void http_stream_status_send(struct http_client *client, int timeout)
 {
+	struct rb_http_client *rb_client = rb_http_client_by_httpclient(client);
 	client->dead_callback = NULL;
-	rb_http_client_list_del_client(http_clients, client);
+	if(rb_client)
+		rb_http_client_list_del(http_clients, rb_client);
 	timer_del(this, "http_poll_timeout", 0, NULL, client, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 
 	struct json_object *response = json_object_new_object();
@@ -559,6 +595,18 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	json_object_object_add(response, "song", current_title ? json_object_new_string(to_utf8(current_title)) : NULL);
 	json_object_object_add(response, "listeners", json_object_new_int(stream_stats.listeners_current));
 	json_object_object_add(response, "bitrate", json_object_new_int(stream_stats.bitrate));
+	if(rb_client && rb_client->clientname && !strcmp(rb_client->clientname, "windows-sidebar") && rb_client->clientver)
+	{
+		if(!rb_http_client_outdated(rb_client))
+			json_object_object_add(response, "update", NULL);
+		else
+		{
+			struct json_object *update = json_object_new_object();
+			json_object_object_add(update, "version", json_object_new_string(radiobot_conf.gadget_current_version));
+			json_object_object_add(update, "url", json_object_new_string(radiobot_conf.gadget_update_url));
+			json_object_object_add(response, "update", update);
+		}
+	}
 
 	http_reply_header("Content-Type", "application/json");
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
@@ -569,6 +617,8 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	json_object_put(response);
 	if(client->delay)
 		http_request_finalize(client);
+	if(rb_client)
+		rb_http_client_free(rb_client);
 }
 
 static void http_stream_status_timeout(void *bound, struct http_client *client)
