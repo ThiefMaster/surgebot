@@ -105,6 +105,7 @@ HTTP_HANDLER(http_wish_greet);
 PARSER_FUNC(mod_active);
 IRC_HANDLER(nick);
 COMMAND(stats_clients);
+COMMAND(notify);
 COMMAND(setmod);
 COMMAND(setplaylist);
 COMMAND(settitle);
@@ -214,6 +215,7 @@ MODULE_INIT
 	http_handler_add_list(handlers);
 
 	DEFINE_COMMAND(this, "stats clients",	stats_clients,	1, 0, "group(admins)");
+	DEFINE_COMMAND(this, "notify",		notify,		1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setmod",		setmod,		1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "settitle",	settitle,	1, 0, "group(admins)");
@@ -767,6 +769,27 @@ COMMAND(stats_clients)
 	table_send(table, src->nick);
 	table_free(table);
 	return 1;
+}
+
+COMMAND(notify)
+{
+	if(argc < 2)
+	{
+		show_updated_readonly();
+		reply("All clients have been notified.");
+		return 1;
+	}
+	else if(match("????????""-????""-????""-????""-????????????", argv[1]) == 0) // UUID
+	{
+		struct rb_http_client *rb_client = rb_http_client_by_uuid(argv[1]);
+		reply("Notifying client %s %s %s", rb_client->uuid, rb_client->nick, rb_client->client->ip);
+		debug("Notifying client %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
+		http_stream_status_send(rb_client->client, 0);
+		return 1;
+	}
+
+	reply("Unknown notification target.");
+	return 0;
 }
 
 COMMAND(setmod)
