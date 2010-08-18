@@ -781,17 +781,24 @@ COMMAND(notify)
 	}
 	else if(match("????????""-????""-????""-????""-????????????", argv[1]) == 0) // UUID
 	{
-		struct rb_http_client *rb_client = rb_http_client_by_uuid(argv[1]);
-		if(!rb_client)
+		int found = 0;
+		for(unsigned int i = 0; i < http_clients->count; i++)
 		{
-			reply("A client with UUID %s does not exist.", argv[1]);
-			return 0;
+			struct rb_http_client *rb_client = http_clients->data[i];
+
+			if(strcmp(rb_client->uuid, argv[1]))
+				continue;
+
+			reply("Notifying client %s %s %s", rb_client->uuid, rb_client->nick, rb_client->client->ip);
+			debug("Notifying client %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
+			http_stream_status_send(rb_client->client, 0);
+			i--;
+			found++;
 		}
 
-		reply("Notifying client %s %s %s", rb_client->uuid, rb_client->nick, rb_client->client->ip);
-		debug("Notifying client %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
-		http_stream_status_send(rb_client->client, 0);
-		return 1;
+		if(!found)
+			reply("No clients with this UUID are currently connected.");
+		return (found > 0);
 	}
 
 	reply("Unknown notification target.");
