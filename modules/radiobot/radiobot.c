@@ -1,10 +1,12 @@
 #include "global.h"
 #include "module.h"
+#include "radiobot.h"
 #include "modules/commands/commands.h"
 #include "modules/commands/command_rule.h"
 #include "modules/help/help.h"
 #include "modules/httpd/http.h"
 #include "modules/tools/tools.h"
+#include "chanuser.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "timer.h"
@@ -34,36 +36,6 @@
 #define HTTP_POLL_DURATION 1800
 
 MODULE_DEPENDS("commands", "help", "httpd", "tools", NULL);
-
-static struct
-{
-	const char *stream_ip;
-	unsigned int stream_port;
-	const char *stream_pass;
-	const char *stream_ip_stats;
-	unsigned int stream_port_stats;
-	const char *stream_pass_stats;
-	const char *site_url;
-	const char *schedule_url;
-	const char *teamspeak_url;
-	struct stringlist *sanitize_nick_regexps;
-	const char *stream_url;
-	const char *stream_url_pls;
-	const char *stream_url_asx;
-	const char *stream_url_ram;
-	const char *radiochan;
-	const char *teamchan;
-	const char *cmd_sock_host;
-	unsigned int cmd_sock_port;
-	const char *cmd_sock_pass;
-	const char *cmd_sock_read_pass;
-	unsigned int rrd_enabled;
-	const char *rrdtool_path;
-	const char *rrd_dir;
-	const char *graph_dir;
-	const char *gadget_update_url;
-	const char *gadget_current_version;
-} radiobot_conf;
 
 static struct
 {
@@ -153,6 +125,7 @@ static void http_stream_status_send(struct http_client *client, int timeout);
 void set_current_title(const char *title);
 const char *get_streamtitle();
 static time_t check_queue_full();
+static int in_wish_greet_channel(struct irc_user *user);
 static unsigned int rrd_exists(const char *name);
 static void rrd_update();
 static void rrd_graph();
@@ -161,6 +134,7 @@ extern void nfqueue_init();
 extern void nfqueue_fini();
 
 static struct module *this;
+static struct radiobot_conf radiobot_conf;
 static struct database *radiobot_db = NULL;
 static struct sock *kicksrc_sock = NULL;
 static struct sock *stats_sock = NULL;
@@ -179,6 +153,7 @@ static int last_peak = -1;
 static time_t last_peak_time;
 static char *last_peak_mod = NULL;
 static time_t queue_full = 0;
+static radiobot_notify_func *notify_func = NULL;
 
 static struct http_handler handlers[] = {
 	{ "/", http_root },
@@ -476,6 +451,16 @@ static time_t check_queue_full()
 	if(now > queue_full)
 		queue_full = 0;
 	return queue_full;
+}
+
+static int in_wish_greet_channel(struct irc_user *user)
+{
+	struct irc_channel *chan;
+	if((chan = channel_find(radiobot_conf.radiochan)) && channel_user_find(chan, user))
+		return 1;
+	else if((chan = channel_find(radiobot_conf.teamchan)) && channel_user_find(chan, user))
+		return 1;
+	return 0;
 }
 
 static time_t strtotime(const char *str)
@@ -839,6 +824,8 @@ COMMAND(setmod)
 	else
 	{
 		current_mod = strdup(src->nick);
+		if(notify_func && !same_mod)
+			notify_func(&radiobot_conf, "setmod", current_mod, showtitle);
 	}
 
 	if(!same_mod)
@@ -1079,6 +1066,12 @@ COMMAND(wish)
 		return 0;
 	}
 
+	if(!in_wish_greet_channel(user))
+	{
+		reply("Bitte komm in unseren Channel $b%s$b um dir etwas zu wünschen.", radiobot_conf.radiochan);
+		return 0;
+	}
+
 	msg = untokenize(argc - 1, argv + 1, " ");
 	irc_send("PRIVMSG %s :IRC-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, src->nick, msg);
 	if(check_queue_full())
@@ -1107,6 +1100,12 @@ COMMAND(greet)
 	if(argc < 2)
 	{
 		reply("Was sollen wir denn mit einem leeren Gruß?");
+		return 0;
+	}
+
+	if(!in_wish_greet_channel(user))
+	{
+		reply("Bitte komm in unseren Channel $b%s$b um zu grüßen.", radiobot_conf.radiochan);
 		return 0;
 	}
 
@@ -1706,4 +1705,9 @@ static void rrd_graph()
 	rrd_graph_draw("Listeners (1 week)", "week", "-1week");
 	rrd_graph_draw("Listeners (1 month)", "month", "-1month");
 	rrd_graph_draw("Listeners (1 year)", "year", "-1year");
+}
+
+void radiobot_set_notify_func(radiobot_notify_func *func)
+{
+	notify_func = func;
 }
