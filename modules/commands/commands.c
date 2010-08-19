@@ -328,7 +328,7 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 	{
 		log_entry = stringbuffer_create();
 		stringbuffer_append_char(log_entry, '(');
-		stringbuffer_append_string(log_entry, (channel ? channel->name : ""));
+		stringbuffer_append_string(log_entry, (channel_arg ? channel_arg : ""));
 		stringbuffer_append_string(log_entry, ") [");
 		if(src->nick)
 			stringbuffer_append_string(log_entry, src->nick);
