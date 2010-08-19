@@ -4,6 +4,8 @@
 #include "timer.h"
 #include "irc.h"
 #include "conf.h"
+#include "chanuser.h"
+#include "irc_handler.h"
 #include "modules/help/help.h"
 #include "modules/commands/commands.h"
 #include <time.h>
@@ -44,6 +46,11 @@ static void user_timer_free(struct user_timer *timer);
 static void user_timer_add_timer(struct user_timer_channel *channel, struct user_timer *timer);
 static void user_timer_del_timer(struct user_timer *timer);
 
+// channel_del-hook
+void user_timer_channel_del(struct irc_channel *channel, const char *reason);
+
+IRC_HANDLER(join);
+
 static struct dict *user_timer_channels;
 static struct database *timer_db;
 
@@ -69,11 +76,16 @@ MODULE_INIT
 	reg_conf_reload_func(user_timer_conf_reload);
 	user_timer_conf_reload();
 
+	reg_channel_del_hook(user_timer_channel_del);
+	reg_irc_handler("JOIN", join);
+
 	help_load(self, "timers.help");
 }
 
 MODULE_FINI
 {
+	unreg_irc_handler("JOIN", join);
+	unreg_channel_del_hook(user_timer_channel_del);
 	unreg_conf_reload_func(user_timer_conf_reload);
 
 	database_write(timer_db);
@@ -347,6 +359,37 @@ COMMAND(timer_del)
 	dict_delete(timer_chan->timers, argv[1]);
 	reply("Timer $b%s$b has been deleted.", argv[1]);
 	return 1;
+}
+
+IRC_HANDLER(join)
+{
+	// Since on channel_del, we made sure no more user timers will be executed, we need to readd them
+	if(strcmp(src->nick, bot.nickname))
+		return;
+
+	struct user_timer_channel *timer_chan = user_timer_channel_find(argv[1]);
+	if(!timer_chan)
+		return;
+
+	dict_iter(node, timer_chan->timers) {
+		struct user_timer *timer = node->data;
+
+		// Make sure it's really gone
+		user_timer_del_timer(timer);
+		user_timer_add_timer(timer_chan, timer);
+		debug("[timers] %s Recovered timer %s", argv[1], timer->name);
+	}
+}
+
+void user_timer_channel_del(struct irc_channel *channel, const char *reason)
+{
+	struct user_timer_channel *timer_chan = user_timer_channel_find(channel->name);
+	if(timer_chan) {
+		dict_iter(node, timer_chan->timers) {
+			struct user_timer *timer = node->data;
+			user_timer_del_timer(timer);
+		}
+	}
 }
 
 static void user_timer_func(struct user_timer_channel *channel, struct user_timer *timer)
