@@ -60,6 +60,7 @@ COMMAND(timer_list);
 COMMAND(timer_add);
 COMMAND(timer_msg);
 COMMAND(timer_del);
+COMMAND(timer_cleanup);
 
 MODULE_INIT
 {
@@ -70,6 +71,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "timer add", timer_add, 3, CMD_ACCEPT_CHANNEL, "chanuser(500)");
 	DEFINE_COMMAND(self, "timer msg", timer_msg, 2, CMD_ACCEPT_CHANNEL, "chanuser(500)");
 	DEFINE_COMMAND(self, "timer del", timer_del, 2, CMD_ACCEPT_CHANNEL, "chanuser(500)");
+	DEFINE_COMMAND(self, "timer cleanup", timer_cleanup, 1, 0, "group(admins)");
 
 	timer_db = database_create("timers", user_timer_db_read, user_timer_db_write);
 	database_read(timer_db, 1);
@@ -97,6 +99,22 @@ MODULE_FINI
 
 	dict_free(user_timer_channels);
 	timer_del(NULL, timer_name, 0, NULL, NULL, TIMER_IGNORE_ALL & ~TIMER_IGNORE_NAME);
+}
+
+COMMAND(timer_cleanup)
+{
+	int i = 0;
+	dict_iter(node, user_timer_channels) {
+		struct user_timer_channel *timer_chan = node->data;
+		struct irc_channel *irc_chan = channel_find(timer_chan->channel);
+		if(!irc_chan) {
+			reply("Channel %s not found, %d timers", timer_chan->channel, timer_chan->timers->count);
+			++i;
+		}
+	}
+
+	reply("$b%d$b channels found.", i);
+	return 1;
 }
 
 COMMAND(timer_list)
