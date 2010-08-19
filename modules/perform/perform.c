@@ -348,9 +348,10 @@ static int perform_exec(struct dict *record, struct irc_source *src, int argc, c
 	// Call function(s)
 	if((slist = database_fetch(record, "call", DB_STRINGLIST)) != NULL)
 	{
-		perform_f *func;
 		for(unsigned int i = 0; i < slist->count; i++)
 		{
+			perform_f *func;
+			str = slist->data[i];
 			if((func = dict_find(perform_funcs, str)))
 				func();
 			else
