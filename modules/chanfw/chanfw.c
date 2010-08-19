@@ -409,7 +409,7 @@ static int cmod_enabled(struct chanreg *reg, enum cmod_enable_reason reason)
 {
 	struct irc_channel *channel;
 	if((channel = channel_find(reg->channel)))
-		channel_complete_hook_tmr(this, channel);
+		channel_complete_hook(channel);
 	return 0;
 }
 
