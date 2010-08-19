@@ -258,6 +258,9 @@ IRC_HANDLER(invite)
 
 	assert(argc > 2);
 
+	if(!strcmp(src->nick, "ChanServ"))
+		return;
+
 	// should never happen, you cannot invite someone into a channel where he already is
 	if((reg = radionotify_reg_find(argv[2])))
 	{
