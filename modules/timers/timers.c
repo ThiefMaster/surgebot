@@ -8,9 +8,10 @@
 #include "irc_handler.h"
 #include "modules/help/help.h"
 #include "modules/commands/commands.h"
+#include "modules/chanreg/chanreg.h"
 #include <time.h>
 
-MODULE_DEPENDS("commands", "help", NULL);
+MODULE_DEPENDS("commands", "help", "chanreg", NULL);
 
 static const char * const timer_name = "custom_timer";
 
@@ -48,6 +49,7 @@ static void user_timer_del_timer(struct user_timer *timer);
 
 // channel_del-hook
 void user_timer_channel_del(struct irc_channel *channel, const char *reason);
+void user_timer_chanreg_del(struct chanreg *reg);
 
 IRC_HANDLER(join);
 
@@ -77,6 +79,7 @@ MODULE_INIT
 	user_timer_conf_reload();
 
 	reg_channel_del_hook(user_timer_channel_del);
+	reg_chanreg_del_hook(user_timer_chanreg_del);
 	reg_irc_handler("JOIN", join);
 
 	help_load(self, "timers.help");
@@ -85,6 +88,7 @@ MODULE_INIT
 MODULE_FINI
 {
 	unreg_irc_handler("JOIN", join);
+	unreg_chanreg_del_hook(user_timer_chanreg_del);
 	unreg_channel_del_hook(user_timer_channel_del);
 	unreg_conf_reload_func(user_timer_conf_reload);
 
@@ -379,6 +383,12 @@ IRC_HANDLER(join)
 		user_timer_add_timer(timer_chan, timer);
 		debug("[timers] %s Recovered timer %s", argv[1], timer->name);
 	}
+}
+
+void user_timer_chanreg_del(struct chanreg *reg)
+{
+	// When the channel got unregistered, get permanently rid of all associated timers
+	dict_delete(user_timer_channels, reg->channel);
 }
 
 void user_timer_channel_del(struct irc_channel *channel, const char *reason)
