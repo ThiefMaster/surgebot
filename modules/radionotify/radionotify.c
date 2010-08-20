@@ -179,7 +179,7 @@ static void channel_complete_hook(struct irc_channel *channel)
 		irc_send("PRIVMSG %s :Ich wurde von $b%s$b in diesen Channel eingeladen.", reg->channel, reg->nick);
 		irc_send("PRIVMSG %s :Immer wenn ein Moderator bei Radio eXodus auf den Stream geht, werde ich es im Channel bekanntgeben.", reg->channel);
 		irc_send("PRIVMSG %s :Unser Radiochannel ist #radio-exodus und unsere Website ist http://www.radio-exodus.de", reg->channel);
-		irc_send("PRIVMSG %s :Um mich wieder loszuwerden, reicht ein Kick aus.", reg->channel);
+		irc_send("PRIVMSG %s :Um mich wieder loszuwerden reicht ein Kick aus.", reg->channel);
 	}
 }
 
