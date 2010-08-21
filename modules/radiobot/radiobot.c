@@ -944,7 +944,7 @@ COMMAND(dj)
 
 COMMAND(stream)
 {
-	reply("Stream: $b%s$b / $b%s$b / $b%s$b", radiobot_conf.stream_url_pls, radiobot_conf.stream_url_asx, radiobot_conf.stream_url_ram);
+	reply("Stream: $b%s$b | $b%s$b | $b%s$b", radiobot_conf.stream_url_pls, radiobot_conf.stream_url_asx, radiobot_conf.stream_url_ram);
 	return 1;
 }
 
