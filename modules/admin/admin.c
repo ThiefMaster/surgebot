@@ -1,5 +1,3 @@
-#include <sys/time.h>
-#include <errno.h>
 #include "global.h"
 #include "module.h"
 #include "modules/commands/commands.h"

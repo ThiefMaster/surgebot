@@ -1,5 +1,3 @@
-#include <string.h>
-#include <sys/stat.h>
 #include "global.h"
 #include "tools.h"
 #include "chanuser.h"
