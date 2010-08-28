@@ -15,6 +15,8 @@
 
 #include <libgen.h> // basename()
 
+#define LOGFILE "surgebot.log"
+
 IMPLEMENT_LIST(loop_func_list, loop_func *)
 
 time_t	now;
@@ -26,9 +28,7 @@ struct surgebot_conf	bot_conf;
 
 static struct loop_func_list	*loop_funcs;
 
-
 static int bot_conf_reload();
-
 
 static void sig_rehash(int n)
 {
@@ -60,6 +60,21 @@ static void sig_chld(int n)
 		/* empty */;
 }
 
+static void sig_usr1(int n)
+{
+	struct stat buf;
+	log_append(LOG_INFO, "Received SIGUSR1 signal. Checking main logfile.");
+
+	// see if the current logfile still exists
+	if(stat(LOGFILE, &buf) != 0) {
+		log_append(LOG_ERROR, "Could not stat " LOGFILE ": %s", strerror(errno));
+
+		log_fini();
+		log_init(LOGFILE);
+		log_append(LOG_INFO, "Logfile has been reopened.");
+	}
+}
+
 static void signal_init()
 {
 	struct sigaction sa;
@@ -74,6 +89,9 @@ static void signal_init()
 
 	sa.sa_handler = sig_chld;
 	sigaction(SIGCHLD, &sa, NULL);
+
+	sa.sa_handler = sig_usr1;
+	sigaction(SIGUSR1, &sa, NULL);
 
 	// Reset handler after calling it so the program creates a core dump after a SEGV
 	// and always exists after a second SIGINT etc.
@@ -187,7 +205,7 @@ int main(int argc, char **argv)
 	if(conf_init() != 0)
 		return 1;
 
-	log_init("surgebot.log");
+	log_init(LOGFILE);
 	log_append(LOG_INFO, "Initializing");
 
 	timer_init();
