@@ -289,7 +289,10 @@ COMMAND(playlist_countdown)
 	stream_state.play = 2;
 	pthread_mutex_unlock(&stream_state_mutex);
 
-	irc_send("PRIVMSG %s,%s :Die Playlist wird in $b%02u:%02u$b ausgeschaltet", radioplaylist_conf.teamchan, playlist_cd_by, remaining / 60, remaining % 60);
+	if(!channel || strcasecmp(radioplaylist_conf.teamchan, channel->name))
+		irc_send("PRIVMSG %s,%s :Die Playlist wird in $b%02u:%02u$b ausgeschaltet (%s)", radioplaylist_conf.teamchan, playlist_cd_by, remaining / 60, remaining % 60, src->nick);
+	else
+		irc_send("PRIVMSG %s,%s :Die Playlist wird in $b%02u:%02u$b ausgeschaltet", radioplaylist_conf.teamchan, playlist_cd_by, remaining / 60, remaining % 60);
 	return 1;
 }
 
