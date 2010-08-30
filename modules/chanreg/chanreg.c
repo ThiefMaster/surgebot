@@ -80,8 +80,8 @@ MODULE_INIT
 	REG_COMMAND_RULE("privchan", privchan);
 
 	help_load(self, "chanreg.help");
-	DEFINE_COMMAND(self, "cregister",	cregister,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(self, "cunregister",	cunregister,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cregister",	cregister,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "cunregister",	cunregister,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
 	DEFINE_COMMAND(self, "stats chanreg",	stats_chanreg,	0, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "adduser",		adduser,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "deluser",		deluser,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
