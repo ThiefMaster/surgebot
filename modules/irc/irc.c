@@ -12,6 +12,7 @@ COMMAND(chaninfo);
 COMMAND(say);
 COMMAND(emote);
 COMMAND(topic);
+COMMAND(ping);
 
 MODULE_INIT
 {
@@ -22,10 +23,21 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "say",		say,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "emote",		emote,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "topic",		topic,		0, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "ping",		ping,		0, 0, "true");
 }
 
 MODULE_FINI
 {
+}
+
+COMMAND(ping)
+{
+	if(channel)
+		irc_send("PRIVMSG %s :$b%s$b: Pong!", channelname, src->nick);
+	else
+		irc_send("NOTICE %s :Pong!", src->nick);
+	
+	return 0;
 }
 
 COMMAND(whois)
