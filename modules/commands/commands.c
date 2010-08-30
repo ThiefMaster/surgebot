@@ -302,7 +302,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		return;
 	}
 
-	if(argc < cmd->min_argc)
+	// Ignore (first) command argument for argument count check
+	if((argc - 1) < cmd->min_argc)
 	{
 		if(!command_conf.stealth || (user && user->account))
 			reply("$b%s$b requires more arguments.", binding->name);
