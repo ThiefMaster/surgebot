@@ -7,6 +7,7 @@
 	"  PLAYLIST  Zeigt die URL zur Playlist des Moderators an",
 	"  PEAK      Zeigt die bisher höchste Listener-Anzahl an",
 	"  NEXTMOD   Zeigt den nächsten Moderator an",
+	"  CURMOD    Zeigt den aktuellen Moderator inkl. Sendungstitel an",
 	"  SENDEPLAN Zeigt die URL zum Sendeplan an",
 	"  WUNSCH    Sendet einen Wunsch an den Moderator",
 	"  GRUSS     Sendet einen Gruß an den Moderator",
