@@ -69,8 +69,8 @@ MODULE_INIT
 
 	help_load(this, "main.help");
 
-	DEFINE_COMMAND(self, "help", help, 1, CMD_ALLOW_UNKNOWN, "true");
-	DEFINE_COMMAND(self, "helpdebug", helpdebug, 1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "help", help, 0, CMD_ALLOW_UNKNOWN, "true");
+	DEFINE_COMMAND(self, "helpdebug", helpdebug, 0, 0, "group(admins)");
 }
 
 MODULE_FINI

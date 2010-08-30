@@ -16,13 +16,9 @@ static struct dict *requests;
 
 static void http_sock_event(struct sock *, enum sock_event, int err);
 static void http_sock_read(struct sock *, char *buf, size_t len);
-
 static void HTTPRequest_event(struct HTTPRequest *, enum HTTPRequest_event);
-
 static struct HTTPRequest *http_find_sock(struct sock *);
-
 static struct HTTPHost *parse_host(const char *);
-
 static void HTTPRequest_set_host(struct HTTPRequest *, const char *);
 
 static unsigned int next_id = 0;
@@ -30,7 +26,6 @@ static unsigned int next_id = 0;
 MODULE_INIT
 {
 	requests = dict_create();
-
 	dict_set_free_funcs(requests, free, (dict_free_f*)HTTPRequest_free);
 }
 

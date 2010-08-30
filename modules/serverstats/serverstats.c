@@ -86,8 +86,8 @@ MODULE_INIT
 	reg_irc_handler("PRIVMSG", msg);
 	reg_irc_handler("NOTICE", msg);
 
-	DEFINE_COMMAND(this, "serverstats update",	serverstats_update,	1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(this, "serverstats graphs",	serverstats_graphs,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(this, "serverstats update",	serverstats_update,	0, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(this, "serverstats graphs",	serverstats_graphs,	0, CMD_REQUIRE_AUTHED, "group(admins)");
 }
 
 MODULE_FINI

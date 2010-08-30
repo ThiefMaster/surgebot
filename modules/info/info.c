@@ -24,12 +24,12 @@ MODULE_INIT
 {
 	help_load(self, "info.help");
 
-	DEFINE_COMMAND(self, "command",		command,		2, 0, "true");
-	DEFINE_COMMAND(self, "stats bot",	stats_bot,		1, 0, "true");
-	DEFINE_COMMAND(self, "stats commands",	stats_commands,		1, 0, "true");
-	DEFINE_COMMAND(self, "stats bindings",	stats_bindings,		1, 0, "true");
-	DEFINE_COMMAND(self, "stats bindings2",	stats_bindings_verbose,	1, 0, "true");
-	DEFINE_COMMAND(self, "stats timers",	stats_timers,		1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "command",		command,		1, 0, "true");
+	DEFINE_COMMAND(self, "stats bot",	stats_bot,		0, 0, "true");
+	DEFINE_COMMAND(self, "stats commands",	stats_commands,		0, 0, "true");
+	DEFINE_COMMAND(self, "stats bindings",	stats_bindings,		0, 0, "true");
+	DEFINE_COMMAND(self, "stats bindings2",	stats_bindings_verbose,	0, 0, "true");
+	DEFINE_COMMAND(self, "stats timers",	stats_timers,		0, 0, "group(admins)");
 }
 
 MODULE_FINI
@@ -45,6 +45,8 @@ COMMAND(stats_timers)
 	const char *wildmask = (argc > 1 ? argv[1] : NULL);
 
 	table_set_header(table, "Id", "Name", "Execute in");
+	table->col_flags[0] |= TABLE_CELL_FREE | TABLE_CELL_ALIGN_RIGHT;
+
 	dict_iter(node, timers)
 	{
 		struct timer *tmr = node->data;
@@ -58,16 +60,11 @@ COMMAND(stats_timers)
 
 		*triggering = tmr->time - now;
 
-		char *timestamp = malloc(21);
-		snprintf(timestamp, 21, "%lu", tmr->id);
-		timestamp[20] = '\0';
-
-		table->data[i][0] = strdupa(timestamp);
+		table_col_num(table, i, 0, tmr->id);
 		table->data[i][1] = tmr->name;
 		// To compare the timers, this needs to stay an int, so no 'real' converting for now
 		table->data[i][2] = (char*)triggering;
 		
-		free(timestamp);
 		i++;
 	}
 
@@ -170,6 +167,8 @@ COMMAND(stats_commands)
 
 	table = table_create(5, dict_size(commands));
 	table_set_header(table, "Module", "Command", "Min. Args", "Bind Count", "Access Rule");
+	table->col_flags[2] |= TABLE_CELL_FREE;
+	table->col_flags[3] |= TABLE_CELL_FREE;
 
 	command_count = dict_size(commands);
 
@@ -184,8 +183,8 @@ COMMAND(stats_commands)
 
 		table->data[i][0] = command->module->name;
 		table->data[i][1] = command->name;
-		table->data[i][2] = strtab(command->min_argc - 1);
-		table->data[i][3] = strtab(command->bind_count);
+		table_col_num(table, i, 2, command->min_argc);
+		table_col_num(table, i, 3, command->bind_count);
 		table->data[i][4] = command->rule;
 		i++;
 	}

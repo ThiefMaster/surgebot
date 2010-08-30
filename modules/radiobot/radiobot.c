@@ -189,24 +189,24 @@ MODULE_INIT
 
 	http_handler_add_list(handlers);
 
-	DEFINE_COMMAND(this, "stats clients",	stats_clients,	1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "notify",		notify,		1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "setmod",		setmod,		1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "settitle",	settitle,	1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "queuefull",	queuefull,	1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "playlist",	playlist,	1, 0, "true");
-	DEFINE_COMMAND(this, "dj",		dj,		1, 0, "true");
-	DEFINE_COMMAND(this, "stream",		stream,		1, 0, "true");
-	DEFINE_COMMAND(this, "schedule",	schedule,	1, 0, "true");
-	DEFINE_COMMAND(this, "teamspeak",	teamspeak,	1, 0, "true");
-	DEFINE_COMMAND(this, "status",		status,		1, 0, "true");
-	DEFINE_COMMAND(this, "listener",	listener,	1, 0, "true");
-	DEFINE_COMMAND(this, "title",		title,		1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "peak",		peak,		1, 0, "true");
-	DEFINE_COMMAND(this, "wish",		wish,		1, CMD_LOG_HOSTMASK, "true");
-	DEFINE_COMMAND(this, "greet",		greet,		1, CMD_LOG_HOSTMASK, "true");
-	DEFINE_COMMAND(this, "kicksrc",		kicksrc,	1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "stats clients",	stats_clients,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "notify",		notify,		0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "setmod",		setmod,		0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "settitle",	settitle,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "queuefull",	queuefull,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "playlist",	playlist,	0, 0, "true");
+	DEFINE_COMMAND(this, "dj",		dj,		0, 0, "true");
+	DEFINE_COMMAND(this, "stream",		stream,		0, 0, "true");
+	DEFINE_COMMAND(this, "schedule",	schedule,	0, 0, "true");
+	DEFINE_COMMAND(this, "teamspeak",	teamspeak,	0, 0, "true");
+	DEFINE_COMMAND(this, "status",		status,		0, 0, "true");
+	DEFINE_COMMAND(this, "listener",	listener,	0, 0, "true");
+	DEFINE_COMMAND(this, "title",		title,		0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "peak",		peak,		0, 0, "true");
+	DEFINE_COMMAND(this, "wish",		wish,		0, CMD_LOG_HOSTMASK, "true");
+	DEFINE_COMMAND(this, "greet",		greet,		0, CMD_LOG_HOSTMASK, "true");
+	DEFINE_COMMAND(this, "kicksrc",		kicksrc,	0, CMD_LOG_HOSTMASK, "group(admins)");
 }
 
 MODULE_FINI
@@ -837,7 +837,7 @@ COMMAND(setmod)
 	queue_full = 0;
 
 	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? current_mod : "Playlist"), current_show, radiobot_conf.site_url);
-	irc_send("PRIVMSG %s :Mod ge‰ndert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), current_show);
+	irc_send("PRIVMSG %s :Mod ge√§ndert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), current_show);
 	reply("Aktueller Mod: $b%s$b (Showtitel/Streamtitel: $b%s$b)", (current_mod ? current_mod : "[Playlist]"), current_show);
 	database_write(radiobot_db);
 	show_updated();
@@ -861,7 +861,7 @@ COMMAND(setplaylist)
 	if(current_playlist && !strcasecmp(current_playlist, "on"))
 		irc_send("PRIVMSG %s :%s, bist du sicher, dass du die $bPlaylist-URL$b auf $b%s$b setzen wolltest, statt die Playlist einzuschalten?!", radiobot_conf.teamchan, src->nick, current_playlist);
 
-	irc_send("PRIVMSG %s :Playlist ge‰ndert auf $b%s$b.", radiobot_conf.teamchan, (current_playlist ? current_playlist : "[Keine]"));
+	irc_send("PRIVMSG %s :Playlist ge√§ndert auf $b%s$b.", radiobot_conf.teamchan, (current_playlist ? current_playlist : "[Keine]"));
 	reply("Aktuelle Playlist: $b%s$b", (current_playlist ? current_playlist : "[Keine]"));
 	database_write(radiobot_db);
 	show_updated();
@@ -884,7 +884,7 @@ COMMAND(settitle)
 		current_streamtitle = strdup(current_show);
 	}
 
-	irc_send("PRIVMSG %s :Streamsongtitel ge‰ndert auf $b%s$b.", radiobot_conf.teamchan, (current_streamtitle ? current_streamtitle : "n/a"));
+	irc_send("PRIVMSG %s :Streamsongtitel ge√§ndert auf $b%s$b.", radiobot_conf.teamchan, (current_streamtitle ? current_streamtitle : "n/a"));
 	reply("Aktueller Streamsongtitel: $b%s$b", (current_streamtitle ? current_streamtitle : "n/a"));
 	database_write(radiobot_db);
 	show_updated();
@@ -1056,19 +1056,19 @@ COMMAND(wish)
 
 	if(!current_mod)
 	{
-		reply("Sorry, aber von der Playlist kannst du dir nichts w¸nschen.");
+		reply("Sorry, aber von der Playlist kannst du dir nichts w√ºnschen.");
 		return 0;
 	}
 
 	if(argc < 2)
 	{
-		reply("Du w¸nscht dir nichts? Falls doch, mach $b%s <hier dein wunsch>$b", argv[0]);
+		reply("Du w√ºnscht dir nichts? Falls doch, mach $b%s <hier dein wunsch>$b", argv[0]);
 		return 0;
 	}
 
 	if(!in_wish_greet_channel(user))
 	{
-		reply("Bitte komm in unseren Channel $b%s$b um dir etwas zu w¸nschen.", radiobot_conf.radiochan);
+		reply("Bitte komm in unseren Channel $b%s$b um dir etwas zu w√ºnschen.", radiobot_conf.radiochan);
 		return 0;
 	}
 
@@ -1093,28 +1093,28 @@ COMMAND(greet)
 
 	if(!current_mod)
 	{
-		reply("Sorry, aber die Playliste gr¸ﬂt niemanden.");
+		reply("Sorry, aber die Playliste gr√º√üt niemanden.");
 		return 0;
 	}
 
 	if(argc < 2)
 	{
-		reply("Was sollen wir denn mit einem leeren Gruﬂ?");
+		reply("Was sollen wir denn mit einem leeren Gru√ü?");
 		return 0;
 	}
 
 	if(!in_wish_greet_channel(user))
 	{
-		reply("Bitte komm in unseren Channel $b%s$b um zu gr¸ﬂen.", radiobot_conf.radiochan);
+		reply("Bitte komm in unseren Channel $b%s$b um zu gr√º√üen.", radiobot_conf.radiochan);
 		return 0;
 	}
 
 	msg = untokenize(argc - 1, argv + 1, " ");
-	const char *sz = "ﬂ";
+	const char *sz = "√ü";
 	if(is_utf8(msg))
 		sz = "\xc3\x9f";
 	irc_send("PRIVMSG %s :IRC-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, sz, src->nick, msg);
-	reply("Dein Gruﬂ wurde weitergeleitet.");
+	reply("Dein Gru√ü wurde weitergeleitet.");
 	free(msg);
 
 	return 1;
@@ -1124,7 +1124,7 @@ COMMAND(kicksrc)
 {
 	if(argc < 2 || (strcasecmp(argv[1], "CONFIRM") && strcasecmp(argv[1], "FORCE")))
 	{
-		reply("Mˆchtest du den DJ (vermutlich ist das $b%s$b) wirklich vom Stream kicken? Wenn ja, verwende $b%s CONFIRM$b", (current_mod ? current_mod : "[Playlist]"), argv[0]);
+		reply("M√∂chtest du den DJ (vermutlich ist das $b%s$b) wirklich vom Stream kicken? Wenn ja, verwende $b%s CONFIRM$b", (current_mod ? current_mod : "[Playlist]"), argv[0]);
 		return 0;
 	}
 
@@ -1253,7 +1253,7 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 			return;
 		}
 
-		const char *sz = "ﬂ";
+		const char *sz = "√ü";
 		if(is_utf8(argv[2]))
 			sz = "\xc3\x9f";
 		irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,

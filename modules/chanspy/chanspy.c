@@ -99,10 +99,10 @@ MODULE_INIT
 	reg_irc_handler("TOPIC", topic);
 
 	help_load(self, "chanspy.help");
-	DEFINE_COMMAND(self, "chanspy add",	chanspy_add,	5, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "chanspy rejoin",	chanspy_rejoin,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "chanspy del",	chanspy_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "chanspy list",	chanspy_list,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "chanspy add",	chanspy_add,	4, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "chanspy rejoin",	chanspy_rejoin,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "chanspy del",	chanspy_del,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "chanspy list",	chanspy_list,	0, CMD_REQUIRE_AUTHED, "group(admins)");
 
 	chanspy_clients = chanspy_client_list_create();
 
@@ -956,7 +956,7 @@ COMMAND(chanspy_list)
 		table->data[i][1] = spy->channel;
 		table->data[i][2] = spy->target;
 		table->data[i][3] = ((spy->flags == CSPY_ALL) ? "*" : strdupa(flags));
-		table->data[i][4] = spy->active ? "Active" : spy->last_error;
+		table_col_str(table, i, 4, table->data[i][4] = spy->active ? "Active" : (char*)spy->last_error);
 		i++;
 	}
 

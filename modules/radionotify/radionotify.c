@@ -54,7 +54,7 @@ MODULE_INIT
 	regs = dict_create();
 	dict_set_free_funcs(regs, NULL, (dict_free_f *) radionotify_reg_free);
 
-	DEFINE_COMMAND(self, "announce", announce, 2, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(self, "announce", announce, 1, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
 
 	reg_conf_reload_func(radionotify_conf_reload);
 	reg_irc_handler("PART", part);
@@ -288,7 +288,7 @@ static void radiobot_notification(struct radiobot_conf *conf, const char *action
 		const char *show = va_arg(args, const char *);
 		snprintf(msg, sizeof(msg), "$b%s$b ist jetzt bei Radio eXodus on Air: $b%s$b", mod, show);
 		stringlist_add(lines, strdup(msg));
-		snprintf(msg, sizeof(msg), "Zum Zuhören geh einfach auf $b%s$b oder besuch uns in $b%s$b", conf->site_url, conf->radiochan);
+		snprintf(msg, sizeof(msg), "Zum ZuhÃ¶ren geh einfach auf $b%s$b oder besuch uns in $b%s$b", conf->site_url, conf->radiochan);
 		stringlist_add(lines, strdup(msg));
 	}
 	va_end(args);

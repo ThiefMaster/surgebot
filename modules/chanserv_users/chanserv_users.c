@@ -99,8 +99,8 @@ MODULE_INIT
 	}
 
 	REG_COMMAND_RULE("chanserv", chanserv);
-	DEFINE_COMMAND(this, "users", users, 1, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
-	DEFINE_COMMAND(this, "update", update, 1, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(this, "users", users, 0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(this, "update", update, 0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
 
 	timer_add(this, "chanserv_update_users", now + CHANSERV_UPDATE_USERS_INTERVAL, chanserv_update_users, NULL, 0, 1);
 }
@@ -139,6 +139,7 @@ COMMAND(users)
 
 	table = table_create(5, cschan->users->count);
 	table_set_header(table, "Access", "Account", "Last seen", "Status", "Nicks");
+	table->col_flags[0] |= TABLE_CELL_ALIGN_RIGHT | TABLE_CELL_FREE;
 
 	int row = 0;
 	struct stringbuffer *sbuf = stringbuffer_create();
@@ -147,7 +148,7 @@ COMMAND(users)
 	{
 		struct chanserv_user *csuser = node->data;
 
-		table->data[row][0] = strtab(csuser->access);
+		table_col_num(table, row, 0, csuser->access);
 		table->data[row][1] = csuser->account->name;
 
 		if(csuser->last_seen == 0)

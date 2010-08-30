@@ -55,7 +55,7 @@ MODULE_INIT
 	blockedChannels = dict_create();
 	dict_set_free_funcs(blockedChannels, free, free);
 
-	DEFINE_COMMAND(self, "request",	request, 2, 0, "true");
+	DEFINE_COMMAND(self, "request",	request, 1, 0, "true");
 
 	activeRequests = stringlist_create();
 

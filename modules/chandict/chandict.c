@@ -44,14 +44,14 @@ MODULE_INIT
 
 
 	//commands for entries
-	DEFINE_COMMAND(self, "chandict add", chandict_add, 3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "chandict del", chandict_del, 2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "chandict list", chandict_list, 1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "chandict add", chandict_add, 2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "chandict del", chandict_del, 1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "chandict list", chandict_list, 0, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
 
 
 	//command for aliases
-	DEFINE_COMMAND(self, "chandict addalias", chandict_addalias, 3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "chandict delalias", chandict_delalias, 2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "chandict addalias", chandict_addalias, 2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "chandict delalias", chandict_delalias, 1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 
 	help_load(this, "chandict.help");
 }

@@ -36,21 +36,21 @@ MODULE_INIT
 
 	help_load(self, "admin.help");
 
-	DEFINE_COMMAND(self, "rehash",		rehash,		1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "conf get",	conf_get,	1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "die",		die,		1, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "raw",		raw,		2, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "module list",	module_list,	1, 0, "group(admins)");
-	DEFINE_COMMAND(self, "module deps",	module_deps,	1, 0, "group(admins)");
-	DEFINE_COMMAND(self, "module add",	module_add,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "module del",	module_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "module reload",	module_reload,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "binding add",	binding_add,	3, CMD_REQUIRE_AUTHED | CMD_KEEP_BOUND, "group(admins)");
-	DEFINE_COMMAND(self, "binding del",	binding_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "binding rule",	binding_rule,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "writeall",	writeall,	1,	0,	"group(admins)");
-	DEFINE_COMMAND(self, "timer trigger",	trigger_timer, 2, 0, "group(admins)");
-	DEFINE_COMMAND(self, "exec",		exec,		2, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "rehash",		rehash,		0, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "conf get",	conf_get,	0, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "die",		die,		0, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "raw",		raw,		1, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "module list",	module_list,	0, 0, "group(admins)");
+	DEFINE_COMMAND(self, "module deps",	module_deps,	0, 0, "group(admins)");
+	DEFINE_COMMAND(self, "module add",	module_add,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "module del",	module_del,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "module reload",	module_reload,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "binding add",	binding_add,	2, CMD_REQUIRE_AUTHED | CMD_KEEP_BOUND, "group(admins)");
+	DEFINE_COMMAND(self, "binding del",	binding_del,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "binding rule",	binding_rule,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "writeall",	writeall,	0,	0,	"group(admins)");
+	DEFINE_COMMAND(self, "timer trigger",	trigger_timer, 1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "exec",		exec,		1, CMD_LOG_HOSTMASK | CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 }
 
 MODULE_FINI

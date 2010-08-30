@@ -89,13 +89,13 @@ MODULE_INIT
 
 	pthread_create(&load_playlist_thread, NULL, load_playlist, NULL);
 
-	DEFINE_COMMAND(this, "playlist on",	playlist_start,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist off",	playlist_stop,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist cd",	playlist_countdown,	1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist next",	playlist_next,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist play",	playlist_play,		2, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist reload",	playlist_reload,	1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist status",	playlist_status,	1, 0, "group(admins)");
+	DEFINE_COMMAND(this, "playlist on",	playlist_start,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist off",	playlist_stop,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist cd",	playlist_countdown,	0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist next",	playlist_next,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist play",	playlist_play,		1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist reload",	playlist_reload,	0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist status",	playlist_status,	0, 0, "group(admins)");
 }
 
 MODULE_FINI
@@ -930,7 +930,7 @@ COMMAND(playlist_next)
 	pthread_mutex_lock(&options_mutex);
 	stream_next = 1;
 	pthread_mutex_unlock(&options_mutex);
-	irc_send("PRIVMSG %s :Die Playlist spielt jetzt das n‰chste Lied.", playlistbot_conf.teamchan);
+	irc_send("PRIVMSG %s :Die Playlist spielt jetzt das n√§chste Lied.", playlistbot_conf.teamchan);
 	return 1;
 }
 
@@ -990,9 +990,9 @@ COMMAND(playlist_play)
 	pthread_mutex_unlock(&playlist_mutex);
 
 	if(silent)
-		reply("Die Playlist wird als n‰chstes %s spielen.", filename);
+		reply("Die Playlist wird als n√§chstes %s spielen.", filename);
 	else
-		irc_send("PRIVMSG %s :Die Playlist wird als n‰chstes %s spielen.", playlistbot_conf.teamchan, filename);
+		irc_send("PRIVMSG %s :Die Playlist wird als n√§chstes %s spielen.", playlistbot_conf.teamchan, filename);
 	stringbuffer_free(file);
 	free(orig);
 	return 1;

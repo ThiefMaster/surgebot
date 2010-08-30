@@ -31,8 +31,8 @@ MODULE_INIT
 	this = self;
 	pasters = paster_list_create();
 
-	DEFINE_COMMAND(this, "paste", paste, 1, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(this, "stats paste", stats_paste, 1, 0, "group(admins)");
+	DEFINE_COMMAND(this, "paste", paste, 0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(this, "stats paste", stats_paste, 0, 0, "group(admins)");
 }
 
 MODULE_FINI
@@ -242,13 +242,14 @@ COMMAND(stats_paste)
 
 	struct table *table = table_create(4, pasters->count);
 	table_set_header(table, "Paster", "Channel", "Port", "Connected");
+	table->col_flags[2] |= TABLE_CELL_FREE;
 
 	for(unsigned int i = 0; i < pasters->count; i++)
 	{
 		struct paster *paster = pasters->data[i];
 		table->data[i][0] = paster->owner;
 		table->data[i][1] = paster->channel;
-		table->data[i][2] = strtab(paster->port);
+		table_col_num(table, i, 2, paster->port);
 		table->data[i][3] = (paster->sock ? "yes" : "no");
 	}
 

@@ -82,24 +82,24 @@ MODULE_INIT
 	help_load(self, "chanreg.help");
 	DEFINE_COMMAND(self, "cregister",	cregister,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "cunregister",	cunregister,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "stats chanreg",	stats_chanreg,	1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "adduser",		adduser,	3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "deluser",		deluser,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "clvl",		clvl,		3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "giveownership",	giveownership,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "suspend",		suspend,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "unsuspend",	unsuspend,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "access",		access,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
-	DEFINE_COMMAND(self, "users",		users,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
-	DEFINE_COMMAND(self, "cset",		cset,		1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "cinfo",		cinfo,		1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
-	DEFINE_COMMAND(self, "cmod list",	cmod_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "cmod info",	cmod_info,	2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "cmod enable",	cmod_enable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "cmod disable",	cmod_disable,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
-	DEFINE_COMMAND(self, "rejoin",		rejoin,		1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "move",		move,		3, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "global",		global,		2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(self, "stats chanreg",	stats_chanreg,	0, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "adduser",		adduser,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "deluser",		deluser,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "clvl",		clvl,		2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "giveownership",	giveownership,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "suspend",		suspend,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "unsuspend",	unsuspend,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "access",		access,		0, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "users",		users,		0, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "cset",		cset,		0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "cinfo",		cinfo,		0, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "cmod list",	cmod_list,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cmod info",	cmod_info,	1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "cmod enable",	cmod_enable,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "cmod disable",	cmod_disable,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "rejoin",		rejoin,		0, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "move",		move,		2, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "global",		global,		1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "group(admins)");
 
 	reg_account_del_hook(chanreg_account_del);
 	reg_conf_reload_func(chanreg_conf_reload);
@@ -841,7 +841,7 @@ COMMAND(stats_chanreg)
 			continue;
 
 		table->data[i][0] = reg->channel;
-		table->data[i][1] = reg->active ? "Active" : reg->last_error;
+		table_col_str(table, i, 1, reg->active ? "Active" : (char*)reg->last_error);
 		table->data[i][2] = reg->registrar ? reg->registrar : "-";
 		i++;
 	}
@@ -1148,12 +1148,13 @@ COMMAND(users)
 
 	table = table_create(3, reg->users->count);
 	table_set_header(table, "Access", "Account", "Status");
+	table->col_flags[0] |= TABLE_CELL_FREE;
 
 	for(unsigned int j = 0; j < reg->users->count; j++)
 	{
 		struct chanreg_user *c_user = reg->users->data[j];
 
-		table->data[i][0] = strtab(c_user->level);
+		table_col_num(table, i, 0, c_user->level);
 		table->data[i][1] = c_user->account->name;
 		table->data[i][2] = ((c_user->flags & CHANREG_USER_SUSPENDED) ? "Suspended" : "Normal");
 		i++;
@@ -1191,8 +1192,10 @@ COMMAND(cset)
 			if(!cmod->settings->count || ((cmod->flags & CMOD_HIDDEN) && !IsStaff()))
 				continue;
 
-			table = table_create(3, cmod->settings->count);
-			table_bold_column(table, 1, 1);
+			table = table_create(2, cmod->settings->count);
+			table->col_flags[1] |= TABLE_CELL_BOLD;
+			table->prefix = strdup("  ");
+
 			row = 0;
 			free_strings = stringlist_create();
 			dict_iter(node, cmod->settings)
@@ -1206,9 +1209,8 @@ COMMAND(cset)
 				if(cset->formatter)
 					value = cset->formatter(reg, value);
 
-				table->data[row][0] = ""; // Indent
-				table->data[row][1] = str;
-				table->data[row][2] = value;
+				table->data[row][0] = str;
+				table_col_str(table, row, 1, (char*)value);
 				row++;
 			}
 

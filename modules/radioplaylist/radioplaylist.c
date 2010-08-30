@@ -125,18 +125,18 @@ MODULE_INIT
 	debug("starting stream thread");
 	pthread_create(&stream_thread, NULL, stream_thread_main, NULL);
 
-	DEFINE_COMMAND(this, "playlist on",		playlist_on,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist off",		playlist_off,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist cd",		playlist_countdown,	1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist next",		playlist_next,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist play",		playlist_play,		2, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist status",		playlist_status,	1, 0, "group(admins)");
-	DEFINE_COMMAND(this, "playlist blacklist",	playlist_blacklist,	2, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist reload",		playlist_reload,	1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist add",		playlist_add,		2, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist scan",		playlist_scan,		2, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist check",		playlist_check,		1, CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "playlist truncate",	playlist_truncate,	1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist on",		playlist_on,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist off",		playlist_off,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist cd",		playlist_countdown,	0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist next",		playlist_next,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist play",		playlist_play,		1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist status",		playlist_status,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "playlist blacklist",	playlist_blacklist,	1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist reload",		playlist_reload,	0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist add",		playlist_add,		1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist scan",		playlist_scan,		1, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist check",		playlist_check,		0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "playlist truncate",	playlist_truncate,	0, CMD_LOG_HOSTMASK, "group(admins)");
 }
 
 
@@ -271,13 +271,13 @@ COMMAND(playlist_countdown)
 
 	if(playlist_cd_by || stream_state.play == 2)
 	{
-		reply("Es läuft bereits ein Countdown für $b%s$b", playlist_cd_by);
+		reply("Es lÃ¤uft bereits ein Countdown fÃ¼r $b%s$b", playlist_cd_by);
 		return 0;
 	}
 
 	if(remaining < 5)
 	{
-		reply("Countdown nicht möglich; der aktuelle Song endet in weniger als 5s");
+		reply("Countdown nicht mÃ¶glich; der aktuelle Song endet in weniger als 5s");
 		return 0;
 	}
 
@@ -377,7 +377,7 @@ COMMAND(playlist_play)
 		id = strtoul(arg, NULL, 10);
 		if(!id)
 		{
-			reply("Ungültige Song-ID");
+			reply("UngÃ¼ltige Song-ID");
 			return 1;
 		}
 
@@ -448,15 +448,15 @@ COMMAND(playlist_blacklist)
 
 	if(!(id = strtoul(argv[1], NULL, 10)))
 	{
-		reply("Ungültige Song-ID");
+		reply("UngÃ¼ltige Song-ID");
 		return 0;
 	}
 
 	rc = stream_state.playlist->blacklist_id(stream_state.playlist, id);
 	if(rc == 0)
-		reply("Song %"PRIu32" wurde zur Blacklist hinzugefügt", id);
+		reply("Song %"PRIu32" wurde zur Blacklist hinzugefÃ¼gt", id);
 	else
-		reply("Song %"PRIu32" konnte nicht zur Blacklist hinzugefügt werden", id);
+		reply("Song %"PRIu32" konnte nicht zur Blacklist hinzugefÃ¼gt werden", id);
 
 	return rc ? 0 : 1;
 }
@@ -467,7 +467,7 @@ COMMAND(playlist_reload)
 
 	if(!pg_conn)
 	{
-		reply("Datenbank ist nicht verfügbar");
+		reply("Datenbank ist nicht verfÃ¼gbar");
 		return 0;
 	}
 
@@ -507,14 +507,14 @@ COMMAND(playlist_add)
 
 	if(stat(filename, &sb) == -1)
 	{
-		reply("Ungültige Datei: %s", strerror(errno));
+		reply("UngÃ¼ltige Datei: %s", strerror(errno));
 		free(filename);
 		return 0;
 	}
 
 	if(!S_ISREG(sb.st_mode))
 	{
-		reply("Es können nur einzelne Dateien hinzugefügt werden");
+		reply("Es kÃ¶nnen nur einzelne Dateien hinzugefÃ¼gt werden");
 		free(filename);
 		return 0;
 	}
@@ -529,9 +529,9 @@ COMMAND(playlist_add)
 	rc = playlist_add_file(filename, conn, &sb);
 
 	if(rc == 0)
-		reply("Datei wurde zur Playlist hinzugefügt");
+		reply("Datei wurde zur Playlist hinzugefÃ¼gt");
 	else
-		reply("Datei konnte nicht zur Playlist hinzugefügt werden");
+		reply("Datei konnte nicht zur Playlist hinzugefÃ¼gt werden");
 
 	pgsql_fini(conn);
 	free(filename);
@@ -554,14 +554,14 @@ COMMAND(playlist_scan)
 
 	if(stat(path, &sb) == -1)
 	{
-		reply("Ungültiger Ordner: %s", strerror(errno));
+		reply("UngÃ¼ltiger Ordner: %s", strerror(errno));
 		free(path);
 		return 0;
 	}
 
 	if(!S_ISDIR(sb.st_mode))
 	{
-		reply("Es können nur komplette Ordner hinzugefügt werden");
+		reply("Es kÃ¶nnen nur komplette Ordner hinzugefÃ¼gt werden");
 		free(path);
 		return 0;
 	}
@@ -596,12 +596,12 @@ COMMAND(playlist_check)
 	if(count < 0)
 	{
 		pgsql_rollback(conn);
-		reply("Beim Überprüfen ist ein Fehler aufgetreten");
+		reply("Beim ÃœberprÃ¼fen ist ein Fehler aufgetreten");
 	}
 	else
 	{
 		pgsql_commit(conn);
-		reply("Überprüfung abgeschlossen; es wurde%s %"PRId32" Songs gelöscht", (count != 1 ? "n" : ""), count);
+		reply("ÃœberprÃ¼fung abgeschlossen; es wurde%s %"PRId32" Songs gelÃ¶scht", (count != 1 ? "n" : ""), count);
 	}
 
 	pgsql_fini(conn);
@@ -617,7 +617,7 @@ COMMAND(playlist_truncate)
 	if((now - truncate_ts) > 3)
 	{
 		truncate_ts = now;
-		reply("Um wirklich die gesamte Playlist zu $c4löschen$c, rufe diesen Befehl innerhalb der nächsten 3s erneut auf");
+		reply("Um wirklich die gesamte Playlist zu $c4lÃ¶schen$c, rufe diesen Befehl innerhalb der nÃ¤chsten 3s erneut auf");
 		return 0;
 	}
 
@@ -634,12 +634,12 @@ COMMAND(playlist_truncate)
 	if(rc >= 0)
 	{
 		pgsql_commit(conn);
-		reply("Playlist wurde gelöscht");
+		reply("Playlist wurde gelÃ¶scht");
 	}
 	else
 	{
 		pgsql_rollback(conn);
-		reply("Playlist konnte nicht gelöscht werden");
+		reply("Playlist konnte nicht gelÃ¶scht werden");
 	}
 
 	pgsql_fini(conn);
@@ -680,7 +680,7 @@ static void check_countdown()
 	}
 	else if((remaining % 5) == 0) // overtime, display message every 5 seconds
 	{
-		irc_send("PRIVMSG %s :Die Playlist wird in Kürze augeschaltet", playlist_cd_by);
+		irc_send("PRIVMSG %s :Die Playlist wird in KÃ¼rze augeschaltet", playlist_cd_by);
 	}
 
 	playlist_cd_tick = now;

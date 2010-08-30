@@ -48,7 +48,7 @@ MODULE_INIT
 	reg_conf_reload_func(greeting_conf_reload);
 	greeting_conf_reload();
 
-	DEFINE_COMMAND(self, "greeting", greeting, 1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(400)");
+	DEFINE_COMMAND(self, "greeting", greeting, 0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(400)");
 }
 
 MODULE_FINI

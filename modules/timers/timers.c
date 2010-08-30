@@ -67,11 +67,11 @@ MODULE_INIT
 	user_timer_channels = dict_create();
 	dict_set_free_funcs(user_timer_channels, NULL, (dict_free_f*)user_timer_channel_free);
 
-	DEFINE_COMMAND(self, "timer list", timer_list, 1, CMD_ACCEPT_CHANNEL, "chanuser(500)");
-	DEFINE_COMMAND(self, "timer add", timer_add, 3, CMD_ACCEPT_CHANNEL, "chanuser(500)");
-	DEFINE_COMMAND(self, "timer msg", timer_msg, 2, CMD_ACCEPT_CHANNEL, "chanuser(500)");
-	DEFINE_COMMAND(self, "timer del", timer_del, 2, CMD_ACCEPT_CHANNEL, "chanuser(500)");
-	DEFINE_COMMAND(self, "timer cleanup", timer_cleanup, 1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "timer list", timer_list, 0, CMD_ACCEPT_CHANNEL, "chanuser(500)");
+	DEFINE_COMMAND(self, "timer add", timer_add, 2, CMD_ACCEPT_CHANNEL, "chanuser(500)");
+	DEFINE_COMMAND(self, "timer msg", timer_msg, 1, CMD_ACCEPT_CHANNEL, "chanuser(500)");
+	DEFINE_COMMAND(self, "timer del", timer_del, 1, CMD_ACCEPT_CHANNEL, "chanuser(500)");
+	DEFINE_COMMAND(self, "timer cleanup", timer_cleanup, 0, 0, "group(admins)");
 
 	timer_db = database_create("timers", user_timer_db_read, user_timer_db_write);
 	database_read(timer_db, 1);

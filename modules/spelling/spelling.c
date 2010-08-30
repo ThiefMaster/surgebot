@@ -32,9 +32,9 @@ MODULE_INIT
 
 	reg_irc_handler("PRIVMSG", privmsg);
 
-	DEFINE_COMMAND(self, "word add",	word_add,	3, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "word del",	word_del,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "word list",	word_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "word add",	word_add,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "word del",	word_del,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "word list",	word_list,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 }
 
 MODULE_FINI

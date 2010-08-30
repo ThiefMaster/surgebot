@@ -21,7 +21,7 @@ MODULE_INIT
 	trivia_channels = dict_create();
 	dict_set_free_funcs(trivia_dict, NULL, (dict_free_f*)trivia_file_free);
 	dict_set_free_funcs(trivia_channels, NULL, (dict_free_f*)trivia_channel_free);
-	DEFINE_COMMAND(self, "readfile", readfile, 2, 0, "group(admins)");
+	DEFINE_COMMAND(self, "readfile", readfile, 1, 0, "group(admins)");
 	DEFINE_COMMAND(self, "questions", show_questions, 0, 0, "group(admins)");
 }
 

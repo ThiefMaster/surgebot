@@ -37,10 +37,10 @@ MODULE_INIT
 	chanreg_module_readdb(cmod);
 
 	DEFINE_COMMAND(self, "quote",		quote,		0, CMD_LAZY_ACCEPT_CHANNEL, "true");
-	DEFINE_COMMAND(self, "quotes add",	quotes_add,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "quotes del",	quotes_del,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "quotes info",	quotes_info,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
-	DEFINE_COMMAND(self, "quotes list",	quotes_list,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes add",	quotes_add,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes del",	quotes_del,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes info",	quotes_info,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
+	DEFINE_COMMAND(self, "quotes list",	quotes_list,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 
 	srand(now);
 }
@@ -197,10 +197,11 @@ COMMAND(quotes_list)
 
 	struct table *quotes_table = table_create(2, channel_quotes->count);
 	table_set_header(quotes_table, "ID", "Quote");
+	quotes_table->col_flags[0] |= TABLE_CELL_FREE;
 
 	for(unsigned int i = 0; i < channel_quotes->count; i++)
 	{
-		quotes_table->data[i][0] = strtab(i + 1);
+		table_col_num(quotes_table, i, 0, i + 1);
 		quotes_table->data[i][1] = channel_quotes->data[i];
 	}
 

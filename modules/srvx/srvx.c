@@ -61,9 +61,9 @@ MODULE_INIT
 	reg_irc_handler("PRIVMSG", msg);
 	reg_irc_handler("NOTICE", msg);
 
-	DEFINE_COMMAND(this, "srvx reconnect",	srvx_reconnect,	1, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(this, "srvx exec",	srvx_exec,	2, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
-	DEFINE_COMMAND(this, "srvx execnoq",	srvx_exec_noq,	2, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "srvx reconnect",	srvx_reconnect,	0, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(this, "srvx exec",	srvx_exec,	1, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "srvx execnoq",	srvx_exec_noq,	1, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
 	srvx_sock_connect();
 }
 

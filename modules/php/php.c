@@ -63,7 +63,7 @@ MODULE_INIT
 
 	cmod = chanreg_module_reg("PHP", 0, NULL, NULL, NULL, NULL, NULL);
 	chanreg_module_setting_reg(cmod, "Language", default_language, cmod_lang_validator, NULL, NULL);
-	DEFINE_COMMAND(self, "php", php, 2, 0, "group(admins)");
+	DEFINE_COMMAND(self, "php", php, 1, 0, "group(admins)");
 
 	php_requests = dict_create();
 	dict_set_free_funcs(php_requests, NULL, (dict_free_f*)php_request_free);

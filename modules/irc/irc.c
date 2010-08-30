@@ -17,11 +17,11 @@ MODULE_INIT
 {
 	help_load(self, "irc.help");
 
-	DEFINE_COMMAND(self, "whois",		whois,		2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "chaninfo",	chaninfo,	1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(self, "say",		say,		2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(self, "emote",		emote,		2, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(self, "topic",		topic,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "whois",		whois,		1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "chaninfo",	chaninfo,	0, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "say",		say,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "emote",		emote,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "topic",		topic,		0, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 }
 
 MODULE_FINI

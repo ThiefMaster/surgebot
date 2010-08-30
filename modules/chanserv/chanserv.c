@@ -63,7 +63,7 @@ MODULE_INIT
 
 	DEFINE_COMMAND(self, "events",	events,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
 	DEFINE_COMMAND(self, "users",	users,	0,	CMD_ACCEPT_CHANNEL, "chanuser(350) || group(admins)");
-	DEFINE_COMMAND(self, "csaccess",	csaccess, 3, 0, "group(admins)");
+	DEFINE_COMMAND(self, "csaccess",	csaccess, 2, 0, "group(admins)");
 	REG_COMMAND_RULE("chanserv", chanserv);
 
 	event_table = db_table_open(sz_chanserv_db_table, event_table_cols);
@@ -348,6 +348,7 @@ COMMAND(users)
 
 	struct table *table = table_create(5, cschan->users->count);
 	table_set_header(table, "Access", "Account", "Last seen", "Status", "Nick(s)");
+	table->col_flags[0] |= TABLE_CELL_FREE | TABLE_CELL_ALIGN_RIGHT;
 
 	int i = 0;
 	struct stringbuffer *sbuf = stringbuffer_create();
@@ -356,7 +357,7 @@ COMMAND(users)
 	{
 		struct chanserv_user *user = node->data;
 
-		table->data[i][0] = strtab(user->access);
+		table_col_num(table, i, 0, user->access);
 		table->data[i][1] = user->account->name;
 
 		if(user->last_seen == 0)

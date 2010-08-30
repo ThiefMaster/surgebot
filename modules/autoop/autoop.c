@@ -37,10 +37,10 @@ MODULE_INIT
 
 	reg_irc_handler("JOIN", join);
 
-	DEFINE_COMMAND(self, "aop add",		aop_add,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300)");
-	DEFINE_COMMAND(self, "aop del",		aop_del,	2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300)");
-	DEFINE_COMMAND(self, "aop list",	aop_list,	1, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
-	DEFINE_COMMAND(self, "aop sync",	aop_sync,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300)");
+	DEFINE_COMMAND(self, "aop add",		aop_add,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300)");
+	DEFINE_COMMAND(self, "aop del",		aop_del,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300)");
+	DEFINE_COMMAND(self, "aop list",	aop_list,	0, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
+	DEFINE_COMMAND(self, "aop sync",	aop_sync,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300)");
 }
 
 MODULE_FINI

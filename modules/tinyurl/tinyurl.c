@@ -57,7 +57,7 @@ MODULE_INIT
 	tinyurls = dict_create();
 	dict_set_free_funcs(tinyurls, NULL, (dict_free_f*)tinyurl_free);
 
-        help_load(self, "tinyurl.help");
+	help_load(self, "tinyurl.help");
 }
 
 MODULE_FINI

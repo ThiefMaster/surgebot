@@ -55,23 +55,23 @@ MODULE_INIT
 	help_load(self, "account.help");
 
 	/* Regular commands */
-	DEFINE_COMMAND(self, "register",	register,		3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "auth",		auth,			3, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "pass",		pass,			1, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "unregister",	unregister,		2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		1, CMD_IGNORE_LOGINMASK, "true");
-	DEFINE_COMMAND(self, "loginmask",	loginmask,		1, CMD_REQUIRE_AUTHED, "true");
-	DEFINE_COMMAND(self, "logout",		logout,			1, CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "register",	register,		2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "auth",		auth,			2, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_KEEP_BOUND | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "pass",		pass,			0, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "unregister",	unregister,		1, CMD_LOG_HOSTMASK | CMD_ONLY_PRIVMSG | CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		0, CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "loginmask",	loginmask,		0, CMD_REQUIRE_AUTHED, "true");
+	DEFINE_COMMAND(self, "logout",		logout,			0, CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
 
 	/* Administrative commands */
-	DEFINE_COMMAND(self, "group list",	group_list,		1, 0, "group(admins)");
-	DEFINE_COMMAND(self, "group info",	group_info,		2, 0, "group(admins)");
-	DEFINE_COMMAND(self, "group create",	group_add,		2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "group remove",	group_del,		2, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "group addmember",	group_member_add,	3, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "group delmember",	group_member_del,	3, CMD_REQUIRE_AUTHED, "group(admins)");
-	DEFINE_COMMAND(self, "rename",		rename,			3, 0, "group(admins)");
-	DEFINE_COMMAND(self, "oset",		oset,			3, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(self, "group list",	group_list,		0, 0, "group(admins)");
+	DEFINE_COMMAND(self, "group info",	group_info,		1, 0, "group(admins)");
+	DEFINE_COMMAND(self, "group create",	group_add,		1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "group remove",	group_del,		1, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "group addmember",	group_member_add,	2, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "group delmember",	group_member_del,	2, CMD_REQUIRE_AUTHED, "group(admins)");
+	DEFINE_COMMAND(self, "rename",		rename,			2, 0, "group(admins)");
+	DEFINE_COMMAND(self, "oset",		oset,			2, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
 
 	auth_policers = dict_create();
 	dict_set_free_funcs(auth_policers, NULL, (dict_free_f*)auth_policer_free);

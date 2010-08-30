@@ -52,7 +52,7 @@ MODULE_INIT
 	chanreg_module_setting_reg(cmod, "PubReply", "1", boolean_validator, boolean_formatter_onoff, boolean_encoder);
 	chanreg_module_setting_reg(cmod, "ReplyCount", "2", replycount_validator, NULL, NULL);
 
-	DEFINE_COMMAND(self, "google", google, 2, 0, "true");
+	DEFINE_COMMAND(self, "google", google, 1, 0, "true");
 
 	objects = dict_create();
 	dict_set_free_funcs(objects, free, (dict_free_f*)google_object_free);
