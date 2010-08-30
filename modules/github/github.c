@@ -101,6 +101,7 @@ HTTP_HANDLER(http_github)
 	}
 
 
+	debug("json payload: %s", payload_str);
 	if(!payload_str || !(payload = json_tokener_parse(payload_str)) || is_error(payload))
 	{
 		log_append(LOG_WARNING, "Got invalid json payload from github: %s", payload_str);
