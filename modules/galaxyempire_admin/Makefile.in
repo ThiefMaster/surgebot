@@ -1,0 +1,3 @@
+LIBS_mod += `mysql_config --libs`
+CFLAGS_mod += `mysql_config --include`
+

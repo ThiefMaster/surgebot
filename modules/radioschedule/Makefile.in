@@ -1,0 +1,2 @@
+LIBS_mod += -lmysqlpp
+CXXFLAGS_mod += -I/usr/include/mysql -I/usr/include/mysql++

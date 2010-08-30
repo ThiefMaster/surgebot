@@ -1,0 +1,2 @@
+LIBS_mod += -lcap
+
