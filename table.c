@@ -42,7 +42,7 @@ size_t table_strlen(const struct table *t, const char *str, unsigned int col)
 					case 'c':
 						// eat up up to two digits
 						digits = 0;
-						while(*(++pos) != '\0' && isdigit(pos) && ++digits < 2)
+						while(*(++pos) != '\0' && isdigit(*pos) && ++digits < 2)
 							;
 
 						// background color?
@@ -50,7 +50,7 @@ size_t table_strlen(const struct table *t, const char *str, unsigned int col)
 						{
 							digits = 0;
 							// again, two digits are possible
-							while(*(++pos) != '\0' && isdigit(pos) && ++digits < 2)
+							while(*(++pos) != '\0' && isdigit(*pos) && ++digits < 2)
 								;
 						}
 						continue;

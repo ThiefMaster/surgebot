@@ -31,7 +31,7 @@ MODULE_INIT
 	this = self;
 	pasters = paster_list_create();
 
-	DEFINE_COMMAND(this, "paste", paste, 0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(this, "paste", paste, 0, CMD_ACCEPT_CHANNEL | CMD_LAZY_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(this, "stats paste", stats_paste, 0, 0, "group(admins)");
 }
 
