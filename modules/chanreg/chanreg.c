@@ -13,6 +13,7 @@
 #include "conf.h"
 #include "table.h"
 #include "stringlist.h"
+#include "timer.h"
 
 MODULE_DEPENDS("commands", "help", "chanjoin", NULL);
 
@@ -57,6 +58,7 @@ static int sort_channel_users(const void *a_, const void *b_);
 static void chanreg_free(struct chanreg *reg);
 static void _chanreg_setting_set(struct chanreg *reg, const char *module_name, const char *setting, const char *value);
 static int chanreg_module_enable(struct chanreg *reg, struct chanreg_module *cmod, enum cmod_enable_reason reason);
+static void chanreg_module_reg_enable_timer_func(void *bound, struct chanreg_module *cmod);
 static void chanreg_module_setting_free(struct chanreg_module_setting *cset);
 static void cj_success(struct cj_channel *chan, const char *key, void *ctx, unsigned int first_time);
 static void cj_error(struct cj_channel *chan, const char *key, void *ctx, const char *reason);
@@ -112,6 +114,8 @@ MODULE_INIT
 
 MODULE_FINI
 {
+	timer_del_boundname(this, "chanreg_module_reg_enable");
+
 	database_write(chanreg_db);
 	database_delete(chanreg_db);
 
@@ -516,21 +520,26 @@ struct chanreg_module *chanreg_module_reg(const char *name, unsigned int flags, 
 	dict_set_free_funcs(cmod->settings, NULL, (dict_free_f *)chanreg_module_setting_free);
 	dict_insert(chanreg_modules, cmod->name, cmod);
 
-	dict_iter(node, chanregs)
-	{
-		struct chanreg *reg = node->data;
-		if(stringlist_find(reg->modules, name) != -1)
-		{
-			stringlist_add(reg->active_modules, strdup(name));
-			chanreg_list_add(cmod->channels, reg);
-			if(cmod->enable_func)
-				cmod->enable_func(reg, CER_REG);
-
-		}
-	}
+	// To be able to use the chanreg_module inside the enable-function, this must be postponed to after this function
+	timer_add(this, "chanreg_module_reg_enable", now, (timer_f*)chanreg_module_reg_enable_timer_func, cmod, 0, 0);
 
 	log_append(LOG_INFO, "Registered channel module: %s", name);
 	return cmod;
+}
+
+void chanreg_module_reg_enable_timer_func(void *bound, struct chanreg_module *cmod)
+{
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *reg = node->data;
+		if(stringlist_find(reg->modules, cmod->name) != -1)
+		{
+			stringlist_add(reg->active_modules, strdup(cmod->name));
+			chanreg_list_add(cmod->channels, reg);
+			if(cmod->enable_func)
+				cmod->enable_func(reg, CER_REG);
+		}
+	}
 }
 
 void chanreg_module_unreg(struct chanreg_module *cmod)
