@@ -134,3 +134,18 @@ void dict_rename_key(struct dict *dict, const char *key, const char *newkey)
 	free(node->key);
 	node->key = strdup(newkey);
 }
+
+struct dict *dict_copy(struct dict *dict, dict_clone_data_f *clone_data_f)
+{
+	struct dict *clone = dict_create();
+	clone->free_keys_func = free;
+	clone->free_data_func = dict->free_data_func;
+
+	dict_iter(node, dict)
+	{
+		char *key = node->key ? strdup(node->key) : NULL;
+		dict_insert(clone, strdup(node->key), clone_data_f != NULL ? clone_data_f(node->data) : node->data);
+	}
+
+	return clone;
+}

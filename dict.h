@@ -2,6 +2,7 @@
 #define DICT_H
 
 typedef void (dict_free_f)(void *);
+typedef void *(dict_clone_data_f)(void *);
 
 struct dict
 {
@@ -34,6 +35,7 @@ unsigned int dict_delete(struct dict *dict, const char *key);
 unsigned int dict_delete_key_value(struct dict *dict, const char *key, void *data);
 void dict_clear(struct dict *dict);
 void dict_rename_key(struct dict *dict, const char *key, const char *newkey);
+struct dict *dict_copy(struct dict *dict, dict_clone_data_f *clone_data_f);
 
 #define dict_size(DICT)		((DICT) ? (DICT)->count : 0)
 #define dict_first_data(DICT)	((DICT) && (DICT)->head ? (DICT)->head->data : NULL)
