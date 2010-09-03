@@ -37,7 +37,7 @@ void stringbuffer_append_string_n(struct stringbuffer *sbuf, const char *str, si
 
 	while(sbuf->len + len + 1 > sbuf->size)
 	{
-		sbuf->size <<= 1;
+		sbuf->size *= 2;
 		sbuf->string = realloc(sbuf->string, sbuf->size + 1);
 	}
 
@@ -69,7 +69,7 @@ void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const ch
 
 	while(sbuf->size < (sbuf->len + n))
 	{
-		sbuf->size <<= 1;
+		sbuf->size *= 2;
 		sbuf->string = realloc(sbuf->string, sbuf->size + 1);
 	}
 

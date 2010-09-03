@@ -8,15 +8,15 @@
 const struct
 {
 	char *entity;
-	char character;
+	unsigned char character;
 }
 entities[] =
 {
 	// "Default" entities
-	{ "auml",	'ä' },
-	{ "ouml",	'ö' },
-	{ "uuml",	'ü' },
-	{ "szlig",	'ß' },
+	{ "auml",	U'Ã¤' },
+	{ "ouml",	U'Ã¶' },
+	{ "uuml",	U'Ã¼' },
+	{ "szlig",	U'ÃŸ' },
 	{ "quot",	'"' },
 	{ "amp",	'&' },
 	{ "lt",		'<' },
@@ -133,29 +133,63 @@ int remdir(const char *path, unsigned char exists)
 	return rmdir(path);
 }
 
-char *str_replace(const char *str, const char *search, const char *replace, unsigned char case_sensitive)
+char *str_replace(const char *str, unsigned char case_sensitive, ...)
 {
-	size_t replace_len = strlen(replace), search_len = strlen(search);
+	char *search, *replace, *ret;
+	const char *pos;
+	struct dict *replacements = dict_create();
+	size_t *strlen_cache, new_len = 0;
+	struct stringbuffer *sbuf = stringbuffer_create();
+
+	va_list vl;
+	va_start(vl, case_sensitive);
+
+	while((search = va_arg(vl, char *)) != NULL && ((replace = va_arg(vl, char *)) != NULL))
+		dict_insert(replacements, search, replace);
+	va_end(vl);
+
 	char *(*strstrfunc)(const char *, const char *) = (case_sensitive ?  strstr : strcasestr);
-	const char *tmp;
-	char *tmp2, *ret;
-	int i = 0;
 
-	for(tmp = str; (tmp = strstrfunc(tmp, search)); tmp += search_len, i++);
-
-	ret = malloc(strlen(str) + (replace_len - search_len) * i + 1);
-	ret[0] = '\0';
-
-	for(tmp = str; (tmp2 = strstrfunc(tmp, search)); tmp = (tmp2 + search_len))
+	pos = str;
+	while(*pos != '\0')
 	{
-		// Append string up to found string
-		strncat(ret, tmp, (tmp2 - tmp));
-		// Append replace-string
-		strcat(ret, replace);
+		// Position and value of next item to be replaced
+		char *minpos = NULL;
+		struct dict_node *minnode;
+		// Find next item
+		dict_iter(node, replacements)
+		{
+			char *nextpos = strstrfunc(pos, node->key);
+			if(minpos == NULL || (nextpos && nextpos < minpos))
+			{
+				minpos = nextpos;
+				minnode = node;
+			}
+		}
+
+		if(minpos != NULL)
+		{
+			// we found a replacement to be done, append everything up to here
+			stringbuffer_append_string_n(sbuf, pos, minpos - pos);
+			// next comes the key, append its value
+			stringbuffer_append_string(sbuf, (char*)minnode->data);
+			// move pos forward by the length of the key
+			pos += (minpos - pos) + strlen(minnode->key);
+		}
+		else
+		{
+			// No more replacements to be done, simply append anything that remained in the original string
+			stringbuffer_append_string(sbuf, pos);
+			break;
+		}
 	}
 
-	// Append remaining string after last search occurence
-	strcat(ret, tmp);
+	// Duplicate string to be returned
+	ret = strdup(sbuf->string);
+	// Free memory
+	stringbuffer_free(sbuf);
+	dict_free(replacements);
+
 	return ret;
 }
 

@@ -129,7 +129,7 @@ COMMAND(php)
 
 	language = myreg ? chanreg_setting_get(myreg, cmod, "Language") : default_language;
 
-	tmp = str_replace(php->func_name, "_", "-", 1);
+	tmp = str_replace(php->func_name, 1, "_", "-", NULL);
 	snprintf(request, sizeof(request), "www.php.net/manual/%s/function.%s.php", language, tmp);
 	free(tmp);
 	php->http = HTTPRequest_create(request, event_func, read_func);
@@ -232,8 +232,8 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	if(!(tmp = strstr(buf, "<p class=\"refpurpose")))
 	{
 		char *method = IsChannelName(php->target) ? "PRIVMSG" : "NOTICE";
-		tmp = str_replace(php->func_name, "$", "$$", 1);
-		tmp2 = str_replace(tmp, "_", "-", 1);
+		tmp = str_replace(php->func_name, 1, "$", "$$", NULL);
+		tmp2 = str_replace(tmp, 1, "_", "-", NULL);
 		irc_send("%s %s :$b[PHP]$b There is no function called $b%s$b. (http://www.php.net/manual-lookup.php?pattern=%s&lang=%s)", method, php->target, tmp, tmp2, language);
 		free(tmp2);
 		free(tmp);
@@ -259,7 +259,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 	assert((tmp2 = strstr(tmp, "</p>")));
 
 	syn = strndup(tmp, tmp2 - tmp);
-	description = str_replace(syn, "\n", " ", 1);
+	description = str_replace(syn, 1, "\n", " ", NULL);
 	free(syn);
 
 	// Create php cache object
@@ -274,12 +274,10 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 		if((tmp2 = strstr(tmp, "</div>")))
 		{
 			synopsis = strndup(tmp, tmp2 - tmp);
-			syn = str_replace(synopsis, "\n", " ", 1);
+			syn = str_replace(synopsis, 1, "\n", " ", "$", "$$", NULL);
 			free(synopsis);
-			synopsis = str_replace(syn, "$", "$$", 1);
-			free(syn);
 
-			synopsis = strip_duplicate_whitespace(strip_html_tags(synopsis));
+			synopsis = strip_duplicate_whitespace(strip_html_tags(syn));
 			stringlist_add(cache->synopsis, synopsis);
 
 			tmp2 += 6;

@@ -286,7 +286,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 
 	// Duplicate title string
 	tmp = strndup(tmp, tmp2 - tmp);
-	req->response = html_decode(strip_html_tags(strip_duplicate_whitespace(str_replace(tmp, "\n", "", 1))));
+	req->response = html_decode(strip_html_tags(strip_duplicate_whitespace(str_replace(tmp, 1, "\n", "", NULL))));
 	free(tmp);
 
 	youtube_report(req);

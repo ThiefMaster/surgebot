@@ -210,7 +210,7 @@ static void read_func(struct HTTPRequest *http, const char *buf, unsigned int le
 			// First result
 			if(i == 1)
 			{
-				char *request = str_replace(obj->request, "$", "$$", 1);
+				char *request = str_replace(obj->request, 1, "$", "$$", NULL);
 				google_msg(obj, "[$b%s$b] Searching Google for $u%s$u:", obj->nick, request);
 				free(request);
 			}
@@ -288,7 +288,7 @@ static void google_error(struct google_object *obj, const char *format, ...)
 {
 	va_list va;
 	char str[MAXLEN];
-	char *request = str_replace(obj->request, "$", "$$", 1);
+	char *request = str_replace(obj->request, 1, "$", "$$", NULL);
 
 	if(format)
 	{
