@@ -3,7 +3,7 @@
 
 char *html_decode(char *str);
 int remdir(const char *path, unsigned char exists);
-char *str_replace(const char *str, unsigned char case_sensitive, ...);
+char *str_replace(const char *str, unsigned char case_sensitive, ...) NULL_SENTINEL;
 char *strip_html_tags(char * const str);
 char *strip_duplicate_whitespace(char *str);
 size_t substr_count(const char *haystack, const char *needle, unsigned char case_sensitive);
