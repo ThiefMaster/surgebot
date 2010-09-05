@@ -15,7 +15,7 @@
 
 // Duration to cache a request (Will only be checked once every 10 minutes)
 static const unsigned int refresh_delay = 600;
-// Amount of requests to keep
+// Amount of requests to keep (0 to disable)
 static const unsigned int max_requests = 0;
 
 MODULE_DEPENDS("http", "tools", "chanreg", "help", NULL);
@@ -23,7 +23,6 @@ MODULE_DEPENDS("http", "tools", "chanreg", "help", NULL);
 struct youtube_target
 {
 	char *target;
-
 	time_t requested;
 	unsigned char responded; // Response already sent?
 };
@@ -33,7 +32,6 @@ struct youtube_request
 	char *id;
 	struct dict *targets;
 	char *response;
-
 	struct HTTPRequest *http;
 
 	// We are going to cache this request for the duration in refresh_delay
@@ -47,13 +45,12 @@ static void youtube_report(struct youtube_request *);
 static void youtube_add_target(struct youtube_request *, const char *);
 static struct youtube_request *youtube_request_find(struct HTTPRequest *);
 
-static void read_func(struct HTTPRequest *, const char *, unsigned int);
-static void event_func(struct HTTPRequest *, enum HTTPRequest_event);
-
 static void youtube_timer(void *, void *);
 static inline void youtube_timer_add();
 static inline void youtube_timer_del();
 
+static void read_func(struct HTTPRequest *, const char *, unsigned int);
+static void event_func(struct HTTPRequest *, enum HTTPRequest_event);
 static int youtube_disable_cmod(struct chanreg *reg, unsigned int delete_data, enum cmod_disable_reason reason);
 
 extern time_t now;
@@ -65,15 +62,13 @@ IRC_HANDLER(privmsg);
 MODULE_INIT
 {
 	cmod = chanreg_module_reg("YouTube", 0, NULL, NULL, NULL, youtube_disable_cmod, NULL);
-
-	reg_irc_handler("privmsg", privmsg);
-
 	requests = dict_create();
 	dict_set_free_funcs(requests, NULL, (dict_free_f*)youtube_request_free);
 
 	if(refresh_delay > 0)
 		youtube_timer_add();
 
+	reg_irc_handler("privmsg", privmsg);
 	help_load(self, "youtube.help");
 }
 
@@ -81,14 +76,13 @@ MODULE_FINI
 {
 	unreg_irc_handler("privmsg", privmsg);
 	dict_free(requests);
-
 	youtube_timer_del();
 	chanreg_module_unreg(cmod);
 }
 
 IRC_HANDLER(privmsg)
 {
-	const char *str, *tmp, *end, *arg, *cur, *slash;
+	const char *str, *pos, *end, *arg, *cur, *slash;
 	char *id;
 	int i, j;
 	struct chanreg *reg;
@@ -105,68 +99,72 @@ IRC_HANDLER(privmsg)
 next_iteration:
 	while((str = strcasestr(str, "youtube.")))
 	{
-		tmp = cur = str;
+		pos = cur = str;
 		str += 8; // strlen("youtube.")
 
 		// Find beginning of link (Space or beginning of line)
-		while((tmp > arg) && (*(tmp - 1) != ' '))
-			tmp--;
+		while((pos > arg) && (*(pos - 1) != ' '))
+			pos--;
 
 		// Find end of link (Space or end of line)
 		if(!(end = strchr(str, ' ')))
 			end = str + strlen(str); // Point to end of string (\0)
 
 		// Remove http prefix
-		if(!strncasecmp(tmp, "http://", 7))
-			tmp += 8;
-		else if(!strncasecmp(tmp, "https://", 8))
-			tmp += 8;
+		if(!strncasecmp(pos, "http://", 7))
+			pos += 8;
+		else if(!strncasecmp(pos, "https://", 8))
+			pos += 8;
 
 		// See if only letters, numbers and .- are in the host
-		if(!(slash = strstr(tmp, "/")) || (strspn(tmp, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") < (unsigned int)(slash - tmp)))
+		if(!(slash = strstr(pos, "/")) || (strspn(pos, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") < (unsigned int)(slash - pos)))
 			continue;
 
 		// Valid subdomain? 0 or more than 1 and not more than 3 chars (4 incl. dot)
-		if((i = (cur - tmp)) && ((i < 2) || (i > 4) || (tmp[i] == '.')))
+		if((i = (cur - pos)) && ((i < 2) || (i > 4) || (pos[i] == '.')))
 			continue;
 
 		if(i)
 		{
-			i--; // Remove dot from the end
+			--i; // Remove dot from the end
 			// All letters?
-			for(j = 0; j < i; j++)
-				if(!isalpha(tmp[j]))
+			for(j = 0; j < i; ++j)
+			{
+				if(!isalpha(pos[j]))
 					goto next_iteration;
+			}
 
-			tmp += i + 1;
+			pos += i + 1;
 		}
 
 		// After the subdomain incl. dot should be "youtube"
-		if(strncasecmp(tmp, "youtube.", 8))
+		if(strncasecmp(pos, "youtube.", 8))
 			continue;
 
-		tmp += 8;
+		pos += 8;
 		// After youtube, there must be a valid ending of at least 2 and at most 4 chars
 		// (there can be more, but I expect youtube to use at most 4 (.info))
-		if(!(i = (slash - tmp)) || (i < 2) || (i > 4))
+		if(!(i = (slash - pos)) || (i < 2) || (i > 4))
 			continue;
 
-		for(j = 0; j < i; j++)
-			if(!isalpha(tmp[j]))
+		for(j = 0; j < i; ++j)
+		{
+			if(!isalpha(pos[j]))
 				goto next_iteration;
+		}
 
-		tmp += i + 1;
+		pos += i + 1;
 
-		if(strncasecmp(tmp, "watch?v=", 8))
+		if(strncasecmp(pos, "watch?v=", 8) != 0)
 			continue;
 
-		tmp += 8;
+		pos += 8;
 
 		// we finally got to the ID... Read ID which may consist of letters, numbers and .-_ and has at least 10 chars
-		if((i = strspn(tmp, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")) < 10 || (i > 50))
+		if((i = strspn(pos, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")) < 10 || i > 50)
 			continue;
 
-		id = strndup(tmp, i);
+		id = strndup(pos, i);
 		youtube_request_create(id, argv[1]);
 		free(id);
 	}
@@ -175,7 +173,6 @@ next_iteration:
 static struct youtube_request *youtube_request_create(const char *id, const char *target)
 {
 	struct youtube_request *req = dict_find(requests, id);
-
 	char *request;
 
 	if(req)
@@ -257,7 +254,7 @@ static void youtube_report(struct youtube_request *req)
 	{
 		struct youtube_target *target = node->data;
 
-		if(!target->responded)
+		if(target->responded == 0)
 		{
 			target->responded = 1;
 			irc_send("PRIVMSG %s :$bYouTube$b: %s", target->target, req->response);
@@ -268,26 +265,26 @@ static void youtube_report(struct youtube_request *req)
 static void read_func(struct HTTPRequest *http, const char *buf, unsigned int len)
 {
 	// Youtube sends the movie's title in several ways, I'll use the meta title
-
-	char *tmp, *tmp2;
-
-	struct youtube_request *req = youtube_request_find(http);
-	assert(req);
+	char *pos, *end;
+	struct youtube_request *req;
+	assert((req = youtube_request_find(http)) != NULL);
 
 	// Find <meta name="title" content="
-	if(!(tmp = strstr(buf, "<meta name=\"title\" content=\"")))
+	if((pos = strstr(buf, "<meta name=\"title\" content=\"")) == NULL)
 		return;
 
-	tmp += 28; // strlen("<meta name=\"title\" content=\"")
+	pos += 28; // strlen("<meta name=\"title\" content=\"")
 
 	// Find end of attribute
-	if(!(tmp2 = strchr(tmp, '"')))
+	if((end = strchr(pos, '"')) == NULL)
 		return;
 
 	// Duplicate title string
-	tmp = strndup(tmp, tmp2 - tmp);
-	req->response = html_decode(strip_html_tags(strip_duplicate_whitespace(str_replace(tmp, 1, "\n", "", NULL))));
-	free(tmp);
+	pos = strndup(pos, end - pos);
+	// since youtube seems to double-encode its title, I have to use html_decode twice
+	// (due to crap like &amp;quot; which is meant to be ")
+	req->response = html_decode(html_decode(strip_html_tags(strip_duplicate_whitespace(str_replace(pos, 1, "\n", "", NULL)))));
+	free(pos);
 
 	youtube_report(req);
 }
@@ -315,15 +312,16 @@ static void youtube_timer(void *bound, void *data)
 	dict_iter(node, requests)
 	{
 		struct youtube_request *req = node->data;
-
 		if(req->requested < (time_t)(now - refresh_delay))
 			dict_delete(requests, req->id);
 	}
 
 	// Does the total amount of requests exceed the maximum?
-	if(max_requests)
+	if(max_requests > 0)
+	{
 		while(requests->count > max_requests)
 			dict_delete_node(requests, requests->head);
+	}
 
 	youtube_timer_add();
 }
@@ -344,11 +342,9 @@ static int youtube_disable_cmod(struct chanreg *reg, unsigned int delete_data, e
 	dict_iter(node, requests)
 	{
 		struct youtube_request *req = node->data;
-
 		dict_iter(req_node, req->targets)
 		{
 			struct youtube_target *target = req_node->data;
-
 			if(!strcasecmp(target->target, reg->channel))
 				dict_delete_node(req->targets, req_node);
 		}

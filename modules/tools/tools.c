@@ -35,54 +35,55 @@ MODULE_FINI {}
 char *html_decode(char *str)
 {
 	unsigned int i;
-	char *tmp2, *tmp = str, entity[11];
+	char *end, *pos = str, entity[11];
 	size_t len = strlen(str);
 
-	while((tmp = strchr(tmp, '&')))
+	while((pos = strchr(pos, '&')))
 	{
 		// Entity ends in ; ...
-		if(!(tmp2 = strchr(tmp, ';')))
+		if((end = strchr(pos, ';')) == NULL)
 		{
-			tmp++;
+			pos++;
 			continue;
 		}
 
 		// ... and has at most 10 characters (we only need some limit)
-		if((tmp2 - tmp) > 10)
+		if((end - pos) > 10)
 		{
-			tmp = tmp2 + 1;
+			debug("> 10");
+			pos = end + 1;
 			continue;
 		}
 
-		if(tmp[1] == '#') // Numeric entity
+		if(pos[1] == '#') // Numeric entity
 		{
-			strlcpy(entity, tmp + 2, (tmp2 - tmp) - 1);
+			strlcpy(entity, pos + 2, (end - pos) - 1);
 			if((strspn(entity, "0123456789") < strlen(entity)) || !(i = atoi(entity)) || i < 32 || i > 255)
 			{
-				tmp = tmp2 + 1;
+				pos = end + 1;
 				continue;
 			}
 
-			tmp[0] = (char)i;
+			pos[0] = (char)i;
 		}
 		else // Non-numeric entity
 		{
 			for(i = 0; i < ArraySize(entities); i++)
 			{
-				if(!strncasecmp(tmp + 1, entities[i].entity, (tmp2 - tmp) - 1))
+				if(strncasecmp(pos + 1, entities[i].entity, (end - pos) - 1) == 0)
 				{
-					tmp[0] = entities[i].character;
+					pos[0] = entities[i].character;
 					goto loop_continue;
 				}
 			}
-			tmp++;
+			pos++;
 			continue;
 		}
 
 loop_continue:
 
-		tmp++, tmp2++;
-		memmove(tmp, tmp2, (len - (tmp2 - str) + 1));
+		pos++, end++;
+		memmove(pos, end, (len - (end - str) + 1));
 	}
 
 	return str;
