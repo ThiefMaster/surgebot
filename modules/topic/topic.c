@@ -16,10 +16,6 @@
  * To escape the #, use ##.
  */
 
-/*TODO:
- * - remove channel after deletion
- */
-
 MODULE_DEPENDS("commands", "chanreg", NULL);
 
 static struct dict *channel_topics;
@@ -30,6 +26,7 @@ static int cmod_enabled(struct chanreg *reg, enum cmod_enable_reason reason);
 static int topicmask_validator(struct chanreg *reg, struct irc_source *src, const char *value);
 static void topics_db_read(struct database *db);
 static int topics_db_write(struct database *db);
+static void topicmask_chanreg_del_f(struct chanreg *reg);
 
 static struct dict *topicmask_get_replacements(const char *channel, unsigned char force);
 static void topicmask_parse(struct chanreg *reg, struct irc_source *src, const char *value);
@@ -53,6 +50,8 @@ MODULE_INIT
 	topics_db = database_create("topics", topics_db_read, topics_db_write);
 	database_read(topics_db, 1);
 	database_set_write_interval(topics_db, 300);
+
+	reg_chanreg_del_hook(topicmask_chanreg_del_f);
 }
 
 MODULE_FINI
@@ -104,6 +103,11 @@ COMMAND(topicmask)
 	reply("$b%s$b: %s", argv[1], param);
 	free(param);
 	return 1;
+}
+
+static void topicmask_chanreg_del_f(struct chanreg *reg)
+{
+	dict_delete(channel_topics, reg->channel);
 }
 
 static void topics_db_read(struct database *db)
