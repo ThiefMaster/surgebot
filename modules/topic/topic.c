@@ -4,6 +4,7 @@
 #include "irc.h"
 #include "modules/commands/commands.h"
 #include "modules/chanreg/chanreg.h"
+#include "modules/help/help.h"
 
 /*
  * Topicmask module:
@@ -16,7 +17,7 @@
  * To escape the #, use ##.
  */
 
-MODULE_DEPENDS("commands", "chanreg", NULL);
+MODULE_DEPENDS("commands", "chanreg", "help", NULL);
 
 static struct dict *channel_topics;
 static struct chanreg_module *cmod;
@@ -37,6 +38,8 @@ COMMAND(topicmask);
 
 MODULE_INIT
 {
+	help_load(self, "topic.help");
+
 	// This dict has channelnames as keys and dicts with topic-param -> value as data
 	channel_topics = dict_create();
 	dict_set_free_funcs(channel_topics, free, (dict_free_f*)dict_free);

@@ -1,0 +1,22 @@
+"*MODULE" = {
+	"*TOPICMASK" = {
+		"*" = "Enables you to mask your topic with multiple variable parts.";
+		"*" = (
+			"$b$uTopicmask module:$u$b",
+			"After enabling this module, you can specify a topicmask with multiple parts to be replaced.",
+			"These replacable parts need to be enclosed by # to be recognized as such. Example:",
+			"  News: #news#, Weather: #weather",
+			"To use # in your topic, escape it using ##."
+		);
+		
+		"topicmask" = {
+			"description" = "Query or set topicmask parameters.";
+			"help" = (
+				"$bUsage$b: /msg $N {HELP_BINDING} [key [value]]",
+				"Allows you to specify replacements for the matched parts in the topic.",
+				"If neither key nor value are specified, all current key->value pairs are printed.",
+				"If no value is given, only the specified key will be printed."
+			);
+		};
+	};
+};
