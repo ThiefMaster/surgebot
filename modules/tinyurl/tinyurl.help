@@ -1,12 +1,5 @@
-/*
- * Helpfile for TINYURL MODULE
- *
- * Last changed at: 2009-03-22
- * Last changed by: Izlots
- */
-
 "*MODULE" = {
-        "*TINYURL" = {
+	"*TINYURL" = {
 		"*" = "Displays the real URLs of tinyurl.com links";
 		"*" = (
 			"$b$uTinyURL Module:$b$u",

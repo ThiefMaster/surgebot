@@ -1,56 +1,69 @@
-// TODO: This should be moved to a separate helpfile
-"*" = (
-	"Der Bot hat verschiedene Module, die jeweils mit diesem Befehl aktiviert werden können:",
-	"$b/msg $N cmod enable #channel <Modulname>$b (disable zum deaktivieren)",
-	"$uSiehe auch:$u cmod enable, cmod disable",
-	"$uModule:$u",
-	"  $bYouTube$b: Zeigt den Titel des Videos an, wenn jemand einen YouTube-Link in den Channel schreibt.",
-	"  $bGECoords$b: Koordinatendatenbank für Allianzchannels - siehe auch $b/msg $N help coords$b",
-	" ",
-	"$uHinweis:$u Die meisten Befehle, die als '/msg $N <Befehl> #channel [Parameter]' angegeben sind,",
-	"können auch direkt im Channel benutzt werden: '*Befehl [Parameter]' - beispielsweise kann man,",
-	"um das YouTube-Modul zu aktivieren, folgendes im Channel eingeben: $b*cmod enable YouTube$b",
-	" ",
-	"Um den Bot in deinem Allianzchannel zu bekommen, registriere dich beim Bot und schreibe danach einen",
-	"Op in #galaxy-empire an. Um dich zu registrieren, benutze $b/msg $N register <Accountname> <Passwort>$b.",
-	"In Zukunft solltest du dich dann mit $b/msg $N auth <Accountname> <Passwort>$b beim Bot einloggen.",
-	"$uSiehe auch:$u register, auth"
-);
-
-"coords" = (
-	"Das Koordinaten-Modul ermöglicht es, Koordinaten von Spielern zu speichern.",
-	"Um es zu aktivieren, verwende $b/msg $N cmod enable #channel GECoords$b.",
-	"Die Zugriffsrechte auf die Koordinatendatenbank können mit folgenden Befehlen eingestellt werden:",
-	"  /msg $N cset #channel GECoords.EditPermission [Everyone|Voice|Op]",
-	"  /msg $N cset #channel GECoords.ViewPermission [Everyone|Voice|Op]",
-	"  Everyone = jeder im Channel kann die Koordinaten sehen bzw. bearbeiten",
-	"  Voice    = man benötigt mindestens Voice",
-	"  Op       = man benötigt Op",
-	"$uSiehe auch:$u coords add, coords del, coords search, coords list"
-);
-
-"coords add" = (
-	"Verwendung: /msg $N #channel coords add <x:y:z> <name>",
-	"Trägt die Koordinaten <x:y:z> für den Spieler <name> ein.",
-	"Um mehrere Koordinaten auf einmal einzutragen, kann eine Liste in der Form x:y:z,a:b:c,... angegeben werden",
-	"$uSiehe auch:$u coords del, coords search, coords list"
-);
-
-"coords del" = (
-	"Verwendung: /msg $N #channel coords del <x:y:z|*> <name>",
-	"Löscht die Koordinaten <x:y:z> beim Spieler <name>.",
-	"Um alle Koordinaten eines Spielers zu löschen, kann $b*$b angegeben werden.",
-	"$uSiehe auch:$u coords add, coords search, coords list"
-);
-
-"coords search" = (
-	"Verwendung: /msg $N #channel coords search <name>",
-	"Zeigt alle eingetragenen Koordinaten für den Spieler <name> an.",
-	"$uSiehe auch:$u coords add, coords del, coords list"
-);
-
-"coords list" = (
-	"Verwendung: /msg $N #channel coords list",
-	"Zeigt alle eingetragenen Koordinaten an.",
-	"$uSiehe auch:$u coords add, coords del, coords search"
-);
+"*MODULE" = {
+	"*GECoords" = {
+		"*" = (
+			"Der Bot hat verschiedene Module, die jeweils mit diesem Befehl aktiviert werden kÃ¶nnen:",
+			"$b/msg $N cmod enable #channel <Modulname>$b (disable zum deaktivieren)",
+			"$uSiehe auch:$u cmod enable, cmod disable",
+			"$uModule:$u",
+			"  $bYouTube$b: Zeigt den Titel des Videos an, wenn jemand einen YouTube-Link in den Channel schreibt.",
+			"  $bGECoords$b: Koordinatendatenbank fÃ¼r Allianzchannels - siehe auch $b/msg $N help coords$b",
+			" ",
+			"$uHinweis:$u Die meisten Befehle, die als '/msg $N <Befehl> #channel [Parameter]' angegeben sind,",
+			"kÃ¶nnen auch direkt im Channel benutzt werden: '*Befehl [Parameter]' - beispielsweise kann man,",
+			"um das YouTube-Modul zu aktivieren, folgendes im Channel eingeben: $b*cmod enable YouTube$b",
+			" ",
+			"Um den Bot in deinem Allianzchannel zu bekommen, registriere dich beim Bot und schreibe danach einen",
+			"Op in #galaxy-empire an. Um dich zu registrieren, benutze $b/msg $N register <Accountname> <Passwort>$b.",
+			"In Zukunft solltest du dich dann mit $b/msg $N auth <Accountname> <Passwort>$b beim Bot einloggen.",
+			"$uSiehe auch:$u register, auth"
+		);
+		
+		"coords" = {
+			"help" = (
+				"Das Koordinaten-Modul ermÃ¶glicht es, Koordinaten von Spielern zu speichern.",
+				"Um es zu aktivieren, verwende $b/msg $N cmod enable #channel GECoords$b.",
+				"Die Zugriffsrechte auf die Koordinatendatenbank kÃ¶nnen mit folgenden Befehlen eingestellt werden:",
+				"  /msg $N cset #channel GECoords.EditPermission [Everyone|Voice|Op]",
+				"  /msg $N cset #channel GECoords.ViewPermission [Everyone|Voice|Op]",
+				"  Everyone = jeder im Channel kann die Koordinaten sehen bzw. bearbeiten",
+				"  Voice    = man benÃ¶tigt mindestens Voice",
+				"  Op       = man benÃ¶tigt Op",
+				"$uSiehe auch:$u coords add, coords del, coords search, coords list"
+			);
+		};
+		
+		"coords add" = {
+			"help" = (
+				"$bVerwendung$b: /msg $N #channel coords add <x:y:z> <name>",
+				"TrÃ¤gt die Koordinaten <x:y:z> fÃ¼r den Spieler <name> ein.",
+				"Um mehrere Koordinaten auf einmal einzutragen, kann eine Liste in der Form x:y:z,a:b:c,... angegeben werden",
+				"$uSiehe auch:$u coords del, coords search, coords list"
+			);
+		};
+		
+		"coords del" = {
+			"help" = (
+				"$bVerwendung$b: /msg $N #channel coords del <x:y:z|*> <name>",
+				"LÃ¶scht die Koordinaten <x:y:z> beim Spieler <name>.",
+				"Um alle Koordinaten eines Spielers zu lÃ¶schen, kann $b*$b angegeben werden.",
+				"$uSiehe auch:$u coords add, coords search, coords list"
+			);
+		};
+		
+		"coords search" = {
+			"help" = (
+				"$bVerwendung$b: /msg $N #channel coords search <name>",
+				"Zeigt alle eingetragenen Koordinaten fÃ¼r den Spieler <name> an.",
+				"$uSiehe auch:$u coords add, coords del, coords list"
+			);
+		};
+		
+		"coords list" = {
+			"help" = (
+				"$bVerwendung$b: /msg $N #channel coords list",
+				"Zeigt alle eingetragenen Koordinaten an.",
+				"$uSiehe auch:$u coords add, coords del, coords search"
+			);
+		};
+	};
+};

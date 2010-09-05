@@ -1,6 +1,13 @@
 "*MODULE" = {
 	"*INFO" = {
 		"*" = "Shows various statistics and information about the bot.";
+		"*" = (
+			"$b$uInfo module$u$b:",
+			"This module shows various statistics and information about the bot.",
+			
+			"{HELP_COMMAND_LIST}",
+			"{HELP_CATEGORY_LIST}"
+		);
 		
 		"command" = {
 			"help" = (

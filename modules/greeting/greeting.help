@@ -1,12 +1,5 @@
-/*
- * Helpfile for GREETING MODULE
- * 
- * Last changed at: 2009-03-22
- * Last changed by: Izlots
- */
-
 "*MODULE" = {
-        "*GREETING" = {
+	"*GREETING" = {
 		"*" = "User greetings";
 		"*" = (
 			"$b$uGreeting Module:$b$u",

@@ -1,29 +1,56 @@
-"whois" = (
-	"Usage: /msg $N whois <nick>",
-	"Display some information about the specified user.",
-	"$uSee also:$u chaninfo"
-);
-
-"chaninfo" = (
-	"Usage: /msg $N chaninfo <#channel>",
-	"Display some information about the specified channel.",
-	"$uSee also:$u whois"
-);
-
-"say" = (
-	"Usage: /msg $N say <#channel|nick> <text>",
-	"Makes $b$N$b send a message to the specified target.",
-	"$uSee also:$u emote"
-);
-
-"emote" = (
-	"Usage: /msg $N emote <#channel|nick> <text>",
-	"Makes $b$N$b send a CTCP ACTION (/me) to the specified target..",
-	"$uSee also:$u say"
-);
-
-"topic" = (
-	"Usage: /msg $N topic <#channel> [topic]",
-	"Sets the topic for the specified channel. If no topic is specified, the current topic will be displayed.",
-	"Setting the topic to '*' will clear it."
-);
+"*MODULE" = {
+	"*IRC" = {
+		"whois" = {
+			"description" = "Display some information about the specified user.";
+			"help" = (
+				"Usage: /msg $N whois <nick>",
+				"Display some information about the specified user.",
+			);
+			"see_also" = (
+				"irc.chaninfo"
+			);
+		};
+		
+		"chaninfo" = {
+			"description" = "Display some information about the specified channel.";
+			"help" = (
+				"Usage: /msg $N chaninfo <#channel>",
+				"Display some information about the specified channel.",
+			);
+			"see_also" = (
+				"irc.whois"
+			);
+		};
+		
+		"say" = {
+			"description" = "Makes $ send a message to the specified target.";
+			"help" = (
+				"Usage: /msg $N say <#channel|nick> <text>",
+				"Makes $b$N$b send a message to the specified target.",
+			);
+			"see_also" = (
+				"irc.emote"
+			);
+		};
+		
+		"emote" = {
+			"description" = "Makes $N send a CTCP ACTION (/me) to the specified target.";
+			"help" = (
+				"Usage: /msg $N emote <#channel|nick> <text>",
+				"Makes $b$N$b send a CTCP ACTION (/me) to the specified target.",
+			);
+			"see_also" = (
+				"irc.say"
+			);
+		};
+		
+		"topic" = {
+			"description" = "Sets or queries the topic for the specified channel.";
+			"help" = (
+				"Usage: /msg $N topic <#channel> [topic]",
+				"Sets the topic for the specified channel. If no topic is specified, the current topic will be displayed.",
+				"Setting the topic to '*' will clear it."
+			);
+		};
+	};
+};

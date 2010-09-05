@@ -1,12 +1,5 @@
-/*
- * Helpfile for YOUTUBE MODULE
- *
- * Last changed at: 2009-03-22
- * Last changed by: Izlots
- */
-
 "*MODULE" = {
-        "*YOUTUBE" = {
+	"*YOUTUBE" = {
 		"*" = "Displays YouTube titles";
 		"*" = (
 			"$b$uYouTube Module:$b$u",

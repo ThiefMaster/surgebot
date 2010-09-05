@@ -1,12 +1,5 @@
-/*
- * Helpfile for GOOGLE MODULE
- *
- * Last changed at: 2009-03-27
- * Last changed by: Izlots
- */
-
 "*MODULE" = {
-        "*GOOGLE" = {
+	"*GOOGLE" = {
 		"*" = "Search on Google via IRC";
 		"*" = (
 			"$b$uGoogle Module:$b$u",
@@ -15,8 +8,8 @@
 			"post the results into the channel. You can set the access requiered for this",
 			"using $b/msg $N {HELP_COMMAND:chanreg.cset} <#channel> Google.MinAccess <access>$b",
 
-                        "{HELP_COMMAND_LIST}",
-                        "{HELP_CATEGORY_LIST}"
+			"{HELP_COMMAND_LIST}",
+			"{HELP_CATEGORY_LIST}"
 		);
 		"google" = {
 			"description" = "Searches Google for given string";

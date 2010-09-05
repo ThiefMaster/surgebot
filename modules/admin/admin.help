@@ -1,83 +1,158 @@
-// Miscellaneous commands
-"die" = (
-	"Usage: /msg $N die",
-	"Shuts the bot down.",
-	"$uSee also:$u rehash"
-);
-
-"conf get" = (
-	"Usage: /msg $N conf get [path]",
-	"Displays the value of the given configuration key.",
-	"If the key is an object, all available subkeys are displayed."
-);
-
-"rehash" = (
-	"Usage: /msg $N rehash",
-	"Causes the bot to re-read its configuration file and use updated values wherever it's possible.",
-	"$uSee also:$u die"
-);
-
-// Module commands
-"module list" = (
-	"Usage: /msg $N module list",
-	"Displays all loaded modules.",
-	"$uSee also:$u module deps, module add, module del, module reload"
-);
-
-"module deps" = (
-	"Usage: /msg $N module deps",
-	"Displays which modules depend on which other modules.",
-	"$uSee also:$u module list, module add, module del, module reload"
-);
-
-"module add" = (
-	"Usage: /msg $N module add <modulename>",
-	"Loads the specified module.",
-	"Note that it will be unloaded again when you use REHASH; to keep it loaded, add it to the config file.",
-	"$uSee also:$u module list, module deps, module del, module reload"
-);
-
-"module del" = (
-	"Usage: /msg $N module del <modulename>",
-	"Unloads the specified module.",
-	"Note that it will be loaded again when you use REHASH; to keep it unloaded, remove it from the config file",
-	"$uSee also:$u module list, module deps, module add, module reload"
-);
-
-"module reload" = (
-	"Usage: /msg $N module reload <modulename>",
-	"Reloads the specified module.",
-	"Note that ALL modules depending on this module will also be reloaded.",
-	"$uSee also:$u module list, module deps, module add, module del"
-);
-
-// Binding commands
-"binding add" = (
-	"Usage: /msg $N binding add <bindname> <module>.<cmd> [alias...]",
-	"Binds a command from a module.",
-	"You may use '*' for <bindname> and <cmd> to bind all commands from the specified module.",
-	"In aliases you may use $n, $n-m and $n-* to access one or more arguments.",
-	"$uSee also:$u binding del, binding rule"
-);
-
-"binding del" = (
-	"Usage: /msg $N binding del <bindname>",
-	"Removes the specified binding.",
-	"Note that there might be some commands which have to be bound at least once.",
-	"$uSee also:$u binding add"
-);
-
-"binding rule" = (
-	"Usage: /msg $N binding rule <bindname> <rule>",
-	"Changes the access rule for a binding.",
-	"When using $b*$b for the rule, the command's default rule will be used.",
-	"$uSee also:$u binding add, binding del, access rules"
-);
-
-"access rules" = (
-	"Access rules define who may use a command.",
-	"The most simple rules are 'true'/'false' which make a command public/disabled.",
-	"To check for group membership, you can use the group(<name>) function.",
-	"A more complex rule may contain AND, OR and NOT links and parentheses; e.g. 'group(x) || (group(a) && group(b) && !group(c))'",
-	"As soon as the help module supports hardcoded expansions, you will get a list of all available functions here. ;)"
-);
+"*MODULE" = {
+	"*ADMIN" = {
+		"die" = {
+			"description" = "Shuts the bot down.";
+			"help" = (
+				"$bUsage$b: /msg $N die",
+				"Shuts the bot down.",
+			);
+			"see_also" = (
+				"admin.rehash"
+			);
+		};
+		
+		"conf get" = {
+			"description" = "Displays the value of the given configuration key.";
+			"help" = (
+				"$bUsage$b: /msg $N conf get [path]",
+				"Displays the value of the given configuration key.",
+				"If the key is an object, all available subkeys are displayed."
+			);
+		};
+		
+		"rehash" = {
+			"description" = "Causes the bot to re-read its configuration file and use updated values wherever it's possible.";
+			"help" = (
+				"$bUsage$b: /msg $N rehash",
+				"Causes the bot to re-read its configuration file and use updated values wherever it's possible.",
+			);
+			"see_also" = (
+				"admin.die"
+			);
+		};
+		
+		// Module commands
+		"module list" = {
+			"description" = "Displays all loaded modules.";
+			"help" = (
+				"$bUsage$b: /msg $N module list",
+				"Displays all loaded modules.",
+			);
+			"see_also" = (
+				"admin.module deps",
+				"admin.module add",
+				"admin.module del",
+				"admin.module reload"
+			);
+		};
+		
+		"module deps" = {
+			"description" = "Displays which modules depend on which other modules.";
+			"help" = (
+				"$bUsage$b: /msg $N module deps",
+				"Displays which modules depend on which other modules.",
+			);
+			"see_also" = (
+				"admin.module list",
+				"admin.module add",
+				"admin.module del",
+				"admin.module reload"
+			);
+		};
+		
+		"module add" = {
+			"description" = "Loads the specified module.";
+			"help" = (
+				"$bUsage$b: /msg $N module add <modulename>",
+				"Loads the specified module.",
+				"Note that it will be unloaded again when you use REHASH; to keep it loaded, add it to the config file.",
+			);
+			"see_also" = (
+				"admin.module list",
+				"admin.module deps",
+				"admin.module del",
+				"admin.module reload"
+			);
+		};
+		
+		"module del" = {
+			"description" = "Unloads the specified module.";
+			"help" = (
+				"$bUsage$b: /msg $N module del <modulename>",
+				"Unloads the specified module.",
+				"Note that it will be loaded again when you use REHASH; to keep it unloaded, remove it from the config file",
+			);
+			"see_also" = (
+				"admin.module list",
+				"admin.module deps",
+				"admin.module add",
+				"admin.module reload"
+			);
+		};
+		
+		"module reload" = {
+			"description" = "Reloads the specified module.";
+			"help" = (
+				"$bUsage$b: /msg $N module reload <modulename>",
+				"Reloads the specified module.",
+				"Note that ALL modules depending on this module will also be reloaded.",
+			);
+			"see_also" = (
+				"admin.module list",
+				"admin.module deps",
+				"admin.module add",
+				"admin.module del"
+			);
+		};
+		
+		// Binding commands
+		"binding add" = {
+			"description" = "Binds a command from a module.";
+			"help" = (
+				"$bUsage$b: /msg $N binding add <bindname> <module>.<cmd> [alias...]",
+				"Binds a command from a module.",
+				"You may use '*' for <bindname> and <cmd> to bind all commands from the specified module.",
+				"In aliases you may use $n, $n-m and $n-* to access one or more arguments.",
+			);
+			"see_also" = (
+				"admin.binding del",
+				"admin.binding rule"
+			);
+		};
+		
+		"binding del" = {
+			"description" = "Removes the specified binding.";
+			"help" = (
+				"$bUsage$b: /msg $N binding del <bindname>",
+				"Removes the specified binding.",
+				"Note that there might be some commands which have to be bound at least once.",
+			);
+			"see_also" = (
+				"admin.binding add"
+			);
+		};
+		
+		"binding rule" = {
+			"description" = "Changes the access rule for a binding.";
+			"help" = (
+				"$bUsage$b: /msg $N binding rule <bindname> <rule>",
+				"Changes the access rule for a binding.",
+				"When using $b*$b for the rule, the command's default rule will be used.",
+			);
+			"see_also" = (
+				"admin.binding add",
+				"admin.binding del"
+			);
+		};
+		
+		"*access rules" = {
+			"*" = (
+				"Access rules define who may use a command.",
+				"The most simple rules are 'true'/'false' which make a command public/disabled.",
+				"To check for group membership, you can use the group(<name>) function.",
+				"A more complex rule may contain AND, OR and NOT links and parentheses; e.g. 'group(x) || (group(a) && group(b) && !group(c))'",
+				"As soon as the help module supports hardcoded expansions, you will get a list of all available functions here. ;)"
+			);
+		};
+	};
+};
