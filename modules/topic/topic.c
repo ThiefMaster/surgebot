@@ -56,6 +56,8 @@ MODULE_INIT
 
 MODULE_FINI
 {
+	unreg_chanreg_del_hook(topicmask_chanreg_del_f);
+
 	database_write(topics_db);
 	database_delete(topics_db);
 	chanreg_module_unreg(cmod);
