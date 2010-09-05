@@ -1,31 +1,11 @@
-Description							| Assigned to
+Description							                            | Assigned to
 ================================================================#=============
- Adding Timeouts to open DCC sockets from paste module		|
-								|
-----------------------------------------------------------------+-------------
-								|
- Adding Quiz-Modul (+ converter for moxquizz questions?)	| 
-								|
-----------------------------------------------------------------+-------------
-								|
- Writing some proper help files					|
-	- rewrite help files					| Izlots
-								|
-----------------------------------------------------------------+-------------
-								|
- Create/improve logging module					| 
-	- define log levels					|
-	- ability to send certain messages to a staff channel	|
-								|
-----------------------------------------------------------------+-------------
-								|
- Move some commands from the misc module to a toy modul		| 
-								|
-----------------------------------------------------------------+-------------
-								|
- Remove color output if running from IDE			|
-	- Makefile						|
-	- Bot output (see logging modul)			|
-								|
-----------------------------------------------------------------+-------------
+ Adding Timeouts to open DCC sockets from paste module		    |
+ Adding Quiz-Modul (+ converter for moxquizz questions?)	    |
+ Create/improve logging module					                |
+	- define log levels					                        |
+	- ability to send certain messages to a staff channel	    |
+ Move some commands from the misc module to a toy modul		    | 
+ Remove color output if running from IDE			            |
+	- Bot output (see logging modul)			                |
 
