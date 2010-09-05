@@ -156,7 +156,7 @@ IRC_HANDLER(privmsg)
 		{
 			struct irc_channel *irc_channel;
 			struct irc_user *irc_user;
-			const unsigned int min_duration = 60;
+			const time_t min_duration = 60;
 			static time_t last_msg = 0;
 
 			if((irc_channel = channel_find(dst)) && (irc_user = user_find(src->nick)))
@@ -166,7 +166,7 @@ IRC_HANDLER(privmsg)
 					return;
 			}
 
-			if(last_msg && (last_msg + min_duration >= now))
+			if(last_msg > 0 && (last_msg + min_duration >= now))
 				return;
 
 			if(
@@ -197,12 +197,6 @@ IRC_HANDLER(privmsg)
 			}
 		}
 	}
-
-	if(!IsChannelName(dst))
-		return;
-
-	if(!strcasecmp(msg, "Tuks?"))
-		irc_send("PRIVMSG %s :Tuks go määääh or m0000h!", dst);
 }
 
 COMMAND(slap)
