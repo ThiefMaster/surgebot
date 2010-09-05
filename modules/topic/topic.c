@@ -181,20 +181,16 @@ static void topicmask_set_topic(struct chanreg *reg)
 	struct dict *replacements = topicmask_get_replacements(reg->channel, 0);
 	if(replacements == NULL)
 	{
-		debug("topicmask_set_topic(): No replacements, setting plain topicmask.");
 		// Nothing that needs replacing
 		irc_send("TOPIC %s :%s", reg->channel, topicmask);
 		return;
 	}
-
-	debug("%d replacements", dict_size(replacements));
 
 	sbuf = stringbuffer_create();
 	// inlining str_replace
 	pos = topicmask;
 	while(*pos != '\0')
 	{
-		debug("pos=%s", pos);
 		// Position and value of next item to be replaced
 		const char *minpos = NULL;
 		struct dict_node *minnode;
@@ -203,16 +199,13 @@ static void topicmask_set_topic(struct chanreg *reg)
 		{
 			unsigned char found = 0;
 			const char *nextpos = pos;
-			debug("Searching for %s", node->key);
 			while(found == 0 && (nextpos = strcasestr(nextpos, node->key)) != NULL)
 			{
-				debug("Found at position %d: %s", nextpos - topicmask, nextpos);
 				// Valid pattern?
 				if(nextpos > topicmask && *(nextpos - 1) == '#' && *(nextpos + strlen(node->key)) == '#'
 					&& (minpos == NULL || (nextpos - 1) < minpos))
 				{
 					minpos = nextpos - 1;
-					debug("valid pattern, minpos=%s", minpos);
 					minnode = node;
 					// only find first match as the following ones are not going to precede this one
 					found = 1;
@@ -255,18 +248,12 @@ static int topicmask_set(struct chanreg *reg, const char *param, const char *val
 	// Find replacement dict
 	struct dict *replacements = dict_find(channel_topics, reg->channel);
 	if(replacements == NULL)
-	{
-		debug("topicmask_set(): No replacements found.");
 		return 1;
-	}
 
 	// See if a node with this name already exists
 	struct dict_node *node = dict_find_node(replacements, param);
 	if(node == NULL)
-	{
-		debug("topicmask_set(): No node found.");
 		return 1;
-	}
 
 	if(node->data != NULL)
 		free(node->data);
@@ -335,7 +322,7 @@ static void topicmask_parse(struct chanreg *reg, struct irc_source *src, const c
 		if(end == NULL) // no more delimiters found
 		{
 			if(src != NULL)
-				reply("WARNING: Pattern delimiter at position %d does not seem to be closed.", (pos - 1) - value);
+				reply("WARNING: Pattern delimiter at position %td does not seem to be closed.", (pos - 1) - value);
 			break;
 		}
 
