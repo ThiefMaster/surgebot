@@ -1,5 +1,5 @@
 "*MODULE" = {
-        "*GITHUB" = {
+	"*GITHUB" = {
 		"*" = "Allows $N to receive GitHub commit/push notifications.";
 		"*" = (
 			"$b$uGitHub Module:$b$u",
