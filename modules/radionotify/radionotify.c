@@ -333,6 +333,8 @@ COMMAND(removebot)
 
 	reg->dead = 1;
 	dict_delete(regs, channel->name);
+	irc_send("PART %s", channel->name);
+	reply("Removed bot from $b%s$b", channel->name);
 
 	return 1;
 }
