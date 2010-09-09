@@ -27,6 +27,7 @@ struct radionotify_reg
 };
 
 COMMAND(announce);
+COMMAND(removebot);
 IRC_HANDLER(part);
 IRC_HANDLER(invite);
 static void radionotify_conf_reload();
@@ -55,6 +56,7 @@ MODULE_INIT
 	dict_set_free_funcs(regs, NULL, (dict_free_f *) radionotify_reg_free);
 
 	DEFINE_COMMAND(self, "announce", announce, 1, CMD_REQUIRE_AUTHED | CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(self, "removebot", removebot, 0, CMD_REQUIRE_AUTHED | CMD_REQUIRE_CHANNEL | CMD_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "group(admins)");
 
 	reg_conf_reload_func(radionotify_conf_reload);
 	reg_irc_handler("PART", part);
@@ -316,6 +318,21 @@ COMMAND(announce)
 		struct radionotify_reg *reg = node->data;
 		irc_send("PRIVMSG %s :[$bANNOUNCEMENT$b from $b%s$b] %s", reg->channel, src->nick, argline + (argv[1] - argv[0]));
 	}
+
+	return 1;
+}
+
+COMMAND(removebot)
+{
+	struct radionotify_reg *reg = radionotify_reg_find(channelname);
+	if(!reg)
+		return 0;
+
+	if(radionotify_conf.debug_channel)
+		irc_send("PRIVMSG %s :Unregistered channel: %s (requested by %s)", radionotify_conf.debug_channel, channel->name, src->nick);
+
+	reg->dead = 1;
+	dict_delete(regs, channel->name);
 
 	return 1;
 }
