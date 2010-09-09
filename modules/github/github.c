@@ -56,6 +56,8 @@ HTTP_HANDLER(http_github)
 {
 	struct dict *post_vars = http_parse_vars(client, HTTP_POST);
 	const char *payload_str = dict_find(post_vars, "payload");
+	char *tmp;
+	int not_github = (tmp = dict_find(post_vars, "not_github")) ? !!atoi(tmp) : 0;
 	const char *channel_raw = argc > 1 ? argv[1] : NULL;
 	const char *key = argc > 2 ? argv[2] : NULL;
 	const char *chankey;
@@ -108,7 +110,7 @@ HTTP_HANDLER(http_github)
 		goto out;
 	}
 
-	debug("Got valid request from github; channel=%s, key=%s", channel, key);
+	debug("Got valid request from github; channel=%s, key=%s, not_github=%u", channel, key, not_github);
 
 	// Handle payload
 	const char *repo_name = json_get_path(payload, "repository.name", json_type_string);
@@ -139,7 +141,7 @@ HTTP_HANDLER(http_github)
 
 		// Shorten message if it has multiple lines
 		strlcpy(msgbuf, message, sizeof(msgbuf) - 3); // Leave space for " ...". Only 3 chars needed as \n is overwritten
-		char *tmp = strchr(msgbuf, '\n');
+		tmp = strchr(msgbuf, '\n');
 		if(tmp)
 			strcpy(tmp, " ...");
 
@@ -173,10 +175,11 @@ HTTP_HANDLER(http_github)
 		const char *repo_url = json_get_path(payload, "repository.url", json_type_string);
 		assert_goto(before, out);
 		assert_goto(after, out);
-		assert_goto(repo_url, out);
+		assert_goto(not_github || repo_url, out);
 		strlcpy(beforebuf, before, sizeof(beforebuf));
 		strlcpy(afterbuf, after, sizeof(afterbuf));
-		snprintf(urlbuf, sizeof(urlbuf), "%s/compare/%s...%s", repo_url, beforebuf, afterbuf);
+		if(!not_github)
+			snprintf(urlbuf, sizeof(urlbuf), "%s/compare/%s...%s", repo_url, beforebuf, afterbuf);
 
 		struct github_ctx *ctx = malloc(sizeof(struct github_ctx));
 		memset(ctx, 0, sizeof(struct github_ctx));
@@ -187,19 +190,25 @@ HTTP_HANDLER(http_github)
 		ctx->ref = strdup(ref_name);
 		ctx->before = strndup(before, 6);
 		ctx->after = strndup(after, 6);
-		bitly_shorten(urlbuf, (bitly_shortened_f *)url_shortened, ctx, NULL);
+		if(not_github)
+			url_shortened(NULL, 1, ctx);
+		else
+			bitly_shorten(urlbuf, (bitly_shortened_f *)url_shortened, ctx, NULL);
 	}
 	else if(messages->count == 1 && commits->length)
 	{
 		const char *url = json_get_path(commits->array[0], "url", json_type_string);
-		assert_goto(url, out);
+		assert_goto(not_github || url, out);
 
 		struct github_ctx *ctx = malloc(sizeof(struct github_ctx));
 		memset(ctx, 0, sizeof(struct github_ctx));
 		ctx->messages = messages;
 		messages = NULL; // so it's not free'd at the end of this function
 		ctx->channel = strdup(channel);
-		bitly_shorten(url, (bitly_shortened_f *)url_shortened, ctx, NULL);
+		if(not_github && !url)
+			url_shortened(NULL, 1, ctx);
+		else
+			bitly_shorten(url, (bitly_shortened_f *)url_shortened, ctx, NULL);
 	}
 	else
 	{
@@ -222,12 +231,21 @@ static void url_shortened(const char *url, int success, struct github_ctx *ctx)
 	if(ctx->messages->count > 1)
 	{
 		char summarybuf[MAXLEN];
-		snprintf(summarybuf, sizeof(summarybuf),
-			"$b%s:$b $c07%s$c commits $b%s$b...$b%s$b - %s",
-			ctx->repo, ctx->ref, ctx->before, ctx->after, url);
+		if(url)
+		{
+			snprintf(summarybuf, sizeof(summarybuf),
+				"$b%s:$b $c07%s$c commits $b%s$b...$b%s$b - %s",
+				ctx->repo, ctx->ref, ctx->before, ctx->after, url);
+		}
+		else
+		{
+			snprintf(summarybuf, sizeof(summarybuf),
+				"$b%s:$b $c07%s$c commits $b%s$b...$b%s$b",
+				ctx->repo, ctx->ref, ctx->before, ctx->after);
+		}
 		stringlist_add(ctx->messages, strdup(summarybuf));
 	}
-	else if(ctx->messages->count == 1)
+	else if(ctx->messages->count == 1 && url)
 	{
 		char commitbuf[MAXLEN];
 		snprintf(commitbuf, sizeof(commitbuf), "%s - %s", ctx->messages->data[0], url);
