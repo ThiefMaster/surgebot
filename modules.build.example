@@ -1,3 +1,17 @@
-MODULES = parser commands help account admin perform info irc chanjoin chanspy chanreg ctcp
+# Core/important modules
+MODULES = account admin chanjoin chanreg chanrequest commands help info irc parser
+MODULES += perform srvx tools
+# Common modules
+MODULES += autoop bitly chandict chanfw chanlog chanserv_access chanserv_eventlog
+MODULES += chanserv_users chanspy ctcp db github google greeting http httpd ipv6
+MODULES += misc paste php quote serverstats spelling timers tinyurl topic urbandict
+MODULES += webinterface youtube
+# Less common modules:
+#MODULES += klostervote
+#MODULES += maxfrag
+#MODULES += cap radiobot radiobotremote radionotify radioplaylist radioschedule
+#MODULES += galaxyempire_admin galaxyempire_coords
+# Unfinished modules:
+#MODULES += trivia
 
 # vim: ft=make
