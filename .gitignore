@@ -1,0 +1,9 @@
+*.cfg
+*.swp
+*.log
+*.o
+*.db
+.tmp
+surgebot
+module-config.h
+modules.build
