@@ -44,7 +44,7 @@ IRC_HANDLER(mode);
 IRC_HANDLER(join);
 IRC_HANDLER(part);
 IRC_HANDLER(kick);
-static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason);
+static void user_del_hook(struct irc_user *user, unsigned int del_type, const char *reason);
 IRC_HANDLER(nick);
 IRC_HANDLER(topic);
 static void chanspy_conf_reload();
@@ -754,9 +754,9 @@ IRC_HANDLER(kick)
 	spy_gotmsg(argv[1], 0, CSPY_KICK, "* %s was kicked by %s (%s)", argv[2], src->nick, argv[3]);
 }
 
-static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason)
+static void user_del_hook(struct irc_user *user, unsigned int del_type, const char *reason)
 {
-	if(!quit)
+	if(del_type != DEL_QUIT)
 		return;
 
 	dict_iter(node, user->channels)

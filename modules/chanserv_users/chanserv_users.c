@@ -54,7 +54,7 @@ COMMAND(users);
 COMMAND(update);
 PARSER_FUNC(chanserv);
 static void chanuser_del_hook(struct irc_chanuser *chanuser, unsigned int del_type, const char *reason);
-static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason);
+static void user_del_hook(struct irc_user *user, unsigned int del_type, const char *reason);
 static void channel_complete_hook(struct irc_channel *channel);
 static void channel_del_hook(struct irc_channel *channel, const char *reason);
 static struct chanserv_channel *cschan_find(const char *channelname);
@@ -319,7 +319,7 @@ static void chanuser_del_hook(struct irc_chanuser *chanuser, unsigned int del_ty
 	cschan_del(cschan);
 }
 
-static void user_del_hook(struct irc_user *user, unsigned int quit, const char *reason)
+static void user_del_hook(struct irc_user *user, unsigned int del_type, const char *reason)
 {
 	dict_iter(node, chanserv_accounts)
 	{
