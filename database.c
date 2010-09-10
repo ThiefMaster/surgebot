@@ -161,7 +161,7 @@ struct db_node *database_fetch_path(struct dict *db_nodes, const char *node_path
 		}
 	}
 
-	node = dict_find(db_record, path); // find node in last path path
+	node = dict_find(db_record, path); // find node in last path
 	stringbuffer_free(buf);
 	free(orig_path);
 	return node;
