@@ -37,7 +37,7 @@
 #define NULL 0
 #endif
 
-#undef HAVE_IPV6
+#define HAVE_IPV6
 #define HAVE_MMAP
 #define HAVE_SSL
 //#define HTTP_THREADS
