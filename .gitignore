@@ -3,6 +3,7 @@
 *.log
 *.o
 *.db
+*.so
 .tmp
 surgebot
 module-config.h
