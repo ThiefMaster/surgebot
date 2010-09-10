@@ -107,20 +107,20 @@ static void irc_connected()
 
 	bot.last_msg = now;
 
-	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0, 0);
-	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0, 0);
+	timer_add(&bot, "server_ping", now + 180, irc_ping, NULL, 0, 0);
+	timer_add(&bot, "server_stoned", now + 360, irc_stoned, NULL, 0, 0);
 }
 
 void irc_watchdog_reset()
 {
 	timer_del_boundname(&bot, "server_stoned");
-	timer_add(&bot, "server_stoned", now + 180, irc_stoned, NULL, 0, 0);
+	timer_add(&bot, "server_stoned", now + 360, irc_stoned, NULL, 0, 0);
 }
 
 static void irc_ping(void *bound, void *data)
 {
 	irc_send_fast("PING :%lu", now);
-	timer_add(&bot, "server_ping", now + 90, irc_ping, NULL, 0, 0);
+	timer_add(&bot, "server_ping", now + 180, irc_ping, NULL, 0, 0);
 }
 
 static void irc_stoned(void *bound, void *data)
