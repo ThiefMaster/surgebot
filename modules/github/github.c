@@ -169,7 +169,7 @@ HTTP_HANDLER(http_github)
 
 	if(messages->count > 1)
 	{
-		char afterbuf[7], beforebuf[7], urlbuf[256];
+		char afterbuf[7], beforebuf[7], urlbuf[256] = { 0 };
 		const char *before = json_get_path(payload, "before", json_type_string);
 		const char *after = json_get_path(payload, "after", json_type_string);
 		const char *repo_url = json_get_path(payload, "repository.url", json_type_string);
@@ -180,6 +180,14 @@ HTTP_HANDLER(http_github)
 		strlcpy(afterbuf, after, sizeof(afterbuf));
 		if(!not_github)
 			snprintf(urlbuf, sizeof(urlbuf), "%s/compare/%s...%s", repo_url, beforebuf, afterbuf);
+		else
+		{
+			const char *repo_url_type = json_get_path(payload, "repository.url_type", json_type_string);
+			if(!repo_url_type)
+				; /* do nothing. if it's not github we url_type is required to build a proper link */
+			else if(!strcmp(repo_url_type, "cgit"))
+				snprintf(urlbuf, sizeof(urlbuf), "%s/diff/?id=%s&id2=%s", repo_url, afterbuf, beforebuf);
+		}
 
 		struct github_ctx *ctx = malloc(sizeof(struct github_ctx));
 		memset(ctx, 0, sizeof(struct github_ctx));
@@ -190,7 +198,7 @@ HTTP_HANDLER(http_github)
 		ctx->ref = strdup(ref_name);
 		ctx->before = strndup(before, 6);
 		ctx->after = strndup(after, 6);
-		if(not_github)
+		if(!*urlbuf)
 			url_shortened(NULL, 1, ctx);
 		else
 			bitly_shorten(urlbuf, (bitly_shortened_f *)url_shortened, ctx, NULL);
@@ -205,7 +213,7 @@ HTTP_HANDLER(http_github)
 		ctx->messages = messages;
 		messages = NULL; // so it's not free'd at the end of this function
 		ctx->channel = strdup(channel);
-		if(not_github && !url)
+		if(!url)
 			url_shortened(NULL, 1, ctx);
 		else
 			bitly_shorten(url, (bitly_shortened_f *)url_shortened, ctx, NULL);
