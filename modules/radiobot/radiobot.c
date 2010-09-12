@@ -93,6 +93,7 @@ COMMAND(title);
 COMMAND(peak);
 COMMAND(wish);
 COMMAND(greet);
+COMMAND(wishgreet);
 COMMAND(kicksrc);
 static void radiobot_conf_reload();
 static void radiobot_db_read(struct database *db);
@@ -206,6 +207,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "peak",		peak,		0, 0, "true");
 	DEFINE_COMMAND(this, "wish",		wish,		0, CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(this, "greet",		greet,		0, CMD_LOG_HOSTMASK, "true");
+	DEFINE_COMMAND(this, "wishgreet",	wishgreet,	0, CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(this, "kicksrc",		kicksrc,	0, CMD_LOG_HOSTMASK, "group(admins)");
 }
 
@@ -1117,6 +1119,43 @@ COMMAND(greet)
 	reply("Dein Gruß wurde weitergeleitet.");
 	free(msg);
 
+	return 1;
+}
+
+COMMAND(wishgreet)
+{
+	char *msg;
+
+	if(!current_mod)
+	{
+		reply("Sorry, aber die Playlist kann nicht grünschen.");
+		return 0;
+	}
+
+	if(argc < 2)
+	{
+		reply("Du grünscht nichts? Falls doch, mach $b%s <hier dein grunsch>$b", argv[0]);
+		return 0;
+	}
+
+	if(!in_wish_greet_channel(user))
+	{
+		reply("Bitte komm in unseren Channel $b%s$b um zu grünschen.", radiobot_conf.radiochan);
+		return 0;
+	}
+
+	msg = untokenize(argc - 1, argv + 1, " ");
+	irc_send("PRIVMSG %s :IRC-Grunsch von \0037$b$u%s$u$b\003: \0037$b%s$b\003", current_mod, src->nick, msg);
+	if(check_queue_full())
+	{
+		char buf[32];
+		strftime(buf, sizeof(buf), "%H:%M", localtime(&queue_full));
+		reply("Dein Grunsch wurde weitergeleitet, allerdings ist die Playlist von %s bis $b%s$b voll.", current_mod, buf);
+	}
+	else
+		reply("Dein Grunsch wurde weitergeleitet.");
+
+	free(msg);
 	return 1;
 }
 
