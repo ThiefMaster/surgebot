@@ -430,6 +430,24 @@ static void help_replacer_binding(struct stringbuffer *sbuf, struct help_categor
 	stringbuffer_append_string(sbuf, binding->name);
 }
 
+static void help_replacer_binding_pubcmd(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
+{
+	extern struct surgebot_conf bot_conf;
+	if(*bot_conf.trigger)
+	{
+		stringbuffer_append_string(sbuf, bot_conf.trigger);
+		stringbuffer_append_string(sbuf, binding->name);
+	}
+	else
+	{
+		stringbuffer_append_string(sbuf, "/msg ");
+		stringbuffer_append_char(sbuf, ' ');
+		stringbuffer_append_string(sbuf, bot.nickname);
+		stringbuffer_append_char(sbuf, ' ');
+		stringbuffer_append_string(sbuf, binding->name);
+	}
+}
+
 static void help_replacer_command(struct stringbuffer *sbuf, struct help_category *category, struct help_entry *help_entry, struct cmd_binding *binding, char *arg)
 {
 	char *cmd_name, *mod_name;
@@ -536,7 +554,8 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 				}
 				else
 				{
-					log_append(LOG_WARNING, "Found invalid help replacer: {%s%c", key, *key_end);
+					// Could be another replacer which starts with the current one
+					line_start++;
 					continue;
 				}
 
@@ -674,6 +693,7 @@ COMMAND(help)
 		if(entry)
 		{
 			send_help(src, entry->parent, entry, binding, entry->text, "HELP_BINDING", help_replacer_binding,
+										   "HELP_BINDING_PUBCMD", help_replacer_binding_pubcmd,
 										   "HELP_COMMAND", help_replacer_command,
 										   "HELP_CONF_STR", help_replacer_conf_str,
 										   NULL);
