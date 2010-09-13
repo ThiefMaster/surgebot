@@ -17,6 +17,8 @@ struct help_category
 	char *full_name;
 	char *short_desc;
 	struct stringlist *description;
+	struct module *desc_owner;
+	struct module *short_desc_owner;
 	struct dict *entries;
 	struct dict *subcategories;
 	struct ptrlist *used_by;
@@ -185,6 +187,7 @@ static void help_load_category(struct module *module, struct dict *entries, stru
 				}
 
 				parent->short_desc = strdup(helpfile_node->data.string);
+				parent->short_desc_owner = module;
 			}
 			else if(helpfile_node->type == DB_STRINGLIST)
 			{
@@ -195,6 +198,7 @@ static void help_load_category(struct module *module, struct dict *entries, stru
 				}
 
 				parent->description = stringlist_copy(helpfile_node->data.slist);
+				parent->desc_owner = module;
 			}
 			else
 			{
@@ -269,6 +273,22 @@ static void free_module_help(struct help_category *category, struct module *modu
 		struct help_entry *entry = node->data;
 		if(entry->module == module)
 			dict_delete(category->entries, node->key);
+	}
+
+	if(category->short_desc_owner == module)
+	{
+		if(category->short_desc)
+			free(category->short_desc);
+		category->short_desc = NULL;
+		category->short_desc_owner = NULL;
+	}
+
+	if(category->desc_owner == module)
+	{
+		if(category->description)
+			stringlist_free(category->description);
+		category->description = NULL;
+		category->desc_owner = NULL;
 	}
 }
 
