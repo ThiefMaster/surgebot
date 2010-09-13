@@ -67,8 +67,6 @@ MODULE_INIT
 	ptrlist_add(help_root->used_by, 0, this);
 	reg_module_load_func(NULL, module_unloaded);
 
-	help_load(this, "main.help");
-
 	DEFINE_COMMAND(self, "help", help, 0, CMD_ALLOW_UNKNOWN, "true");
 	DEFINE_COMMAND(self, "helpdebug", helpdebug, 0, 0, "group(admins)");
 }

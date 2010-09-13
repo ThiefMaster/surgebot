@@ -1,6 +1,6 @@
 # Core/important modules
-MODULES = account admin chanjoin chanreg chanrequest commands help info irc parser
-MODULES += perform srvx tools
+MODULES = account admin chanjoin chanreg chanrequest commands help help_default info
+MODULES += irc parser perform srvx tools
 # Common modules
 MODULES += autoop bitly chandict chanfw chanlog chanserv_access chanserv_eventlog
 MODULES += chanserv_users chanspy ctcp db github google greeting http httpd ipv6
