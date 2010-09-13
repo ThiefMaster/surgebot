@@ -1,11 +1,12 @@
 #include "global.h"
 #include "module.h"
 #include "modules/commands/commands.h"
+#include "modules/help/help.h"
 #include "irc.h"
 #include "conf.h"
 #include "radioschedule.h"
 
-MODULE_DEPENDS("commands", NULL);
+MODULE_DEPENDS("commands", "help", NULL);
 
 //COMMAND(schedule_add);
 COMMAND(schedule_next);
@@ -21,6 +22,8 @@ MODULE_INIT
 
 	reg_conf_reload_func(radioschedule_conf_reload);
 	radioschedule_conf_reload();
+
+	help_load(self, "radioschedule.help");
 
 	//DEFINE_COMMAND(this, "schedule add",		schedule_add,		2, 0, "group(admins)");
 	DEFINE_COMMAND(this, "schedule next",		schedule_next,		0, 0, "true");

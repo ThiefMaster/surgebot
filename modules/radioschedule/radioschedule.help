@@ -1,0 +1,27 @@
+"schedule next" = {
+	"description" = "Zeigt den nächsten Moderator an.";
+	"help" = (
+		"$bSyntax$b: {HELP_BINDING_PUBCMD}",
+		"Zeigt an, wer laut Sendeplan als nächstes auf den Stream geht."
+	);
+	"see_also" = (
+		"radiobot.schedule",
+		"radioschedule.schedule current",
+		"radioschedule.schedule next"
+	);
+};
+
+"schedule current" = {
+	"description" = "Zeigt den aktuellen Moderator inkl. Sendungstitel an.";
+	"help" = (
+		"$bSyntax$b: {HELP_BINDING_PUBCMD}",
+		"Zeigt an, wer laut Sendeplan gerade auf dem Stream ist."
+	);
+	"see_also" = (
+		"radiobot.schedule",
+		"radioschedule.schedule current",
+		"radioschedule.schedule next"
+	);
+};
+
+// vim: ft=cfg ts=8 sw=8 noet
