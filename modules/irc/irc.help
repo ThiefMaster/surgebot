@@ -23,7 +23,7 @@
 		};
 		
 		"say" = {
-			"description" = "Makes $ send a message to the specified target.";
+			"description" = "Makes $N send a message to the specified target.";
 			"help" = (
 				"Usage: /msg $N say <#channel|nick> <text>",
 				"Makes $b$N$b send a message to the specified target.",
