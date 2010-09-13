@@ -540,9 +540,10 @@ static void send_help(struct irc_source *src, struct help_category *category, st
 					continue;
 				}
 
-				stringbuffer_erase(linebuf, key_start - linebuf->string, key_end - key_start);
+				off_t key_start_off = key_start - linebuf->string;
+				stringbuffer_erase(linebuf, key_start_off, key_end - key_start);
 				func(funcres, category, entry, binding, arg);
-				stringbuffer_insert(linebuf, key_start - linebuf->string, funcres->string);
+				stringbuffer_insert(linebuf, key_start_off, funcres->string);
 				stringbuffer_flush(funcres);
 				if(arg)
 					free(arg);

@@ -64,8 +64,8 @@ void stringbuffer_erase(struct stringbuffer *sbuf, unsigned int start, unsigned 
 
 void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const char *str, size_t n)
 {
-	if(pos >= (sbuf->len - 1))
-		return;
+	if(pos > sbuf->len)
+		pos = sbuf->len;
 
 	while(sbuf->size < (sbuf->len + n))
 	{
