@@ -6,5 +6,6 @@
 *.so
 .tmp
 surgebot
+core
 module-config.h
 modules.build
