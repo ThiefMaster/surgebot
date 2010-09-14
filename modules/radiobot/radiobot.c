@@ -22,6 +22,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <json/json.h>
+#include <sys/capability.h>
 
 #define RRD_DEFAULT_COLORS "-c BACK#FFFFFF -c CANVAS#F3F3F3 -c SHADEA#C8C8C8 -c SHADEB#969696 -c GRID#8C8C8C -c MGRID#821E1E -c FONT#000000 -c FRAME#000000 -c ARROW#FF0000"
 
@@ -155,6 +156,7 @@ static time_t last_peak_time;
 static char *last_peak_mod = NULL;
 static time_t queue_full = 0;
 static radiobot_notify_func *notify_func = NULL;
+static int nfqueue_available = 0;
 
 static struct http_handler handlers[] = {
 	{ "/", http_root },
@@ -183,7 +185,29 @@ MODULE_INIT
 	radiobot_db = database_create("radiobot", radiobot_db_read, radiobot_db_write);
 	database_read(radiobot_db, 1);
 
-	nfqueue_init();
+	// We check for CAP_NET_ADMIN as the nfqueue system only works if this cap is set
+	cap_t caps = cap_get_proc();
+	if(caps)
+	{
+		cap_flag_value_t cap_value;
+		if(cap_get_flag(caps, CAP_NET_ADMIN, CAP_EFFECTIVE, &cap_value) == 0 && cap_value == CAP_SET)
+			nfqueue_available = 1;
+		cap_free(caps);
+	}
+
+	log_append(LOG_INFO, "nfqueue available (CAP_NET_ADMIN set): %s", nfqueue_available ? "yes" : "no");
+
+	// allow disabling nfqueue via config
+	if(true_string(conf_get("radiobot/disable_nfqueue", DB_STRING)))
+	{
+		if(nfqueue_available)
+			log_append(LOG_INFO, "nfqueue available but disabled by config");
+		nfqueue_available = 0;
+	}
+
+
+	if(nfqueue_available)
+		nfqueue_init();
 
 	reg_irc_handler("NICK", nick);
 	REG_COMMAND_RULE("mod_active", mod_active);
@@ -220,7 +244,8 @@ MODULE_FINI
 	database_write(radiobot_db);
 	database_delete(radiobot_db);
 
-	nfqueue_fini();
+	if(nfqueue_available)
+		nfqueue_fini();
 
 	unreg_conf_reload_func(radiobot_conf_reload);
 
