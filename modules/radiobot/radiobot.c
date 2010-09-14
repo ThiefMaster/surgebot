@@ -752,6 +752,7 @@ IRC_HANDLER(nick)
 	{
 		MyFree(current_mod);
 		current_mod = strdup(argv[1]);
+		database_write(radiobot_db);
 	}
 }
 
