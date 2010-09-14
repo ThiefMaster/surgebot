@@ -2,6 +2,7 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "irc.h"
+#include "irc_handler.h"
 #include "conf.h"
 #include "surgebot.h"
 
@@ -51,6 +52,7 @@ struct scan_state {
 	int32_t count;
 };
 
+IRC_HANDLER(nick);
 COMMAND(playlist_on);
 COMMAND(playlist_off);
 COMMAND(playlist_countdown);
@@ -122,6 +124,8 @@ MODULE_INIT
 	reg_conf_reload_func(conf_reload_hook);
 	conf_reload_hook(); // Loads the playlist
 
+	reg_irc_handler("NICK", nick);
+
 	debug("starting stream thread");
 	pthread_create(&stream_thread, NULL, stream_thread_main, NULL);
 
@@ -164,6 +168,8 @@ MODULE_FINI
 	if(pg_conn)
 		pgsql_fini(pg_conn);
 
+	unreg_irc_handler("NICK", nick);
+
 	unreg_conf_reload_func(conf_reload_hook);
 
 	pthread_mutex_destroy(&conf_mutex);
@@ -171,6 +177,16 @@ MODULE_FINI
 	pthread_mutex_destroy(&playlist_mutex);
 	pthread_mutex_destroy(&stream_mutex);
 	pthread_cond_destroy(&stream_cond);
+}
+
+IRC_HANDLER(nick)
+{
+	assert(argc > 1);
+	if(playlist_cd_by && !strcmp(playlist_cd_by, src->nick))
+	{
+		MyFree(playlist_cd_by);
+		playlist_cd_by = strdup(argv[1]);
+	}
 }
 
 COMMAND(playlist_on)
