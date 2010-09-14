@@ -12,49 +12,34 @@ MODULE_INIT
 {
 	char *txt_caps;
 	cap_t caps;
+	cap_value_t cap_list[1];
 
-	txt_caps = cap_to_text(cap_get_proc(), NULL);
+	caps = cap_get_proc();
+
+	// Show current caps
+	txt_caps = cap_to_text(caps, NULL);
 	log_append(LOG_INFO, "Current caps: %s", txt_caps);
 	cap_free(txt_caps);
 
-	caps = cap_from_text("CAP_NET_ADMIN=ep");
-	if(!caps)
-		log_append(LOG_ERROR, "cap_from_text() failed");
-	else if(cap_set_proc(caps) != 0)
+	// Add CAP_NET_ADMIN to CAP_EFFECTICE and clear it from CAP_INERITABLE
+	cap_list[0] = CAP_NET_ADMIN;
+	if(cap_set_flag(caps, CAP_EFFECTIVE, 1, cap_list, CAP_SET) != 0)
+		log_append(LOG_WARNING, "Could not set cap flag: %s", strerror(errno));
+	if(cap_set_flag(caps, CAP_INHERITABLE, 1, cap_list, CAP_CLEAR) != 0)
+		log_append(LOG_WARNING, "Could not set cap flag: %s", strerror(errno));
+
+	// Apply new caps
+	if(cap_set_proc(caps) != 0)
 		log_append(LOG_WARNING, "Could not set caps: %s", strerror(errno));
 
-	txt_caps = cap_to_text(cap_get_proc(), NULL);
+	cap_free(caps);
+
+	// Show new caps
+	caps = cap_get_proc();
+	txt_caps = cap_to_text(caps, NULL);
 	log_append(LOG_INFO, "Mew caps: %s", txt_caps);
 	cap_free(txt_caps);
-
-	/*
-	debug("uid: %d, euid: %d", getuid(), geteuid());
-	if(geteuid() == 0)
-	{
-		log_append(LOG_WARNING, "Running with ROOT privileges; setting CAP_NET_ADMIN and dropping root privs");
-		cap_t caps = cap_from_text("CAP_NET_ADMIN=ep");
-		if(!caps)
-			log_append(LOG_WARNING, "Could not get CAP_NET_ADMIN");
-		else
-		{
-			if(cap_set_proc(caps) != 0)
-				log_append(LOG_WARNING, "Could not set CAP_NET_ADMIN (while root)");
-		}
-
-		setegid(getgid());
-		seteuid(getuid());
-
-		if(cap_set_proc(caps) != 0)
-			log_append(LOG_WARNING, "Could not set CAP_NET_ADMIN (after dropping root)");
-		cap_free(caps);
-
-		debug("uid: %d, euid: %d", getuid(), geteuid());
-
-		// re-enable core dumps
-		if(prctl(PR_SET_DUMPABLE, 1) == -1)
-			log_append(LOG_WARNING, "Could not re-enable core dumps: %s", strerror(errno));
-	}
-	*/
+	cap_free(caps);
 }
 
 MODULE_FINI
