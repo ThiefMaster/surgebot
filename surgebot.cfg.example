@@ -29,6 +29,7 @@
 	// However, you must change the rule of the register command to prevent people from registering accounts and
 	// you should change the rule of all other command that do not require the user to be authed.
 	"stealth" = "0";
+	//"log_channel" = "";
 };
 
 "bitly" = {

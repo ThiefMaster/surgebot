@@ -16,6 +16,7 @@ MODULE_DEPENDS("parser",  NULL);
 static struct
 {
 	unsigned int stealth;
+	const char *log_channel;
 } command_conf;
 
 extern struct surgebot_conf bot_conf;
@@ -74,7 +75,11 @@ MODULE_FINI
 
 static void command_conf_reload()
 {
+	const char *str;
 	command_conf.stealth = conf_bool("commands/stealth");
+
+	str = conf_get("commands/log_channel", DB_STRING);
+	command_conf.log_channel = str && *str ? str : NULL;
 }
 
 static void command_db_read(struct database *db)
@@ -370,6 +375,8 @@ static void handle_command(struct irc_source *src, struct irc_user *user, struct
 		free(arg_string);
 
 		log_append(LOG_CMD, "%s", log_entry->string);
+		if(command_conf.log_channel)
+			irc_send("NOTICE @%s :%s", command_conf.log_channel, log_entry->string);
 		stringbuffer_free(log_entry);
 	}
 	else
@@ -516,7 +523,9 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 			if(acc->login_mask && !match(acc->login_mask, user_mask))
 			{
 				account_user_add(acc, user);
-				reply("You have been automatically logged in as $b%s$b.", acc->name);
+				reply("You have been logged into account $b%s$b, because its loginmask matches your current host.", acc->name);
+				if(command_conf.log_channel)
+					irc_send("PRIVMSG %s :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", command_conf.log_channel, src->nick, user_mask, acc->name, acc->login_mask);
 				break;
 			}
 		}
