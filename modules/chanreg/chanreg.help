@@ -51,7 +51,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -70,7 +70,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -90,7 +90,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -110,7 +110,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -130,7 +130,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -148,7 +148,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -166,7 +166,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -184,7 +184,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
@@ -202,7 +202,7 @@
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
-			"chanreg.unsupend"
+			"chanreg.unsuspend"
 		);
 	};
 
