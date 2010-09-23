@@ -28,6 +28,7 @@ static struct {
 	unsigned int blockTime;
 	unsigned int cleanInterval;
 	int minAccess;
+	const char *logChannel;
 } chanrequest_conf;
 
 // the command(s) the module provides
@@ -87,6 +88,7 @@ static void chanrequest_conf_reload(void)
 	chanrequest_conf.cleanInterval = ((str = conf_get("chanrequest/clean_interval", DB_STRING)) ? atoi(str) : 15*60);
 	chanrequest_conf.blockTime = ((str = conf_get("chanrequest/block_time", DB_STRING)) ? atoi(str) : 5*60);
 	chanrequest_conf.minAccess = ((str = conf_get("chanrequest/min_access", DB_STRING)) ? atoi(str) : 400);
+	chanrequest_conf.logChannel = (((str = conf_get("chanrequest/log_channel", DB_STRING)) && *str) ? str : NULL);
 }
 
 COMMAND(request)
@@ -313,5 +315,7 @@ static void registerChannelToNick(const char *channel, const char *nick)
 		reply_nick(nick, "Congratulations! $b%s$b has been successfully registered to you.", channel);
 		reply_nick(nick, "$uHint:$u You may want to have a look at all available modules with $b/msg $N cmod list %s$b", channel);
 		reply_nick(nick, "You can enable those modules with $b/msg $N cmod enable %s <module>$b", channel);
+		if(chanrequest_conf.logChannel)
+			irc_send("PRIVMSG %s :Channel $b%s$b registered to $b%s$b (*%s).", chanrequest_conf.logChannel, channel, nick, account->name);
 	}
 }
