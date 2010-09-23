@@ -11,6 +11,7 @@ MODULES += webinterface youtube
 #MODULES += maxfrag
 #MODULES += cap radiobot radiobotremote radionotify radioplaylist radioschedule
 #MODULES += galaxyempire_admin galaxyempire_coords
+#MODULES += inactive
 # Unfinished modules:
 #MODULES += trivia
 
