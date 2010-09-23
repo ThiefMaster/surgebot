@@ -1,27 +1,47 @@
 #include "global.h"
+#include "conf.h"
 
-static FILE	*logfile = NULL;
-
-void log_init(const char *file)
+static struct
 {
-	if(!file)
+	const char *name;
+	FILE *fd;
+} logfile = { "surgebot.log", NULL };
+
+void log_init()
+{
+	if(!logfile.name)
 		return;
 
-	if(!(logfile = fopen(file, "a+")))
-		fprintf(stderr, "Could not open log file %s: %s (%d)\n", file, strerror(errno), errno);
+	if(!(logfile.fd = fopen(logfile.name, "a+")))
+		fprintf(stderr, "Could not open log file %s: %s (%d)\n", logfile.name, strerror(errno), errno);
+
+	reg_conf_reload_func(log_reload);
 }
 
 void log_fini()
 {
-	if(logfile)
-		fclose(logfile);
+	if(logfile.fd)
+	{
+		fclose(logfile.fd);
+		logfile.fd = NULL;
+	}
+
+	unreg_conf_reload_func(log_reload);
+}
+
+void log_reload()
+{
+	fprintf(stderr, "Re-opening log file\n");
+	logfile.fd = NULL;
+	if(!(logfile.fd = fopen(logfile.name, "a+")))
+		fprintf(stderr, "Could not open log file %s: %s (%d)\n", logfile.name, strerror(errno), errno);
 }
 
 void log_append(enum log_level level, const char *text, ...)
 {
 	va_list	va;
 
-	char	timestr[15], timedatestr[30], lvl[15];
+	char timestr[15], timedatestr[30], lvl[15];
 
 	now = time(NULL);
 	strftime(timestr, sizeof(timestr), "[%H:%M:%S]", localtime(&now));
@@ -53,8 +73,6 @@ void log_append(enum log_level level, const char *text, ...)
 	}
 
 	printf("%s %s ", timestr, lvl);
-	if(logfile)
-		fprintf(logfile, "%s %s ", timedatestr, lvl);
 
 	if(level == LOG_ERROR || level == LOG_WARNING)
 		printf("\033[1;31m");
@@ -74,13 +92,14 @@ void log_append(enum log_level level, const char *text, ...)
 	printf("\n");
 	va_end(va);
 
-	if(logfile)
+	if(logfile.fd)
 	{
 		va_start(va, text);
-		vfprintf(logfile, text, va);
-		fprintf(logfile, "\n");
+		fprintf(logfile.fd, "%s %s ", timedatestr, lvl);
+		vfprintf(logfile.fd, text, va);
+		fprintf(logfile.fd, "\n");
 		va_end(va);
 
-		fflush(logfile);
+		fflush(logfile.fd);
 	}
 }

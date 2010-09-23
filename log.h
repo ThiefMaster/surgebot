@@ -12,8 +12,9 @@ enum log_level
 	LOG_CMD		= 0x40
 };
 
-void log_init(const char *file);
+void log_init();
 void log_fini();
+void log_reload();
 void log_append(enum log_level level, const char *text, ...) PRINTF_LIKE(2, 3);
 
 #define debug(text...)		log_append(LOG_DEBUG, ## text)

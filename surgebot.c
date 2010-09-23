@@ -3,6 +3,7 @@
 #include "timer.h"
 #include "database.h"
 #include "sock.h"
+#include "log.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "chanuser.h"
@@ -66,11 +67,10 @@ static void sig_usr1(int n)
 	log_append(LOG_INFO, "Received SIGUSR1 signal. Checking main logfile.");
 
 	// see if the current logfile still exists
-	if(stat(LOGFILE, &buf) != 0) {
-		log_append(LOG_ERROR, "Could not stat " LOGFILE ": %s", strerror(errno));
-
-		log_fini();
-		log_init(LOGFILE);
+	if(stat(LOGFILE, &buf) != 0)
+	{
+		log_append(LOG_INFO, "Could not stat " LOGFILE ": %s", strerror(errno));
+		log_reload();
 		log_append(LOG_INFO, "Logfile has been reopened.");
 	}
 }
