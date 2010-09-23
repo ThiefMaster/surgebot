@@ -37,6 +37,7 @@ COMMAND(adduser);
 COMMAND(deluser);
 COMMAND(clvl);
 COMMAND(giveownership);
+COMMAND(deleteme);
 COMMAND(suspend);
 COMMAND(unsuspend);
 COMMAND(access);
@@ -89,6 +90,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "deluser",		deluser,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "clvl",		clvl,		2, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "giveownership",	giveownership,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "chanuser(500) || group(admins)");
+	DEFINE_COMMAND(self, "deleteme",	deleteme,	0, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL | CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(self, "suspend",		suspend,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "unsuspend",	unsuspend,	1, CMD_REQUIRE_AUTHED | CMD_LAZY_ACCEPT_CHANNEL, "chanuser(300) || group(admins)");
 	DEFINE_COMMAND(self, "access",		access,		0, CMD_LAZY_ACCEPT_CHANNEL, "chanuser() || inchannel() || !privchan() || group(admins)");
@@ -1025,6 +1027,29 @@ COMMAND(giveownership)
 	victim->level = UL_OWNER;
 
 	reply("Ownership of $b%s$b has been transferred to $b%s$b.", channelname, account->name);
+	return 1;
+}
+
+COMMAND(deleteme)
+{
+	struct chanreg_user *victim;
+
+	CHANREG_COMMAND;
+
+	if(!(victim = chanreg_user_find(reg, user->account->name)))
+	{
+		reply("You lack access to $b%s$b.", channelname);
+		return 0;
+	}
+
+	if(victim->level == UL_OWNER)
+	{
+		reply("You cannot delete your owner access in $b%s$b.", channelname);
+		return 0;
+	}
+
+	reply("Your $b%d$b access has been deleted from $b%s$b.", victim->level, channelname);
+	chanreg_user_del(reg, victim);
 	return 1;
 }
 

@@ -47,6 +47,7 @@
 			"chanreg.deluser",
 			"chanreg.clvl",
 			"chanreg.giveownership",
+			"chanreg.deleteme",
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
@@ -65,6 +66,7 @@
 			"chanreg.deluser",
 			"chanreg.clvl",
 			"chanreg.giveownership",
+			"chanreg.deleteme",
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
@@ -84,6 +86,7 @@
 			"chanreg.deluser",
 			"chanreg.clvl",
 			"chanreg.giveownership",
+			"chanreg.deleteme",
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
@@ -103,6 +106,27 @@
 			"chanreg.deluser",
 			"chanreg.clvl",
 			"chanreg.giveownership",
+			"chanreg.deleteme",
+			"chanreg.access",
+			"chanreg.users",
+			"chanreg.suspend",
+			"chanreg.unsupend"
+		);
+	};
+
+	"deleteme" = {
+		"description" = "Deletes your access from the channel.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING} <#channel>",
+			"If you have less than owner access in a channel, {HELP_BINDING} removes your access from the channel.",
+			"If you do this by mistake, you must find a higher-ranked user to re-add you."
+		);
+		"see_also" = (
+			"chanreg.adduser",
+			"chanreg.deluser",
+			"chanreg.clvl",
+			"chanreg.giveownership",
+			"chanreg.deleteme",
 			"chanreg.access",
 			"chanreg.users",
 			"chanreg.suspend",
