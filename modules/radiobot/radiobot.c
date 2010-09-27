@@ -63,6 +63,7 @@ struct rb_http_client
 	char *clientname;
 	char *clientver;
 	char *nick;
+	uint32_t playerState;
 	char uuid[37];
 };
 
@@ -672,6 +673,8 @@ HTTP_HANDLER(http_stream_status)
 		rb_client->clientver = strdup(str);
 	if((str = dict_find(get_vars, "nick")) && !strpbrk(str, "\r\n"))
 		rb_client->nick = strdup(str);
+	if((str = dict_find(get_vars, "psh")) && !strpbrk(str, "\r\n"))
+		rb_client->playerState = strtoul(str, NULL, 10);
 	if((str = dict_find(get_vars, "uuid")) && !strpbrk(str, "\r\n"))
 		strlcpy(rb_client->uuid, str, sizeof(rb_client->uuid));
 	debug("Client connected: %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
@@ -766,17 +769,36 @@ COMMAND(stats_clients)
 		return 1;
 	}
 
-	table = table_create(5, http_clients->count);
-	table_set_header(table, "IP", "UUID", "Nick", "Client", "Version");
+	table = table_create(7, http_clients->count);
+	table_set_header(table, "IP", "UUID", "Nick", "Volume", "Playing", "Client", "Version");
+	table->col_flags[3] |= TABLE_CELL_FREE | TABLE_CELL_ALIGN_RIGHT;
+	table->col_flags[4] |= TABLE_CELL_FREE;
 
 	for(unsigned int i = 0; i < http_clients->count; i++)
 	{
 		struct rb_http_client *client = http_clients->data[i];
+		uint8_t playing = ((client->playerState >> 0) & 0x1);
+		uint8_t muted = ((client->playerState >> 1) & 0x1);
+		uint8_t volume = (client->playerState >> 2) & 0xff;
+		uint32_t playtime = (client->playerState >> 10) & 0xfffff;
 		table->data[i][0] = client->client->ip;
 		table->data[i][1] = client->uuid;
 		table->data[i][2] = client->nick ? client->nick : "";
-		table->data[i][3] = client->clientname ? client->clientname : "";
-		table->data[i][4] = client->clientver ? client->clientver : "";
+		if(client->playerState == 0) // assume no data is available
+		{
+			table_col_str(table, i, 3, strdup(""));
+			table_col_str(table, i, 4, strdup(""));
+		}
+		else
+		{
+			table_col_fmt(table, i, 3, "%d", muted ? -volume : volume);
+			if(playing)
+				table_col_fmt(table, i, 4, "%02u:%02u:%02u", playtime / 3600, (playtime % 3600) / 60, (playtime % 3600) % 60);
+			else
+				table_col_str(table, i, 4, strdup("No"));
+		}
+		table->data[i][5] = client->clientname ? client->clientname : "";
+		table->data[i][6] = client->clientver ? client->clientver : "";
 	}
 
 	table_send(table, src->nick);
