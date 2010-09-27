@@ -65,6 +65,10 @@ struct rb_http_client
 	char *nick;
 	uint32_t playerState;
 	char uuid[37];
+	struct {
+		char *version;
+		char *url;
+	} update;
 };
 
 DECLARE_LIST(cmd_client_list, struct cmd_client *)
@@ -80,6 +84,7 @@ PARSER_FUNC(mod_active);
 IRC_HANDLER(nick);
 COMMAND(stats_clients);
 COMMAND(notify);
+COMMAND(send_update);
 COMMAND(setmod);
 COMMAND(setplaylist);
 COMMAND(settitle);
@@ -217,6 +222,7 @@ MODULE_INIT
 
 	DEFINE_COMMAND(this, "stats clients",	stats_clients,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "notify",		notify,		0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "send_update",	send_update,	3, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setmod",		setmod,		0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "settitle",	settitle,	0, 0, "group(admins)");
@@ -541,6 +547,8 @@ static void rb_http_client_free(struct rb_http_client *client)
 	MyFree(client->clientname);
 	MyFree(client->clientver);
 	MyFree(client->nick);
+	MyFree(client->update.version);
+	MyFree(client->update.url);
 	free(client);
 }
 
@@ -590,9 +598,9 @@ static struct rb_http_client *rb_http_client_by_httpclient(struct http_client *c
 
 static int rb_http_client_outdated(struct rb_http_client *rb_client)
 {
-	if(!radiobot_conf.gadget_current_version)
+	if(!radiobot_conf.gadget_current_version && !rb_client->update.version)
 		return 0;
-	return version_compare(rb_client->clientver, radiobot_conf.gadget_current_version) == -1;
+	return version_compare(rb_client->clientver, rb_client->update.version ? rb_client->update.version : radiobot_conf.gadget_current_version) == -1;
 }
 
 static void http_stream_status_send(struct http_client *client, int timeout)
@@ -617,8 +625,16 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 		else
 		{
 			struct json_object *update = json_object_new_object();
-			json_object_object_add(update, "version", json_object_new_string(radiobot_conf.gadget_current_version));
-			json_object_object_add(update, "url", json_object_new_string(radiobot_conf.gadget_update_url));
+			if(rb_client->update.version && rb_client->update.url)
+			{
+				json_object_object_add(update, "version", json_object_new_string(rb_client->update.version));
+				json_object_object_add(update, "url", json_object_new_string(rb_client->update.url));
+			}
+			else
+			{
+				json_object_object_add(update, "version", json_object_new_string(radiobot_conf.gadget_current_version));
+				json_object_object_add(update, "url", json_object_new_string(radiobot_conf.gadget_update_url));
+			}
 			json_object_object_add(response, "update", update);
 		}
 	}
@@ -837,6 +853,38 @@ COMMAND(notify)
 	}
 
 	reply("Unknown notification target.");
+	return 0;
+}
+
+COMMAND(send_update)
+{
+	if(match("????????""-????""-????""-????""-????????????", argv[1]) == 0) // UUID
+	{
+		int found = 0;
+		for(unsigned int i = 0; i < http_clients->count; i++)
+		{
+			struct rb_http_client *rb_client = http_clients->data[i];
+
+			if(strcmp(rb_client->uuid, argv[1]))
+				continue;
+
+			MyFree(rb_client->update.version);
+			MyFree(rb_client->update.url);
+			rb_client->update.version = strdup(argv[2]);
+			rb_client->update.url = strdup(argv[3]);
+			reply("Offering update for client %s %s %s", rb_client->uuid, rb_client->nick, rb_client->client->ip);
+			debug("Offering update for client %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
+			http_stream_status_send(rb_client->client, 0);
+			i--;
+			found++;
+		}
+
+		if(!found)
+			reply("No clients with this UUID are currently connected.");
+		return (found > 0);
+	}
+
+	reply("Unknown target.");
 	return 0;
 }
 
