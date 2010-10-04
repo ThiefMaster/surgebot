@@ -1470,7 +1470,7 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 		irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
 			 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
 		if(current_mod_2)
-			irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
+			irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2,
 				 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
 		sock_write_fmt(sock, "SUCCESS 0\n");
 		return;
