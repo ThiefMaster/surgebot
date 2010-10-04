@@ -86,6 +86,7 @@ COMMAND(stats_clients);
 COMMAND(notify);
 COMMAND(send_update);
 COMMAND(setmod);
+COMMAND(setsecmod);
 COMMAND(setplaylist);
 COMMAND(settitle);
 COMMAND(queuefull);
@@ -151,6 +152,7 @@ static struct cmd_client_list *cmd_clients;
 static struct rb_http_client_list *http_clients;
 static struct stringbuffer *stats_data;
 static char *current_mod = NULL;
+static char *current_mod_2 = NULL;
 static char *current_playlist = NULL;
 static char *current_streamtitle = NULL;
 static char *current_title = NULL;
@@ -224,6 +226,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "notify",		notify,		0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "send_update",	send_update,	3, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setmod",		setmod,		0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "setsecmod",	setsecmod,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "settitle",	settitle,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "queuefull",	queuefull,	0, 0, "group(admins)");
@@ -286,6 +289,7 @@ MODULE_FINI
 	stringbuffer_free(stats_data);
 
 	MyFree(current_mod);
+	MyFree(current_mod_2);
 	MyFree(current_playlist);
 	MyFree(current_title);
 	MyFree(current_streamtitle);
@@ -425,6 +429,8 @@ static void radiobot_db_read(struct database *db)
 	// show info
 	if((str = database_fetch(db->nodes, "showinfo/mod", DB_STRING)))
 		current_mod = strdup(str);
+	if((str = database_fetch(db->nodes, "showinfo/mod2", DB_STRING)))
+		current_mod_2 = strdup(str);
 	if((str = database_fetch(db->nodes, "showinfo/playlist", DB_STRING)))
 		current_playlist = strdup(str);
 	if((str = database_fetch(db->nodes, "showinfo/streamtitle", DB_STRING)))
@@ -449,6 +455,8 @@ static int radiobot_db_write(struct database *db)
 	database_begin_object(db, "showinfo");
 		if(current_mod)
 			database_write_string(db, "mod", current_mod);
+		if(current_mod_2)
+			database_write_string(db, "mod2", current_mod_2);
 		if(current_playlist)
 			database_write_string(db, "playlist", current_playlist);
 		if(current_streamtitle)
@@ -614,6 +622,7 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	struct json_object *response = json_object_new_object();
 	json_object_object_add(response, "timeout", json_object_new_boolean(timeout));
 	json_object_object_add(response, "mod", current_mod ? json_object_new_string(current_mod) : NULL);
+	json_object_object_add(response, "mod2", current_mod_2 ? json_object_new_string(current_mod_2) : NULL);
 	json_object_object_add(response, "show", current_show ? json_object_new_string(to_utf8(current_show)) : NULL);
 	json_object_object_add(response, "song", current_title ? json_object_new_string(to_utf8(current_title)) : NULL);
 	json_object_object_add(response, "listeners", json_object_new_int(stream_stats.listeners_current));
@@ -743,9 +752,17 @@ HTTP_HANDLER(http_wish_greet)
 			debug("Wish/Greet: %p %s %s %s %s", rb_client, rb_client->uuid, rb_client->nick, name, type);
 
 		if(!strcasecmp(type, "wish"))
+		{
 			irc_send("PRIVMSG %s :Desktop-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, name, msg);
+			if(current_mod_2)
+				irc_send("PRIVMSG %s :Desktop-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod_2, name, msg);
+		}
 		else if(!strcasecmp(type, "greet"))
+		{
 			irc_send("PRIVMSG %s :Desktop-Gru\xc3\x9f von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, name, msg);
+			if(current_mod_2)
+				irc_send("PRIVMSG %s :Desktop-Gru\xc3\x9f von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, name, msg);
+		}
 	}
 
 	http_reply_header("Content-Type", "application/json");
@@ -771,6 +788,13 @@ IRC_HANDLER(nick)
 	{
 		MyFree(current_mod);
 		current_mod = strdup(argv[1]);
+		database_write(radiobot_db);
+	}
+
+	if(current_mod_2 && !strcmp(current_mod_2, src->nick))
+	{
+		MyFree(current_mod_2);
+		current_mod_2 = strdup(argv[1]);
 		database_write(radiobot_db);
 	}
 }
@@ -910,6 +934,13 @@ COMMAND(setmod)
 	if(current_mod && !strcasecmp(src->nick, current_mod))
 		same_mod = 1;
 
+	if(current_mod_2)
+	{
+		reply("Zweitmoderator (%s) wurde gelöscht!", current_mod_2);
+		MyFree(current_mod_2);
+		current_mod_2 = NULL;
+	}
+
 	MyFree(current_mod);
 	MyFree(current_show);
 
@@ -937,6 +968,30 @@ COMMAND(setmod)
 	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? current_mod : "Playlist"), current_show, radiobot_conf.site_url);
 	irc_send("PRIVMSG %s :Mod geändert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), current_show);
 	reply("Aktueller Mod: $b%s$b (Showtitel/Streamtitel: $b%s$b)", (current_mod ? current_mod : "[Playlist]"), current_show);
+	database_write(radiobot_db);
+	show_updated();
+	show_updated_readonly();
+	return 1;
+}
+
+COMMAND(setsecmod)
+{
+	if(argc < 2)
+	{
+		reply("Aktueller Zweitmoderator: $b%s$b", current_mod_2 ? current_mod_2 : "[niemand]");
+		return 0;
+	}
+
+	if(!current_mod)
+	{
+		reply("Ein Zweitmoderator kann nur eingetragen werden wenn bereits ein Moderator aktiv ist");
+		return 0;
+	}
+
+	MyFree(current_mod_2);
+	current_mod_2 = !strcmp(argv[1], "*") ? NULL : strdup(argv[1]);
+	irc_send("PRIVMSG %s :Zweitmod geändert auf $b%s$b", radiobot_conf.teamchan, (current_mod_2 ? current_mod_2 : "[niemand]"));
+	reply("Aktueller Zweitmod: $b%s$b", current_mod_2 ? current_mod_2 : "[niemand]");
 	database_write(radiobot_db);
 	show_updated();
 	show_updated_readonly();
@@ -1036,7 +1091,13 @@ COMMAND(playlist)
 
 COMMAND(dj)
 {
-	reply("Im Moment onAir: $b%s$b", (current_mod ? current_mod : "[Playlist]"));
+	if(!current_mod)
+		reply("Im Moment onAir: $b[Playlist]$b");
+	else if(current_mod_2)
+		reply("Im Moment onAir: $b%s$b und $b%s$b", current_mod, current_mod_2);
+	else
+		reply("Im Moment onAir: $b%s$b", current_mod);
+
 	return 1;
 }
 
@@ -1120,7 +1181,13 @@ COMMAND(listener)
 
 static void send_status(const char *nick)
 {
-	irc_send_msg(nick, "NOTICE", "Im Moment onAir: $b%s$b", (current_mod ? current_mod : "[Playlist]"));
+	if(!current_mod)
+		irc_send_msg(nick, "NOTICE", "Im Moment onAir: $b[Playlist]$b");
+	else if(current_mod_2)
+		irc_send_msg(nick, "NOTICE", "Im Moment onAir: $b%s$b und $b%s$b", current_mod, current_mod_2);
+	else
+		irc_send_msg(nick, "NOTICE", "Im Moment onAir: $b%s$b", current_mod);
+
 	if(current_title)
 		irc_send_msg(nick, "NOTICE", "Songtitel: $b%s$b", (current_title ? current_title : "n/a"));
 	irc_send_msg(nick, "NOTICE", "Listener: $b%d$b/%d (%d unique); Peak: %d ~~~ Quali: %d kbps ~~~ %s", stream_stats.listeners_current, stream_stats.listeners_max, stream_stats.listeners_unique, stream_stats.listeners_peak, stream_stats.bitrate, stream_stats.title);
@@ -1172,6 +1239,8 @@ COMMAND(wish)
 
 	msg = untokenize(argc - 1, argv + 1, " ");
 	irc_send("PRIVMSG %s :IRC-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, src->nick, msg);
+	if(current_mod_2)
+		irc_send("PRIVMSG %s :IRC-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod_2, src->nick, msg);
 	if(check_queue_full())
 	{
 		char buf[32];
@@ -1212,6 +1281,8 @@ COMMAND(greet)
 	if(is_utf8(msg))
 		sz = "\xc3\x9f";
 	irc_send("PRIVMSG %s :IRC-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, sz, src->nick, msg);
+	if(current_mod_2)
+		irc_send("PRIVMSG %s :IRC-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, sz, src->nick, msg);
 	reply("Dein Gruß wurde weitergeleitet.");
 	free(msg);
 
@@ -1242,6 +1313,8 @@ COMMAND(wishgreet)
 
 	msg = untokenize(argc - 1, argv + 1, " ");
 	irc_send("PRIVMSG %s :IRC-Grunsch von \0037$b$u%s$u$b\003: \0037$b%s$b\003", current_mod, src->nick, msg);
+	if(current_mod_2)
+		irc_send("PRIVMSG %s :IRC-Grunsch von \0037$b$u%s$u$b\003: \0037$b%s$b\003", current_mod_2, src->nick, msg);
 	if(check_queue_full())
 	{
 		char buf[32];
@@ -1377,6 +1450,9 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 
 		irc_send("PRIVMSG %s :%s-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod,
 			 (!strcasecmp(argv[0], "QWISH") ? "QNet" : "Web"), argv[1], argv[2]);
+		if(current_mod_2)
+			irc_send("PRIVMSG %s :%s-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod_2,
+				 (!strcasecmp(argv[0], "QWISH") ? "QNet" : "Web"), argv[1], argv[2]);
 		sock_write_fmt(sock, "SUCCESS %lu\n", check_queue_full());
 		return;
 	}
@@ -1393,6 +1469,9 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 			sz = "\xc3\x9f";
 		irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
 			 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
+		if(current_mod_2)
+			irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
+				 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
 		sock_write_fmt(sock, "SUCCESS 0\n");
 		return;
 	}
@@ -1426,6 +1505,7 @@ static void send_showinfo(struct cmd_client *client)
 	{
 		sock_write_fmt(client->sock, "SHOWINFO_BEGIN\n");
 		sock_write_fmt(client->sock, "SHOW_MOD %s\n", (current_mod ? current_mod : "Playlist"));
+		sock_write_fmt(client->sock, "SHOW_MOD2 %s\n", (current_mod_2 ? current_mod_2 : "*"));
 		sock_write_fmt(client->sock, "SONGTITLE %s\n", (current_title ? current_title : "n/a"));
 		sock_write_fmt(client->sock, "LISTENERS %d\n", stream_stats.listeners_current);
 		sock_write_fmt(client->sock, "SHOWINFO_COMPLETE\n");
@@ -1433,6 +1513,7 @@ static void send_showinfo(struct cmd_client *client)
 	}
 
 	sock_write_fmt(client->sock, "SHOW_MOD %s\n", (current_mod ? current_mod : "Playlist"));
+	sock_write_fmt(client->sock, "SHOW_MOD2 %s\n", (current_mod_2 ? current_mod_2 : "*"));
 	sock_write_fmt(client->sock, "SHOW_NAME %s\n", current_show);
 	sock_write_fmt(client->sock, "SHOW_PLAYLIST %s\n", (current_playlist ? current_playlist : "[Keine]"));
 	sock_write_fmt(client->sock, "SHOW_STREAMTITLE %s\n", get_streamtitle());
