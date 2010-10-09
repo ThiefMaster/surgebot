@@ -2,6 +2,7 @@ extern "C" {
 #include "global.h"
 #include "irc.h"
 #include "radioschedule.h"
+#include "modules/tools/tools.h"
 }
 
 #include <mysql++.h>
@@ -16,6 +17,10 @@ static mysqlpp::Connection *db_connect()
 		log_append(LOG_WARNING, "MySQL connection failed: %s", e.what());
 		return NULL;
 	}
+
+	mysqlpp::Query query = con.query();
+	query << "SET NAMES 'utf8'";
+	query.execute();
 
 	return &con;
 }
@@ -156,7 +161,11 @@ extern "C" int get_conflicting_show_info(const struct show_info *show_info, stru
 
 	try {
 		mysqlpp::Query query = con->query();
-		query << "SELECT * FROM schedule WHERE starttime >= " << show_info->starttime << " AND starttime < " << show_info->endtime << " AND entryid != " << show_info->entryid << " ORDER BY starttime ASC LIMIT 1";
+		query << "SELECT * FROM schedule WHERE ( \
+				(starttime >= " << show_info->starttime << " AND starttime < " << show_info->endtime << ") OR \
+				(endtime > " << show_info->starttime << " AND endtime <= " << show_info->endtime <<  ") OR \
+				(starttime <= " << show_info->starttime << " AND endtime >= " << show_info->endtime << ") \
+			) AND entryid != " << show_info->entryid << " ORDER BY starttime ASC LIMIT 1";
 		mysqlpp::UseQueryResult res = query.use();
 		mysqlpp::Row row = res.fetch_row();
 		if(!row)
@@ -199,4 +208,56 @@ extern "C" int extend_show(const struct show_info *show_info)
 
 	db_close(con);
 	return 0;
+}
+
+extern "C" int add_show(struct show_info *show_info, const char *show_title)
+{
+	mysqlpp::Connection *con = db_connect();
+	if(!con)
+		return -1;
+
+	try {
+		mysqlpp::Query query = con->query();
+		query << "INSERT INTO schedule (userid, userid2, starttime, endtime, comment) VALUES (" << show_info->userid << ", " << show_info->userid2 << ", " << show_info->starttime << ", " << show_info->endtime << ", " << mysqlpp::quote << to_utf8(show_title) << ")";
+		query.execute();
+		show_info->entryid = (unsigned long)query.insert_id();
+	}
+	catch(mysqlpp::BadQuery& e) {
+		log_append(LOG_WARNING, "MySQL error: %s", e.what());
+		db_close(con);
+		return -1;
+	}
+
+	db_close(con);
+	return 0;
+}
+
+extern "C" unsigned long lookup_userid(const char *nick)
+{
+	unsigned long userid = 0;
+
+	mysqlpp::Connection *con = db_connect();
+	if(!con)
+		return 0;
+
+	try {
+		mysqlpp::Query query = con->query();
+		query << "SELECT userid FROM users WHERE username = " << mysqlpp::quote << nick << " AND (userflags & 1)";
+		mysqlpp::UseQueryResult res = query.use();
+		mysqlpp::Row row = res.fetch_row();
+		if(!row)
+		{
+			db_close(con);
+			return 0;
+		}
+		userid = (unsigned long)row["userid"];
+	}
+	catch(mysqlpp::BadQuery& e) {
+		log_append(LOG_WARNING, "MySQL error: %s", e.what());
+		db_close(con);
+		return 0;
+	}
+
+	db_close(con);
+	return userid;
 }

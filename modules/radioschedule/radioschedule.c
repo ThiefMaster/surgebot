@@ -6,8 +6,9 @@
 #include "conf.h"
 #include "radioschedule.h"
 
-MODULE_DEPENDS("commands", "help", NULL);
+MODULE_DEPENDS("commands", "help", "tools", NULL);
 
+COMMAND(schedule_add);
 COMMAND(schedule_extend);
 COMMAND(schedule_next);
 COMMAND(schedule_current);
@@ -25,6 +26,7 @@ MODULE_INIT
 
 	help_load(self, "radioschedule.help");
 
+	DEFINE_COMMAND(this, "schedule add",		schedule_add,		3, 0, "group(admins)");
 	DEFINE_COMMAND(this, "schedule extend",		schedule_extend,	1, 0, "group(admins)");
 	DEFINE_COMMAND(this, "schedule next",		schedule_next,		0, 0, "true");
 	DEFINE_COMMAND(this, "schedule current",	schedule_current,	0, 0, "true");
@@ -52,9 +54,157 @@ static void radioschedule_conf_reload()
 	radioschedule_conf.mysql_db = str ? str : "test";
 }
 
+COMMAND(schedule_add)
+{
+	unsigned int arg_offset = 0;
+	int rc;
+	struct show_info show_info, conflict;
+	struct tm tm_start, tm_end, tm_now;
+	int hours_start, minutes_start;
+	int hours_end, minutes_end;
+	time_t start, end;
+	char nickbuf[64], *nick;
+	size_t nicklen;
+	const char *show_title;
+
+	memset(&show_info, 0, sizeof(struct show_info));
+
+	if(match("??:??", argv[1]) != 0)
+	{
+		debug("First argument doesn't seem to be a timespec; assuming nick");
+		nick = argv[1];
+		arg_offset = 1;
+		if(argc < 5)
+			return -1;
+	}
+	else
+	{
+		strlcpy(nickbuf, src->nick, sizeof(nickbuf));
+		nick = nickbuf;
+		nicklen = strlen(nick);
+		if(!strncasecmp(nick, "eX`", 3))
+			nick += 3, nicklen -= 3;
+		if(nicklen >= 4)
+		{
+			if(!strcasecmp(nick + nicklen - 4, "`off") || !strcasecmp(nick + nicklen - 4, "`afk") || !strcasecmp(nick + nicklen - 4, "`dnd"))
+				nick[nicklen - 4] = '\0', nicklen -= 4;
+			else if(nicklen >= 6 && !strcasecmp(nick + nicklen - 6, "`onAir"))
+				nick[nicklen - 6] = '\0', nicklen -= 6;
+			else if(nicklen >= 7 && !strncasecmp(nick + nicklen - 7, "`on", 3) && !strcasecmp(nick + nicklen - 3, "Air"))
+				nick[nicklen - 7] = '\0', nicklen -= 7;
+		}
+		for(char *c = nick; *c; c++)
+		{
+			if(*c == '|' || *c == '`')
+				memmove(c, c + 1, strlen(c));
+		}
+		debug("Sanitized nick: %s", nick);
+	}
+
+	if((show_info.userid = lookup_userid(nick)) == 0)
+	{
+		reply("Es existiert kein Website-User mit dem Nick $b%s$b der streamberechtigt ist; bitte gib den korrekten Nick im ersten Argument an.", nick);
+		return 0;
+	}
+
+	if(sscanf(argv[1 + arg_offset], "%2d:%2d", &hours_start, &minutes_start) != 2 || sscanf(argv[2 + arg_offset], "%2d:%2d", &hours_end, &minutes_end) != 2)
+	{
+		reply("Syntax: $b%s hh:mm hh:mm ...$b", argv[0]);
+		return 0;
+	}
+
+	if(minutes_start != 0 && minutes_start != 30)
+	{
+		reply("Sendungen können nur um :00 oder :30 anfangen.");
+		return 0;
+	}
+
+	if(minutes_end != 0 && minutes_end != 30)
+	{
+		reply("Sendungen können nur um :00 oder :30 aufhören.");
+		return 0;
+	}
+
+	assert_return(localtime_r(&now, &tm_start), 1);
+	assert_return(localtime_r(&now, &tm_end), 1);
+	assert_return(localtime_r(&now, &tm_now), 1);
+
+	tm_start.tm_hour = hours_start;
+	tm_start.tm_min = minutes_start;
+	tm_start.tm_sec = 0;
+	tm_end.tm_hour = hours_end;
+	tm_end.tm_min = minutes_end;
+	tm_end.tm_sec = 0;
+
+	if(hours_start < tm_now.tm_hour || (hours_start == tm_now.tm_hour && minutes_start < tm_now.tm_min))
+	{
+		// Only bump day if it's not someone who's just late with adding his show
+		if(mktime(&tm_start) < (now - 1800))
+			tm_start.tm_mday++;
+	}
+
+	if(hours_end < tm_now.tm_hour || (hours_end == tm_now.tm_hour && minutes_end < tm_now.tm_min))
+		tm_end.tm_mday++;
+
+	start = mktime(&tm_start);
+	end = mktime(&tm_end);
+
+	if(start > (now + 20*3600))
+	{
+		reply("Du kannst Sendungen max. 20h im Voraus über den Bot eintragen");
+		return 0;
+	}
+
+	if(start < (now - 1800))
+	{
+		reply("Du willst in der Vergangenheit streamen?");
+		return 0;
+	}
+
+	if((end - start) > (6 * 3600))
+	{
+		reply("Wenn die Sendung wirklich länger als 6 Stunden dauern soll, benutze bitte die Website.");
+		return 0;
+	}
+
+	if(start > end)
+	{
+		reply("Der Endzeitpunkt darf nicht vor dem Startzeitpunkt liegen.");
+		return 0;
+	}
+	else if(start == end)
+	{
+		reply("Start- und Endzeitpunkt dürfen nicht identisch sein.");
+		return 0;
+	}
+
+	show_info.starttime = start;
+	show_info.endtime = end;
+
+	if(get_conflicting_show_info(&show_info, &conflict) != 0)
+	{
+		reply("Es ist ein Fehler aufgetreten.");
+		return 0;
+	}
+	else if(conflict.entryid)
+	{
+		char buf1[8], buf2[8];
+		strftime(buf1, sizeof(buf1), "%H:%M", localtime(&conflict.starttime));
+		strftime(buf2, sizeof(buf2), "%H:%M", localtime(&conflict.endtime));
+		reply("Die Sendung kann nicht eingetragen werden, da sie sich mit der Sendung von %s-%s überschneidet.", buf1, buf2);
+		return 0;
+	}
+
+	show_title = argline + (argv[3 + arg_offset] - argv[0]);
+	if((rc = add_show(&show_info, show_title)) == 0)
+		reply("Die Sendung wurde erfolgreich eingetragen; ID=%lu", show_info.entryid);
+
+	return (rc == 0);
+}
+
 COMMAND(schedule_extend)
 {
-	int rc = -1;
+	int rc;
 	struct show_info show_info, conflict;
 	struct tm tm_until;
 	int hours, minutes;
