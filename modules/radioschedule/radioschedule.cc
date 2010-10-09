@@ -12,7 +12,7 @@ static mysqlpp::Connection *db_connect()
 	try {
 		con.connect(radioschedule_conf.mysql_db, radioschedule_conf.mysql_host, radioschedule_conf.mysql_user, radioschedule_conf.mysql_pass);
 	}
-	catch(mysqlpp::BadQuery& e) {
+	catch(mysqlpp::ConnectionFailed& e) {
 		log_append(LOG_WARNING, "MySQL connection failed: %s", e.what());
 		return NULL;
 	}
@@ -42,6 +42,7 @@ extern "C" void next_show(struct irc_source *src)
 		if(!row)
 		{
 			reply("Keine Sendung eingetragen.");
+			db_close(con);
 			return;
 		}
 		const char *modname = strdup(row["username"]);
@@ -85,6 +86,7 @@ extern "C" void current_show(struct irc_source *src)
 		if(!row)
 		{
 			reply("Keine Sendung eingetragen.");
+			db_close(con);
 			return;
 		}
 		const char *modname = strdup(row["username"]);
@@ -108,4 +110,93 @@ extern "C" void current_show(struct irc_source *src)
 	}
 
 	db_close(con);
+}
+
+extern "C" int get_current_show_info(struct show_info *show_info, unsigned int grace_time)
+{
+	mysqlpp::Connection *con = db_connect();
+	if(!con)
+		return -1;
+
+	memset(show_info, 0, sizeof(struct show_info));
+
+	try {
+		mysqlpp::Query query = con->query();
+		query << "SELECT * FROM schedule WHERE starttime <= " << now << " AND endtime > " << (now - grace_time) << " ORDER BY starttime DESC LIMIT 1";
+		mysqlpp::UseQueryResult res = query.use();
+		mysqlpp::Row row = res.fetch_row();
+		if(!row)
+		{
+			db_close(con);
+			return 0;
+		}
+		show_info->entryid = (unsigned long)row["entryid"];
+		show_info->userid = (unsigned long)row["userid"];
+		show_info->userid2 = (unsigned long)row["userid2"];
+		show_info->starttime = (unsigned long)row["starttime"];
+		show_info->endtime = (unsigned long)row["endtime"];
+	}
+	catch(mysqlpp::BadQuery& e) {
+		log_append(LOG_WARNING, "MySQL error: %s", e.what());
+		db_close(con);
+		return -1;
+	}
+
+	db_close(con);
+	return 0;
+}
+
+extern "C" int get_conflicting_show_info(const struct show_info *show_info, struct show_info *conflict)
+{
+	mysqlpp::Connection *con = db_connect();
+	if(!con)
+		return -1;
+
+	memset(conflict, 0, sizeof(struct show_info));
+
+	try {
+		mysqlpp::Query query = con->query();
+		query << "SELECT * FROM schedule WHERE starttime >= " << show_info->starttime << " AND starttime < " << show_info->endtime << " AND entryid != " << show_info->entryid << " ORDER BY starttime ASC LIMIT 1";
+		mysqlpp::UseQueryResult res = query.use();
+		mysqlpp::Row row = res.fetch_row();
+		if(!row)
+		{
+			db_close(con);
+			return 0;
+		}
+		conflict->entryid = (unsigned long)row["entryid"];
+		conflict->userid = (unsigned long)row["userid"];
+		conflict->userid2 = (unsigned long)row["userid2"];
+		conflict->starttime = (unsigned long)row["starttime"];
+		conflict->endtime = (unsigned long)row["endtime"];
+	}
+	catch(mysqlpp::BadQuery& e) {
+		log_append(LOG_WARNING, "MySQL error: %s", e.what());
+		db_close(con);
+		return -1;
+	}
+
+	db_close(con);
+	return 0;
+}
+
+extern "C" int extend_show(const struct show_info *show_info)
+{
+	mysqlpp::Connection *con = db_connect();
+	if(!con)
+		return -1;
+
+	try {
+		mysqlpp::Query query = con->query();
+		query << "UPDATE schedule SET endtime = " << show_info->endtime << " WHERE entryid = " << show_info->entryid;
+		query.execute();
+	}
+	catch(mysqlpp::BadQuery& e) {
+		log_append(LOG_WARNING, "MySQL error: %s", e.what());
+		db_close(con);
+		return -1;
+	}
+
+	db_close(con);
+	return 0;
 }
