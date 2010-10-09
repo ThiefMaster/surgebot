@@ -197,7 +197,7 @@ COMMAND(schedule_add)
 
 	show_title = argline + (argv[3 + arg_offset] - argv[0]);
 	if((rc = add_show(&show_info, show_title)) == 0)
-		reply("Die Sendung wurde erfolgreich eingetragen; ID=%lu", show_info.entryid);
+		reply("Die Sendung wurde erfolgreich eingetragen.");
 
 	return (rc == 0);
 }
