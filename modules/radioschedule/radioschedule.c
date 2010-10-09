@@ -125,8 +125,8 @@ COMMAND(schedule_extend)
 			strftime(buf1, sizeof(buf1), "%H:%M", localtime(&show_info.endtime));
 			strftime(buf2, sizeof(buf2), "%H:%M", localtime(&conflict.starttime));
 			reply("Die Sendung kann nicht bis %s verlängert werden, da um %s eine andere Sendung beginnt.", buf1, buf2);
-			// If the conflicting show doesn't start immediately after our show, extend as much as possible
-			if(conflict.starttime > (old_endtime + 1800))
+			// If the conflicting show doesn't start immediately after our show (starttime == endtime), extend as much as possible
+			if(conflict.starttime > old_endtime)
 			{
 				show_info.endtime = conflict.starttime;
 				continue;
