@@ -135,6 +135,7 @@ void set_current_title(const char *title);
 const char *get_streamtitle();
 static time_t check_queue_full();
 static int in_wish_greet_channel(struct irc_user *user);
+static const char *sanitize_nick(const char *raw_nick);
 static unsigned int rrd_exists(const char *name);
 static void rrd_update();
 static void rrd_graph();
@@ -503,6 +504,34 @@ static int in_wish_greet_channel(struct irc_user *user)
 	else if((chan = channel_find(radiobot_conf.teamchan)) && channel_user_find(chan, user))
 		return 1;
 	return 0;
+}
+
+static const char *sanitize_nick(const char *raw_nick)
+{
+	static char nickbuf[64];
+	char *nick;
+	size_t nicklen;
+	strlcpy(nickbuf, raw_nick, sizeof(nickbuf));
+	nick = nickbuf;
+	nicklen = strlen(nick);
+	if(!strncasecmp(nick, "eX`", 3))
+		nick += 3, nicklen -= 3;
+	if(nicklen >= 4)
+	{
+		if(!strcasecmp(nick + nicklen - 4, "`off") || !strcasecmp(nick + nicklen - 4, "`afk") || !strcasecmp(nick + nicklen - 4, "`dnd"))
+			nick[nicklen - 4] = '\0', nicklen -= 4;
+		else if(nicklen >= 6 && !strcasecmp(nick + nicklen - 6, "`onAir"))
+			nick[nicklen - 6] = '\0', nicklen -= 6;
+		else if(nicklen >= 7 && !strncasecmp(nick + nicklen - 7, "`on", 3) && !strcasecmp(nick + nicklen - 3, "Air"))
+			nick[nicklen - 7] = '\0', nicklen -= 7;
+	}
+	for(char *c = nick; *c; c++)
+	{
+		if(*c == '|' || *c == '`')
+			memmove(c, c + 1, strlen(c));
+	}
+
+	return nick;
 }
 
 static time_t strtotime(const char *str)
@@ -965,7 +994,7 @@ COMMAND(setmod)
 	current_streamtitle = strdup(showtitle);
 	queue_full = 0;
 
-	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? current_mod : "Playlist"), current_show, radiobot_conf.site_url);
+	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? sanitize_nick(current_mod) : "Playlist"), current_show, radiobot_conf.site_url);
 	irc_send("PRIVMSG %s :Mod geändert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), current_show);
 	reply("Aktueller Mod: $b%s$b (Showtitel/Streamtitel: $b%s$b)", (current_mod ? current_mod : "[Playlist]"), current_show);
 	database_write(radiobot_db);
@@ -1094,9 +1123,13 @@ COMMAND(dj)
 	if(!current_mod)
 		reply("Im Moment onAir: $b[Playlist]$b");
 	else if(current_mod_2)
-		reply("Im Moment onAir: $b%s$b und $b%s$b", current_mod, current_mod_2);
+	{
+		char buf[64];
+		strlcpy(buf, sanitize_nick(current_mod_2), sizeof(buf));
+		reply("Im Moment onAir: $b%s$b und $b%s$b", sanitize_nick(current_mod), buf);
+	}
 	else
-		reply("Im Moment onAir: $b%s$b", current_mod);
+		reply("Im Moment onAir: $b%s$b", sanitize_nick(current_mod));
 
 	return 1;
 }
@@ -1504,16 +1537,16 @@ static void send_showinfo(struct cmd_client *client)
 	if(client->readonly)
 	{
 		sock_write_fmt(client->sock, "SHOWINFO_BEGIN\n");
-		sock_write_fmt(client->sock, "SHOW_MOD %s\n", (current_mod ? current_mod : "Playlist"));
-		sock_write_fmt(client->sock, "SHOW_MOD2 %s\n", (current_mod_2 ? current_mod_2 : "*"));
+		sock_write_fmt(client->sock, "SHOW_MOD %s\n", (current_mod ? sanitize_nick(current_mod) : "Playlist"));
+		sock_write_fmt(client->sock, "SHOW_MOD2 %s\n", (current_mod_2 ? sanitize_nick(current_mod_2) : "*"));
 		sock_write_fmt(client->sock, "SONGTITLE %s\n", (current_title ? current_title : "n/a"));
 		sock_write_fmt(client->sock, "LISTENERS %d\n", stream_stats.listeners_current);
 		sock_write_fmt(client->sock, "SHOWINFO_COMPLETE\n");
 		return;
 	}
 
-	sock_write_fmt(client->sock, "SHOW_MOD %s\n", (current_mod ? current_mod : "Playlist"));
-	sock_write_fmt(client->sock, "SHOW_MOD2 %s\n", (current_mod_2 ? current_mod_2 : "*"));
+	sock_write_fmt(client->sock, "SHOW_MOD %s\n", (current_mod ? sanitize_nick(current_mod) : "Playlist"));
+	sock_write_fmt(client->sock, "SHOW_MOD2 %s\n", (current_mod_2 ? sanitize_nick(current_mod_2) : "*"));
 	sock_write_fmt(client->sock, "SHOW_NAME %s\n", current_show);
 	sock_write_fmt(client->sock, "SHOW_PLAYLIST %s\n", (current_playlist ? current_playlist : "[Keine]"));
 	sock_write_fmt(client->sock, "SHOW_STREAMTITLE %s\n", get_streamtitle());
