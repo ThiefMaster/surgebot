@@ -20,8 +20,8 @@ MODULE_INIT
 
 	DEFINE_COMMAND(self, "whois",		whois,		1, CMD_REQUIRE_AUTHED, "group(admins)");
 	DEFINE_COMMAND(self, "chaninfo",	chaninfo,	0, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(self, "say",		say,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
-	DEFINE_COMMAND(self, "emote",		emote,		1, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "say",		say,		1, CMD_ACCEPT_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "emote",		emote,		1, CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "topic",		topic,		0, CMD_REQUIRE_AUTHED | CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "ping",		ping,		0, 0, "true");
 }
@@ -36,7 +36,7 @@ COMMAND(ping)
 		irc_send("PRIVMSG %s :$b%s$b: Pong!", channelname, src->nick);
 	else
 		irc_send("NOTICE %s :Pong!", src->nick);
-	
+
 	return 0;
 }
 
