@@ -570,7 +570,7 @@ HTTP_HANDLER(http_stream_info)
 			json_object_array_add(list, json_object_new_string(radiobot_conf.sanitize_nick_regexps->data[i]));
 	json_object_object_add(response, "sanitize_nick_regexps", list);
 
-	http_reply_header("Content-Type", "application/json");
+	http_reply_header("Content-Type", "application/json; charset=utf-8");
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
         http_reply_header("Cache-Control", "must-revalidate");
         http_reply_header("Pragma", "no-cache");
@@ -677,7 +677,7 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 		}
 	}
 
-	http_reply_header("Content-Type", "application/json");
+	http_reply_header("Content-Type", "application/json; charset=utf-8");
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
         http_reply_header("Cache-Control", "must-revalidate");
         http_reply_header("Pragma", "no-cache");
@@ -794,7 +794,7 @@ HTTP_HANDLER(http_wish_greet)
 		}
 	}
 
-	http_reply_header("Content-Type", "application/json");
+	http_reply_header("Content-Type", "application/json; charset=utf-8");
         http_reply_header("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
         http_reply_header("Cache-Control", "must-revalidate");
         http_reply_header("Pragma", "no-cache");
