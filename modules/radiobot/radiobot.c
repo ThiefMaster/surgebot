@@ -1950,6 +1950,7 @@ static void rrd_graph()
 		return;
 
 	rrd_graph_draw("Listeners (1 hour)", "hour", "-1hour");
+	rrd_graph_draw("Listeners (3 hours)", "3hour", "-3hours");
 	rrd_graph_draw("Listeners (1 day)", "day", "-1day");
 	rrd_graph_draw("Listeners (1 week)", "week", "-1week");
 	rrd_graph_draw("Listeners (1 month)", "month", "-1month");
