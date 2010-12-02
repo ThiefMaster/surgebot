@@ -30,6 +30,66 @@ static void db_close(mysqlpp::Connection *con)
 	con->disconnect();
 }
 
+static char *extract_html_arg(const char *str, const char *arg_name)
+{
+	static char buf[MAXLEN];
+	char *start, *end;
+	char quote;
+	size_t arg_len;
+
+	arg_len = strlen(arg_name);
+
+	strlcpy(buf, str, sizeof(buf));
+	if(!(start = strcasestr(buf, arg_name)))
+		return NULL;
+	if(strlen(start) < (arg_len + 2))
+		return NULL;
+
+	start += arg_len + 1; // skip over "arg="
+
+	quote = *start;
+	if(quote == '"' || quote == '\'')
+		start++; // skip over quote
+	else
+		quote = '\0'; // no quote char
+
+	end = start;
+	if(quote)
+	{
+		while(*end && *end != quote)
+			end++;
+	}
+	else
+	{
+		while(*end && *end != '>' && !isspace(*end))
+			end++;
+	}
+
+	*end = '\0';
+	return start;
+}
+
+static const char *dehtmlify_showtitle(const char *orig)
+{
+	char *arg;
+
+	if(!strcasestr(orig, "<img"))
+		return orig;
+
+	if((arg = extract_html_arg(orig, "alt")) && *arg)
+		return arg;
+	else if((arg = extract_html_arg(orig, "src")) && *arg)
+	{
+		arg = basename(arg); // get rid of path
+		char *dot = strrchr(arg, '.');
+		if(dot)
+			*dot = '\0';
+		return arg;
+	}
+
+	return orig;
+}
+
 extern "C" void next_show(struct irc_source *src)
 {
 	mysqlpp::Connection *con = db_connect();
@@ -60,7 +120,7 @@ extern "C" void next_show(struct irc_source *src)
 			strftime(starttime_str, sizeof(starttime_str), "%H:%M", localtime((time_t*)&starttime));
 		else
 			strftime(starttime_str, sizeof(starttime_str), "%H:%M (%d.%m.)", localtime((time_t*)&starttime));
-		reply("$b%s$b um $b%s$b: $b%s$b", modname, starttime_str, showtitle);
+		reply("$b%s$b um $b%s$b: $b%s$b", modname, starttime_str, dehtmlify_showtitle(showtitle));
 		free((void*)modname);
 		free((void*)showtitle);
 	}
@@ -104,7 +164,7 @@ extern "C" void current_show(struct irc_source *src)
 			strftime(endtime_str, sizeof(endtime_str), "%H:%M", localtime((time_t*)&endtime));
 		else
 			strftime(endtime_str, sizeof(endtime_str), "%H:%M (%d.%m.)", localtime((time_t*)&endtime));
-		reply("$b%s$b bis $b%s$b: $b%s$b", modname, endtime_str, showtitle);
+		reply("$b%s$b bis $b%s$b: $b%s$b", modname, endtime_str, dehtmlify_showtitle(showtitle));
 		free((void*)modname);
 		free((void*)showtitle);
 	}
