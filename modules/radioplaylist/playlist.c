@@ -753,7 +753,7 @@ static char *get_id3_entry(const struct id3_tag *tag, const char *id)
 static const char *make_absolute_path(const char *relative)
 {
 	static char absolute[PATH_MAX];
-	char old_cwd[PATH_MAX], new_cwd[PATH_MAX];
+	static char old_cwd[PATH_MAX], new_cwd[PATH_MAX];
 	char *relative_dup = NULL, *relative_dup2 = NULL;
 	const char *filename, *ret, *relative_path;
 	size_t pathlen;
