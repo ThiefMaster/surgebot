@@ -11,7 +11,7 @@
 #include <mad.h>
 #include <id3tag.h>
 
-static int8_t playlist_load_db(struct playlist *playlist, uint8_t flags);
+static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint8_t flags);
 static void playlist_add(struct playlist *playlist, struct playlist_node *node);
 static struct playlist_node *playlist_next(struct playlist *playlist);
 static struct playlist_node *playlist_find_file(struct playlist *playlist, const char *file);
@@ -34,33 +34,67 @@ static char *get_id3_entry(const struct id3_tag *tag, const char *id);
 static const char *make_absolute_path(const char *relative);
 
 
-struct playlist *playlist_load(struct pgsql *conn, uint8_t flags)
+struct playlist *playlist_load(struct pgsql *conn, uint8_t genre_id, uint8_t flags)
 {
 	struct playlist *playlist = playlist_create();
 	playlist->conn = conn;
-	playlist_load_db(playlist, flags);
+	playlist_load_db(playlist, genre_id, flags);
 	return playlist;
 }
 
-static int8_t playlist_load_db(struct playlist *playlist, uint8_t flags)
+static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint8_t flags)
 {
-	char query[96] = "SELECT * FROM playlist";
+	char query[256] = "SELECT * FROM playlist";
 	PGresult *res;
 	int rows;
 
 	if(!(flags & PL_L_ALL))
 		strcat(query, " WHERE blacklist = false");
+
+	if((flags & PL_L_RANDOMGENRE))
+	{
+		PGresult *genre_res;
+		genre_res = pgsql_query(playlist->conn, "SELECT id FROM genres ORDER BY random() LIMIT 1", 1, NULL);
+		if(!genre_res)
+		{
+			pgsql_free(genre_res);
+			return -1;
+		}
+		else if(pgsql_num_rows(genre_res))
+		{
+			genre_id = atoi(pgsql_nvalue(genre_res, 0, "id"));
+			debug("random genre id: %u", genre_id);
+		}
+		else
+		{
+			genre_id = 0;
+			debug("no genres found");
+		}
+		pgsql_free(genre_res);
+	}
+
+	if(genre_id)
+	{
+		if(!(flags & PL_L_ALL))
+			sprintf(query + strlen(query), " AND genre_id = %u", genre_id);
+		else
+			sprintf(query + strlen(query), " WHERE genre_id = %u", genre_id);
+	}
+
 	if(flags & PL_L_RANDOMIZE)
 		strcat(query, " ORDER BY random()");
 
-	debug("loading playlist (randomize: %s, blacklisted songs: %s)",
+	debug("loading playlist (randomize: %s, blacklisted songs: %s, rnd genre: %s, genre: %"PRIu8")",
 		((flags & PL_L_RANDOMIZE) ? "yes" : "no"),
-		((flags & PL_L_ALL) ? "yes" : "no"));
+		((flags & PL_L_ALL) ? "yes" : "no"),
+		((flags & PL_L_RANDOMGENRE) ? "yes" : "no"),
+		genre_id);
 
 	if(!(res = pgsql_query(playlist->conn, query, 1, NULL)))
 		return -1;
 
 	playlist->load_flags = flags;
+	playlist->genre_id = genre_id;
 
 	rows = pgsql_num_rows(res);
 	for(int i = 0; i < rows; i++)
@@ -424,7 +458,7 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 	}
 	else if(mode & PL_S_REMOVE_MISSING)
 	{
-		playlist = playlist_load(conn, PL_L_ALL);
+		playlist = playlist_load(conn, 0, PL_L_ALL);
 		assert_return(playlist, -1);
 		for(struct playlist_node *node = playlist->head; node; node = node->next)
 		{
@@ -454,7 +488,7 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 
 	// If we didn't truncate and unmodified files shouldn't be parsed again, load the current playlist
 	if(!(mode & (PL_S_TRUNCATE | PL_S_PARSE_ALL)))
-		playlist = playlist_load(conn, PL_L_ALL);
+		playlist = playlist_load(conn, 0, PL_L_ALL);
 
 	count = playlist_scan_dir(make_absolute_path(path), conn, playlist, 0);
 

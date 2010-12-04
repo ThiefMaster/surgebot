@@ -14,7 +14,8 @@ enum playlist_scan_flags
 enum playlist_load_flags
 {
 	PL_L_RANDOMIZE	= 0x01, // load playlist in random order
-	PL_L_ALL	= 0x02  // load everything, including blacklisted files
+	PL_L_ALL	= 0x02, // load everything, including blacklisted files
+	PL_L_RANDOMGENRE= 0x04  // load random genre
 };
 
 struct playlist_node
@@ -49,6 +50,7 @@ struct playlist
 	uint32_t count;
 
 	uint8_t load_flags;
+	uint8_t genre_id;
 
 	void (*free)(struct playlist *playlist);
 	struct playlist_node* (*next)(struct playlist *playlist);
@@ -63,6 +65,6 @@ struct playlist
 
 int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t flags);
 int8_t playlist_add_file(const char *file, struct pgsql *conn, struct stat *sb);
-struct playlist *playlist_load(struct pgsql *conn, uint8_t flags);
+struct playlist *playlist_load(struct pgsql *conn, uint8_t genre_id, uint8_t flags);
 
 #endif

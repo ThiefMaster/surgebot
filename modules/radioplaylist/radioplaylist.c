@@ -480,6 +480,9 @@ COMMAND(playlist_blacklist)
 COMMAND(playlist_reload)
 {
 	struct playlist *playlist;
+	uint8_t genre_id = 0;
+	char *genre = NULL;
+	PGresult *res = NULL;
 
 	if(!pg_conn)
 	{
@@ -487,9 +490,45 @@ COMMAND(playlist_reload)
 		return 0;
 	}
 
-	if(!(playlist = playlist_load(pg_conn, PL_L_RANDOMIZE)))
+	if(argc > 1 && !strcmp(argv[1], "0"))
+	{
+		genre_id = 0;
+	}
+	else if(argc > 1)
+	{
+		if(aredigits(argv[1]))
+			res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE id = $1", 1, stringlist_build_n(1, argv[1]));
+		else
+			res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE lower(genre) = lower($1)", 1, stringlist_build_n(1, argv[1]));
+
+		if(!res || !pgsql_num_rows(res))
+		{
+			reply("Ungültiges Genre: %s", argv[1]);
+			pgsql_free(res);
+			return 0;
+		}
+
+		genre_id = atoi(pgsql_nvalue(res, 0, "id"));
+		genre = strdup(pgsql_nvalue(res, 0, "genre"));
+		pgsql_free(res);
+	}
+	else if(stream_state.playlist)
+	{
+		char idbuf[8];
+
+		genre_id = stream_state.playlist->genre_id;
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
+		res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+
+		if(res && pgsql_num_rows(res))
+			genre = strdup(pgsql_nvalue(res, 0, "genre"));
+		pgsql_free(res);
+	}
+
+	if(!(playlist = playlist_load(pg_conn, genre_id, PL_L_RANDOMIZE)))
 	{
 		reply("Playlist konnte nicht geladen werden");
+		MyFree(genre);
 		return 0;
 	}
 
@@ -502,6 +541,8 @@ COMMAND(playlist_reload)
 	else
 	{
 		reply("Playlist wurde geladen (%"PRIu32" tracks)", playlist->count);
+		if(genre)
+			reply("Genre: %s", genre);
 		pthread_mutex_lock(&playlist_mutex);
 		if(stream_state.playlist)
 			stream_state.playlist->free(stream_state.playlist);
@@ -509,6 +550,7 @@ COMMAND(playlist_reload)
 		pthread_mutex_unlock(&playlist_mutex);
 	}
 
+	MyFree(genre);
 	return 1;
 }
 
@@ -779,7 +821,7 @@ static void conf_reload_hook()
 			else
 			{
 				// If there was no playlist, load it now
-				struct playlist *playlist = playlist_load(pg_conn, PL_L_RANDOMIZE);
+				struct playlist *playlist = playlist_load(pg_conn, 0, PL_L_RANDOMIZE | PL_L_RANDOMGENRE);
 				if(playlist)
 				{
 					log_append(LOG_INFO, "playlist contains %"PRIu32" tracks", playlist->count);
