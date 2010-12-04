@@ -115,6 +115,8 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint
 		node->inode = strtoul(pgsql_nvalue(res, i, "st_inode"), NULL, 10);
 		node->size = strtol(pgsql_nvalue(res, i, "st_size"), NULL, 10);
 		node->mtime = strtol(pgsql_nvalue(res, i, "st_mtime"), NULL, 10);
+		if((tmp = pgsql_nvalue(res, i, "genre_id")))
+			node->genre_id = atoi(tmp);
 		playlist_add(playlist, node);
 	}
 
@@ -577,6 +579,9 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	PGresult *res;
 	struct playlist_node *node = NULL;
 	const char *blacklist = "false";
+	uint8_t genre_id = 0;
+	const char *genre;
+	char genrebuf[8];
 	int8_t rc;
 
 	if(playlist && (node = playlist_find_file(playlist, file)))
@@ -606,6 +611,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 
 		if(node->blacklist)
 			blacklist = "true";
+		genre_id = node->genre_id;
 
 		if(!modified)
 			return 0;
@@ -647,13 +653,19 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	snprintf(inodebuf, sizeof(inodebuf), "%lu", sb->st_ino);
 	snprintf(sizebuf, sizeof(sizebuf), "%ld", sb->st_size);
 	snprintf(mtimebuf, sizeof(mtimebuf), "%ld", sb->st_mtime);
+	genre = NULL;
+	if(genre_id)
+	{
+		snprintf(genrebuf, sizeof(genrebuf), "%"PRIu8, genre_id);
+		genre = genrebuf;
+	}
 
 	pgsql_query_bin(conn, "DELETE FROM playlist WHERE file = $1", 0, stringlist_build_n(1, file), 1);
 	res = pgsql_query_bin(conn, "INSERT INTO playlist \
-					(file, artist, album, title, duration, st_inode, st_size, st_mtime, blacklist) \
+					(file, artist, album, title, duration, st_inode, st_size, st_mtime, blacklist, genre_id) \
 				     VALUES \
-					($1::bytea, $2, $3, $4, $5, $6, $7, $8, $9)",
-			  1, stringlist_build_n(9, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf, blacklist), 1);
+					($1::bytea, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+			  1, stringlist_build_n(10, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf, blacklist, genre), 1);
 	rc = res ? 1 : -1;
 	if(res)
 		pgsql_free(res);
