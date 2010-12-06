@@ -49,7 +49,9 @@ struct scan_state {
 
 	char *path;
 	char *nick;
-	int32_t count;
+	int8_t rc;
+	uint32_t new_count;
+	uint32_t updated_count;
 };
 
 IRC_HANDLER(nick);
@@ -650,7 +652,7 @@ COMMAND(playlist_check)
 	}
 
 	pgsql_begin(conn);
-	count = playlist_scan(NULL, conn, PL_S_REMOVE_MISSING);
+	count = playlist_scan(NULL, conn, PL_S_REMOVE_MISSING, NULL, NULL);
 	if(count < 0)
 	{
 		pgsql_rollback(conn);
@@ -688,7 +690,7 @@ COMMAND(playlist_truncate)
 	}
 
 	pgsql_begin(conn);
-	rc = playlist_scan(NULL, conn, PL_S_TRUNCATE);
+	rc = playlist_scan(NULL, conn, PL_S_TRUNCATE, NULL, NULL);
 	if(rc >= 0)
 	{
 		pgsql_commit(conn);
@@ -753,14 +755,13 @@ static void check_scan_result()
 	assert(scan_state.path);
 	assert(scan_state.nick);
 
-	if(scan_state.count >= 0)
-		reply_nick(scan_state.nick, "Scan von $b%s$b abgeschlossen; es wurden %"PRId32" neue Songs gefunden", scan_state.path, scan_state.count);
+	if(scan_state.rc == 0)
+		reply_nick(scan_state.nick, "Scan von $b%s$b abgeschlossen; %"PRIu32" neu, %"PRIu32" aktualisiert", scan_state.path, scan_state.new_count, scan_state.updated_count);
 	else
 		reply_nick(scan_state.nick, "Beim Scan von $b%s$b ist ein Fehler aufgetreten", scan_state.path);
 
 	free(scan_state.path);
 	free(scan_state.nick);
-	scan_state.count = 0;
 	scan_state.state = SCAN_IDLE;
 }
 
@@ -840,19 +841,19 @@ static void *scan_thread_main(void *arg)
 	struct pgsql *conn;
 
 	if(!(conn = pgsql_init(radioplaylist_conf.db_conn_string)))
-		scan_state.count = -1;
+		scan_state.rc = -1;
 	else
 	{
 		pgsql_begin(conn);
-		scan_state.count = playlist_scan(scan_state.path, conn, 0);
-		if(scan_state.count < 0)
+		scan_state.rc = playlist_scan(scan_state.path, conn, 0, &scan_state.new_count, &scan_state.updated_count);
+		if(scan_state.rc != 0)
 		{
 			debug("scan failed");
 			pgsql_rollback(conn);
 		}
 		else
 		{
-			debug("found %"PRId32" new files", scan_state.count);
+			debug("found %"PRIu32" new files, %"PRIu32" updated", scan_state.new_count, scan_state.updated_count);
 			pgsql_commit(conn);
 		}
 		pgsql_fini(conn);

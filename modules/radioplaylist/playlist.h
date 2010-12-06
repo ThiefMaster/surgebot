@@ -64,7 +64,7 @@ struct playlist
 	void (*enqueue)(struct playlist *playlist, struct playlist_node *node);
 };
 
-int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t flags);
+int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_t *new_count, uint32_t *updated_count);
 int8_t playlist_add_file(const char *file, struct pgsql *conn, struct stat *sb);
 struct playlist *playlist_load(struct pgsql *conn, uint8_t genre_id, uint8_t flags);
 

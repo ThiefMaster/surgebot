@@ -27,8 +27,8 @@ static void playlist_free(struct playlist *playlist);
 static struct playlist_node *playlist_node_create(uint32_t id, const char *file);
 static void playlist_node_free(struct playlist_node *node);
 
-static int32_t playlist_scan_dir(const char *path, struct pgsql *conn, struct playlist *playlist, uint8_t depth);
-static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct stat *sb, struct playlist *playlist);
+static int8_t playlist_scan_dir(const char *path, struct pgsql *conn, struct playlist *playlist, uint8_t depth, uint32_t *new_count, uint32_t *updated_count);
+static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct stat *sb, struct playlist *playlist, uint32_t *new_count, uint32_t *updated_count);
 static const mad_timer_t *get_mp3_duration(const char *file, struct stat *sb);
 static char *get_id3_entry(const struct id3_tag *tag, const char *id);
 static const char *make_absolute_path(const char *relative);
@@ -454,10 +454,16 @@ static void playlist_node_free(struct playlist_node *node)
 
 
 /* playlist scanning */
-int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
+int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_t *new_count, uint32_t *updated_count)
 {
-	int32_t count = 0;
+	uint32_t count = 0;
 	struct playlist *playlist = NULL;
+	int8_t rc;
+
+	if(new_count)
+		*new_count = 0;
+	if(updated_count)
+		*updated_count = 0;
 
 	if((mode & PL_S_REMOVE_MISSING) && mode != PL_S_REMOVE_MISSING)
 	{
@@ -480,7 +486,9 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 			}
 		}
 		playlist_free(playlist);
-		return count;
+		if(updated_count)
+			*updated_count = count;
+		return 0;
 	}
 
 	// Truncate playlist if requested
@@ -498,28 +506,28 @@ int32_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode)
 	if(!(mode & (PL_S_TRUNCATE | PL_S_PARSE_ALL)))
 		playlist = playlist_load(conn, 0, PL_L_ALL);
 
-	count = playlist_scan_dir(make_absolute_path(path), conn, playlist, 0);
+	rc = playlist_scan_dir(make_absolute_path(path), conn, playlist, 0, new_count, updated_count);
 
 	if(playlist)
 		playlist_free(playlist);
-	return count;
+	return rc;
 }
 
 int8_t playlist_add_file(const char *file, struct pgsql *conn, struct stat *sb)
 {
 	int8_t rc;
-	rc = playlist_scan_file(conn, make_absolute_path(file), sb, NULL);
+	rc = playlist_scan_file(conn, make_absolute_path(file), sb, NULL, NULL, NULL);
 	return (rc <= 0) ? -1 : 0;
 }
 
-static int32_t playlist_scan_dir(const char *path, struct pgsql *conn, struct playlist *playlist, uint8_t depth)
+static int8_t playlist_scan_dir(const char *path, struct pgsql *conn, struct playlist *playlist, uint8_t depth, uint32_t *new_count, uint32_t *updated_count)
 {
 	DIR *dir;
 	struct dirent *dirent;
 	char new_path[PATH_MAX];
 	struct stat sb;
 	size_t len;
-	int32_t rc, count = 0;
+	int32_t rc;
 
 	if(!*path)
 		return -1;
@@ -546,36 +554,34 @@ static int32_t playlist_scan_dir(const char *path, struct pgsql *conn, struct pl
 		// Recurse into directory
 		if(S_ISDIR(sb.st_mode))
 		{
-			rc = playlist_scan_dir(new_path, conn, playlist, depth + 1);
+			rc = playlist_scan_dir(new_path, conn, playlist, depth + 1, new_count, updated_count);
 			if(rc < 0)
 			{
 				closedir(dir);
 				return -1;
 			}
-			count += rc;
 		}
 		else if(S_ISREG(sb.st_mode))
 		{
 			const char *ext = strrchr(dirent->d_name, '.');
 			if(!ext || strcasecmp(ext, ".mp3"))
 				continue;
-			rc = playlist_scan_file(conn, new_path, &sb, playlist);
+			rc = playlist_scan_file(conn, new_path, &sb, playlist, new_count, updated_count);
 			if(rc < 0)
 			{
 				closedir(dir);
 				return -1;
 			}
-			count += rc;
 		}
 		else
 			log_append(LOG_WARNING, "unexpected dirent type: %s", new_path);
 	}
 
 	closedir(dir);
-	return count;
+	return 0;
 }
 
-static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct stat *sb, struct playlist *playlist)
+static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct stat *sb, struct playlist *playlist, uint32_t *new_count, uint32_t *updated_count)
 {
 	struct id3_file *i3f;
 	char *artist, *title, *album;
@@ -669,7 +675,8 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 					 WHERE \
 						id = $1",
 				  1, stringlist_build_n(8, idbuf, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf));
-		debug("UPDATE");
+		if(updated_count)
+			(*updated_count)++;
 	}
 	else
 	{
@@ -678,9 +685,10 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 					     VALUES \
 						($1::bytea, $2, $3, $4, $5, $6, $7, $8)",
 				  1, stringlist_build_n(8, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
-		debug("INSERT");
+		if(new_count)
+			(*new_count)++;
 	}
-	rc = res ? 1 : -1;
+	rc = res ? 0 : -1;
 	if(res)
 		pgsql_free(res);
 	MyFree(artist);
