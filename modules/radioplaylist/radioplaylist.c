@@ -718,6 +718,9 @@ COMMAND(playlist_truncate)
 
 COMMAND(playlist_genrevote)
 {
+	uint8_t genre_list_shown = 0;
+	uint8_t rc = 0;
+
 	if(!genre_vote.active)
 	{
 		int16_t song_time_remaining = 0;
@@ -744,15 +747,31 @@ COMMAND(playlist_genrevote)
 
 
 		irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet. Benutze $b*genrevote <genre>$b um abzustimmen.", radioplaylist_conf.radiochan, src->nick);
-		// TODO: show current genre
-		// TODO: send genre list
-		return 1;
+
+		// Show current genre if applicable
+		if(stream_state.playlist)
+		{
+			char idbuf[8];
+			PGresult *res;
+			uint8_t genre_id = stream_state.playlist->genre_id;
+			snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
+			res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+			if(res && pgsql_num_rows(res))
+				irc_send("PRIVMSG %s :Aktuelles Genre: $b%s$b", radioplaylist_conf.radiochan, pgsql_nvalue(res, 0, "genre"));
+			pgsql_free(res);
+
+			// TODO: send genre list
+			genre_list_shown = 1;
+			rc = 1;
+		}
 	}
 
 	if(argc < 2)
 	{
-		// TODO: show genre list
-		return 0;
+		if(genre_list_shown)
+			return rc;
+		// TODO: show genre list (and votes?)
+		return rc;
 	}
 
 	// TODO: register vote
