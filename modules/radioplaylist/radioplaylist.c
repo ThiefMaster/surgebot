@@ -108,6 +108,7 @@ static struct {
 	uint16_t lame_samplerate;
 	uint8_t lame_quality;
 	const char *teamchan;
+	const char *radiochan;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", NULL);
@@ -803,6 +804,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/teamchan", DB_STRING);
 	radioplaylist_conf.teamchan = str;
+
+	str = conf_get("radioplaylist/radiochan", DB_STRING);
+	radioplaylist_conf.radiochan = str;
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
