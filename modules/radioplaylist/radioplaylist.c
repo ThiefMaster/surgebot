@@ -54,6 +54,11 @@ struct scan_state {
 	uint32_t updated_count;
 };
 
+struct genre_vote {
+	uint8_t active;
+	time_t endtime;
+};
+
 IRC_HANDLER(nick);
 COMMAND(playlist_on);
 COMMAND(playlist_off);
@@ -67,6 +72,7 @@ COMMAND(playlist_add);
 COMMAND(playlist_scan);
 COMMAND(playlist_check);
 COMMAND(playlist_truncate);
+COMMAND(playlist_genrevote);
 static void check_countdown();
 static void check_scan_result();
 static void conf_reload_hook();
@@ -85,6 +91,7 @@ static int decode_mp3(struct stream_ctx *stream);
 static struct module *this;
 static struct stream_state stream_state;
 static struct scan_state scan_state;
+static struct genre_vote genre_vote;
 static struct pgsql *pg_conn;
 static char *playlist_cd_by;
 static time_t playlist_cd_tick;
@@ -109,6 +116,7 @@ static struct {
 	uint8_t lame_quality;
 	const char *teamchan;
 	const char *radiochan;
+	uint16_t genrevote_duration;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", NULL);
@@ -144,6 +152,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "playlist scan",		playlist_scan,		1, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist check",		playlist_check,		0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist truncate",	playlist_truncate,	0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "genrevote",		playlist_genrevote,	0, CMD_LOG_HOSTMASK, "true");
 }
 
 
@@ -707,6 +716,49 @@ COMMAND(playlist_truncate)
 	return 1;
 }
 
+COMMAND(playlist_genrevote)
+{
+	if(!genre_vote.active)
+	{
+		int16_t song_time_remaining = 0;
+
+		if(stream_state.play == 2)
+		{
+			reply("Es läuft gerade ein Countdown. Daher kann kein Genre-Vote gestartet werden.");
+			return 0;
+		}
+
+		if(stream_state.playing)
+		{
+			song_time_remaining = stream_state.endtime - now;
+			// TODO: announce vote on stream
+			/*
+			pthread_mutex_lock(&stream_state_mutex);
+			stream_state.announce_vote = 1;
+			pthread_mutex_unlock(&stream_state_mutex);
+			*/
+		}
+
+		genre_vote.active = 1;
+		genre_vote.endtime = now + song_time_remaining + radioplaylist_conf.genrevote_duration;
+
+
+		irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet. Benutze $b*genrevote <genre>$b um abzustimmen.", radioplaylist_conf.radiochan, src->nick);
+		// TODO: show current genre
+		// TODO: send genre list
+		return 1;
+	}
+
+	if(argc < 2)
+	{
+		// TODO: show genre list
+		return 0;
+	}
+
+	// TODO: register vote
+	return 1;
+}
+
 static void check_countdown()
 {
 	int16_t remaining = stream_state.endtime - now;
@@ -807,6 +859,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/radiochan", DB_STRING);
 	radioplaylist_conf.radiochan = str;
+
+	str = conf_get("radioplaylist/genrevote_duration", DB_STRING);
+	radioplaylist_conf.genrevote_duration = str ? atoi(str) : 300;
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
