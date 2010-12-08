@@ -35,6 +35,7 @@ struct stream_state {
 	struct playlist *playlist;
 	uint8_t playing; // 0 = not playing, 1 = playing
 	uint8_t skip; // skip current song
+	struct playlist_node *announce_vote; // vote message to enqueue after current song
 	uint16_t duration;
 	time_t starttime;
 	time_t endtime;
@@ -117,6 +118,7 @@ static struct {
 	const char *teamchan;
 	const char *radiochan;
 	uint16_t genrevote_duration;
+	const char *genrevote_file;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", NULL);
@@ -724,6 +726,8 @@ COMMAND(playlist_genrevote)
 	if(!genre_vote.active)
 	{
 		int16_t song_time_remaining = 0;
+		uint16_t vote_duration = 0;
+		struct playlist_node *node;
 
 		if(stream_state.play == 2)
 		{
@@ -731,22 +735,34 @@ COMMAND(playlist_genrevote)
 			return 0;
 		}
 
-		if(stream_state.playing)
+		if(stream_state.playing && radioplaylist_conf.genrevote_file)
 		{
-			song_time_remaining = stream_state.endtime - now;
-			// TODO: announce vote on stream
-			/*
-			pthread_mutex_lock(&stream_state_mutex);
-			stream_state.announce_vote = 1;
-			pthread_mutex_unlock(&stream_state_mutex);
-			*/
+			// Create node and store it (will be enqueued later)
+			if((node = stream_state.playlist->make_node(stream_state.playlist, radioplaylist_conf.genrevote_file)))
+			{
+				song_time_remaining = stream_state.endtime - now;
+				// Don't announce vote if the next song might be starting while we try to enqueue the vote announcement
+				if(song_time_remaining > 1)
+				{
+					pthread_mutex_lock(&stream_state_mutex);
+					stream_state.announce_vote = node;
+					pthread_mutex_unlock(&stream_state_mutex);
+				}
+				else
+				{
+					song_time_remaining = 0;
+				}
+			}
 		}
 
 		genre_vote.active = 1;
-		genre_vote.endtime = now + song_time_remaining + radioplaylist_conf.genrevote_duration;
+		// use songtime-10 so there's some time to load the playlist before the new one is accessed
+		vote_duration = radioplaylist_conf.genrevote_duration + (song_time_remaining >= 10 ? song_time_remaining - 10 : song_time_remaining);
+		genre_vote.endtime = now + vote_duration;
 
 
-		irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet. Benutze $b*genrevote <genre>$b um abzustimmen.", radioplaylist_conf.radiochan, src->nick);
+		irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet.", radioplaylist_conf.radiochan, src->nick);
+		irc_send("PRIVMSG %s :Benutze $b*genrevote <genre>$b um abzustimmen. Verbleibende Zeit: $b%02u:%02u$b", radioplaylist_conf.radiochan, vote_duration / 60, vote_duration % 60);
 
 		// Show current genre if applicable
 		if(stream_state.playlist)
@@ -871,6 +887,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/lame_quality", DB_STRING);
 	radioplaylist_conf.lame_quality = str ? atoi(str) : 3;
+
+	str = conf_get("radioplaylist/genrevote_file", DB_STRING);
+	radioplaylist_conf.genrevote_file = str;
 	pthread_mutex_unlock(&conf_mutex); // unlock config
 
 	str = conf_get("radioplaylist/teamchan", DB_STRING);
@@ -984,6 +1003,15 @@ static void *stream_thread_main(void *arg)
 			}
 
 			pthread_mutex_lock(&playlist_mutex); // lock playlist
+			if(stream_state.announce_vote)
+			{
+				pthread_mutex_lock(&stream_state_mutex);
+				if(stream_state.playlist)
+					stream_state.playlist->enqueue_first(stream_state.playlist, stream_state.announce_vote);
+				stream_state.announce_vote = NULL;
+				pthread_mutex_unlock(&stream_state_mutex);
+			}
+
 			song = stream_state.playlist ? stream_state.playlist->next(stream_state.playlist) : NULL;
 			if(!song)
 			{
