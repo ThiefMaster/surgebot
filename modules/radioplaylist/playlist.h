@@ -62,6 +62,7 @@ struct playlist
 	struct playlist_node* (*make_node)(struct playlist *playlist, const char *file);
 	struct playlist_node* (*get_node)(struct playlist *playlist, uint32_t id);
 	void (*enqueue)(struct playlist *playlist, struct playlist_node *node);
+	void (*enqueue_first)(struct playlist *playlist, struct playlist_node *node);
 };
 
 int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_t *new_count, uint32_t *updated_count);

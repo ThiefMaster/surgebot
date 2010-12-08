@@ -20,7 +20,8 @@ static int8_t playlist_blacklist_id(struct playlist *playlist, uint32_t id);
 static int8_t playlist_blacklist_node(struct playlist *playlist, struct playlist_node *node);
 static struct playlist_node *playlist_make_node(struct playlist *playlist, const char *file);
 static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32_t id);
-static void playlist_enqueue(struct playlist *playlist, struct playlist_node *node);
+static void playlist_enqueue_head(struct playlist *playlist, struct playlist_node *node);
+static void playlist_enqueue_tail(struct playlist *playlist, struct playlist_node *node);
 static struct playlist *playlist_create();
 static void playlist_free(struct playlist *playlist);
 
@@ -387,7 +388,7 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 	return node;
 }
 
-static void playlist_enqueue(struct playlist *playlist, struct playlist_node *node)
+static void playlist_enqueue_tail(struct playlist *playlist, struct playlist_node *node)
 {
 	if(!playlist->queue)
 		playlist->queue = node;
@@ -402,6 +403,14 @@ static void playlist_enqueue(struct playlist *playlist, struct playlist_node *no
 	}
 }
 
+static void playlist_enqueue_head(struct playlist *playlist, struct playlist_node *node)
+{
+	node->next = playlist->queue;
+	if(node->next)
+		node->next->prev = node;
+	playlist->queue = node;
+}
+
 static struct playlist *playlist_create()
 {
 	struct playlist *playlist = malloc(sizeof(struct playlist));
@@ -413,7 +422,8 @@ static struct playlist *playlist_create()
 	playlist->blacklist_id = playlist_blacklist_id;
 	playlist->make_node = playlist_make_node;
 	playlist->get_node = playlist_get_node;
-	playlist->enqueue = playlist_enqueue;
+	playlist->enqueue = playlist_enqueue_tail;
+	playlist->enqueue_first = playlist_enqueue_head;
 
 	return playlist;
 }
