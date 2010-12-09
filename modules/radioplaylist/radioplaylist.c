@@ -848,11 +848,14 @@ COMMAND(playlist_genrevote)
 	// display current genrevote state
 	if(argc < 2)
 	{
+		uint16_t remaining = genre_vote.endtime - now;
+
 		if(genre_list_shown)
 			return rc;
 		reply("Verfügbare Genres:");
 		for(int i = 0; i < genre_vote.num_genres; i++)
 			reply("$b%u$b: %s [%u/%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, radioplaylist_conf.genrevote_min_votes);
+		reply("Verbleibende Zeit: $b%02u:%02u$b", remaining / 60, remaining % 60);
 		return rc;
 	}
 
