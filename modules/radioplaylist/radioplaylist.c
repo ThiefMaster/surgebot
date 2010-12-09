@@ -5,6 +5,7 @@
 #include "irc_handler.h"
 #include "conf.h"
 #include "surgebot.h"
+#include "timer.h"
 
 #include "pgsql.h"
 #include "playlist.h"
@@ -74,6 +75,7 @@ COMMAND(playlist_scan);
 COMMAND(playlist_check);
 COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
+static void genrevote_finish(void *bound, void *data);
 static void check_countdown();
 static void check_scan_result();
 static void conf_reload_hook();
@@ -185,6 +187,7 @@ MODULE_FINI
 	unreg_irc_handler("NICK", nick);
 
 	unreg_conf_reload_func(conf_reload_hook);
+	timer_del_boundname(this, "genrevote_finish");
 
 	pthread_mutex_destroy(&conf_mutex);
 	pthread_mutex_destroy(&stream_state_mutex);
@@ -759,7 +762,9 @@ COMMAND(playlist_genrevote)
 		// use songtime-10 so there's some time to load the playlist before the new one is accessed
 		vote_duration = radioplaylist_conf.genrevote_duration + (song_time_remaining >= 10 ? song_time_remaining - 10 : song_time_remaining);
 		genre_vote.endtime = now + vote_duration;
-
+		timer_del_boundname(this, "genrevote_finish"); // just to be sure
+		timer_add(this, "genrevote_finish", genre_vote.endtime, genrevote_finish, NULL, 0, 0);
+		debug("genre vote started; duration: %u, by: %s", vote_duration, src->nick);
 
 		irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet.", radioplaylist_conf.radiochan, src->nick);
 		irc_send("PRIVMSG %s :Benutze $b*genrevote <genre>$b um abzustimmen. Verbleibende Zeit: $b%02u:%02u$b", radioplaylist_conf.radiochan, vote_duration / 60, vote_duration % 60);
@@ -792,6 +797,14 @@ COMMAND(playlist_genrevote)
 
 	// TODO: register vote
 	return 1;
+}
+
+static void genrevote_finish(void *bound, void *data)
+{
+	debug("genre vote expired");
+	// TODO: process vote results
+	// TODO: announce results
+	// TODO: load new genre if necessary
 }
 
 static void check_countdown()
