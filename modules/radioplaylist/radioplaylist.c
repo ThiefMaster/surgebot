@@ -133,6 +133,7 @@ static struct {
 	const char *genrevote_file;
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
+	uint8_t genrevote_min_votes;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", NULL);
@@ -842,7 +843,7 @@ COMMAND(playlist_genrevote)
 			return rc;
 		reply("Verfügbare Genres:");
 		for(int i = 0; i < genre_vote.num_genres; i++)
-			reply("$b%u$b: %s [%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes);
+			reply("$b%u$b: %s [%u/%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, radioplaylist_conf.genrevote_min_votes);
 		return rc;
 	}
 
@@ -992,6 +993,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_frequency", DB_STRING);
 	radioplaylist_conf.genrevote_frequency = str ? atoi(str) : 3600;
+
+	str = conf_get("radioplaylist/genrevote_min_votes", DB_STRING);
+	radioplaylist_conf.genrevote_min_votes = str ? atoi(str) : 3;
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
