@@ -121,6 +121,7 @@ static struct {
 	const char *radiochan;
 	uint16_t genrevote_duration;
 	const char *genrevote_file;
+	uint16_t genrevote_frequency;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", NULL);
@@ -732,6 +733,13 @@ COMMAND(playlist_genrevote)
 		uint16_t vote_duration = 0;
 		struct playlist_node *node;
 
+		if(now < (genre_vote.endtime + radioplaylist_conf.genrevote_frequency))
+		{
+			uint16_t wait_time = (genre_vote.endtime + radioplaylist_conf.genrevote_frequency) - now;
+			reply("Der nächste Genre-Vote kann erst in $b%02u:%02u$b gestartet werden.", wait_time / 60, wait_time % 60);
+			return 0;
+		}
+
 		if(stream_state.play == 2)
 		{
 			reply("Es läuft gerade ein Countdown. Daher kann kein Genre-Vote gestartet werden.");
@@ -802,6 +810,7 @@ COMMAND(playlist_genrevote)
 static void genrevote_finish(void *bound, void *data)
 {
 	debug("genre vote expired");
+	genre_vote.active = 0;
 	// TODO: process vote results
 	// TODO: announce results
 	// TODO: load new genre if necessary
@@ -913,6 +922,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_duration", DB_STRING);
 	radioplaylist_conf.genrevote_duration = str ? atoi(str) : 300;
+
+	str = conf_get("radioplaylist/genrevote_frequency", DB_STRING);
+	radioplaylist_conf.genrevote_frequency = str ? atoi(str) : 3600;
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
