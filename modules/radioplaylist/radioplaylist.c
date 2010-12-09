@@ -4,6 +4,8 @@
 #include "irc.h"
 #include "irc_handler.h"
 #include "conf.h"
+#include "mtrand.h"
+#include "ptrlist.h"
 #include "stringlist.h"
 #include "surgebot.h"
 #include "timer.h"
@@ -908,6 +910,7 @@ static void genrevote_free()
 		for(int i = 0; i < genre_vote.num_genres; i++)
 			free(genre_vote.genres[i].name);
 		free(genre_vote.genres);
+		genre_vote.genres = NULL;
 	}
 	genre_vote.num_genres = 0;
 
@@ -934,10 +937,78 @@ static void genrevote_reset()
 
 static void genrevote_finish(void *bound, void *data)
 {
+	uint16_t highest_vote = 0;
+	uint16_t num_highest = 0;
+	struct genre_vote_genre *winner = NULL;
+	struct ptrlist *candidates = ptrlist_create();
+
 	debug("genre vote expired");
-	// TODO: process vote results
-	// TODO: announce results
-	// TODO: load new genre if necessary
+
+	// process vote results
+	for(int i = 0; i < genre_vote.num_genres; i++)
+	{
+		struct genre_vote_genre *tmp = &genre_vote.genres[i];
+		debug("genre %s got %u votes", tmp->name, tmp->votes);
+		if(tmp->votes < radioplaylist_conf.genrevote_min_votes)
+			continue;
+
+		if(tmp->votes > highest_vote)
+		{
+			// New highest vote -> mark as potential winner
+			ptrlist_clear(candidates);
+			highest_vote = tmp->votes;
+			winner = tmp;
+		}
+		else if(tmp->votes == highest_vote)
+		{
+			// Another winner candidate...
+			if(winner)
+			{
+				ptrlist_add(candidates, 0, winner);
+				winner = NULL;
+			}
+			ptrlist_add(candidates, 0, tmp);
+		}
+	}
+
+	debug("winner: %p, candidates: %u", winner, candidates->count);
+	if(candidates->count)
+	{
+		// Choose random candidate
+		winner = candidates->data[mt_rand(0, candidates->count - 1)]->ptr;
+	}
+
+	ptrlist_free(candidates);
+
+	if(winner && (!stream_state.playlist || winner->db_id != stream_state.playlist->genre_id))
+	{
+		struct playlist *playlist;
+
+		irc_send("PRIVMSG %s :Genre-Vote beendet. Das neue Genre ist $b%s$b (%u Votes)", radioplaylist_conf.radiochan, winner->name, winner->votes);
+
+		if((playlist = playlist_load(pg_conn, winner->db_id, PL_L_RANDOMIZE)))
+		{
+			log_append(LOG_INFO, "new playlist contains %"PRIu32" tracks", playlist->count);
+			if(playlist->count == 0)
+			{
+				irc_send("PRIVMSG %s :Fehler: Es wurden keine Songs mit diesem Genre gefunden.", radioplaylist_conf.radiochan);
+				playlist->free(playlist);
+			}
+			else
+			{
+				pthread_mutex_lock(&playlist_mutex);
+				if(stream_state.playlist)
+					stream_state.playlist->free(stream_state.playlist);
+				stream_state.playlist = playlist;
+				pthread_mutex_unlock(&playlist_mutex);
+			}
+		}
+	}
+	else
+	{
+		irc_send("PRIVMSG %s :Genre-Vote beendet. Es wurde kein neues Genre gewählt.", radioplaylist_conf.radiochan);
+	}
+
 	genre_vote.active = 0;
 	genrevote_free();
 }
