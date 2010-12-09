@@ -4,6 +4,7 @@
 #include "irc.h"
 #include "irc_handler.h"
 #include "conf.h"
+#include "stringlist.h"
 #include "surgebot.h"
 #include "timer.h"
 
@@ -68,6 +69,8 @@ struct genre_vote {
 	time_t endtime;
 	uint8_t num_genres;
 	struct genre_vote_genre *genres;
+	struct stringlist *voted_nicks;
+	struct stringlist *voted_hosts;
 };
 
 IRC_HANDLER(nick);
@@ -84,7 +87,7 @@ COMMAND(playlist_scan);
 COMMAND(playlist_check);
 COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
-static void genrevote_free_genres();
+static void genrevote_free();
 static void genrevote_reset();
 static void genrevote_finish(void *bound, void *data);
 static void check_countdown();
@@ -739,6 +742,8 @@ COMMAND(playlist_genrevote)
 	uint8_t genre_list_shown = 0;
 	uint8_t rc = 0;
 	PGresult *res;
+	struct genre_vote_genre *vote_genre = NULL;
+	uint8_t id;
 
 	if(!pg_conn)
 	{
@@ -830,6 +835,8 @@ COMMAND(playlist_genrevote)
 		}
 		pgsql_free(res);
 
+		genre_vote.voted_nicks = stringlist_create();
+		genre_vote.voted_hosts = stringlist_create();
 		reply("Genre-Vote wurde gestartet.");
 		genre_list_shown = 1;
 		rc = 1;
@@ -837,6 +844,7 @@ COMMAND(playlist_genrevote)
 
 	assert_return(genre_vote.active, 0);
 
+	// display current genrevote state
 	if(argc < 2)
 	{
 		if(genre_list_shown)
@@ -847,11 +855,49 @@ COMMAND(playlist_genrevote)
 		return rc;
 	}
 
-	// TODO: register vote
+	// process vote
+	if(stringlist_find(genre_vote.voted_nicks, src->nick) != -1 || stringlist_find(genre_vote.voted_hosts, src->host) != -1)
+	{
+		reply("Du hast schon abgestimmt...");
+		return rc;
+	}
+
+	id = atoi(argv[1]);
+	for(int i = 0; i < genre_vote.num_genres; i++)
+	{
+		struct genre_vote_genre *tmp = &genre_vote.genres[i];
+		if(id == tmp->id || !strcasecmp(argv[1], tmp->name))
+		{
+			// ID or full name match? no need to check anything else
+			vote_genre = tmp;
+			break;
+		}
+		else if(strcasestr(tmp->name, argv[1]))
+		{
+			if(vote_genre)
+			{
+				vote_genre = NULL;
+				reply("$b%s$b ist nicht eindeutig; verwende bitte die ID oder den vollen Genrenamen.", argv[1]);
+				return rc;
+			}
+			vote_genre = tmp;
+		}
+	}
+
+	if(!vote_genre)
+	{
+		reply("Ungültiges Genre: $b%s$b", argv[1]);
+		return rc;
+	}
+
+	stringlist_add(genre_vote.voted_nicks, strdup(src->nick));
+	stringlist_add(genre_vote.voted_hosts, strdup(src->host));
+	vote_genre->votes++;
+	reply("Du hast für $b%s$b gestimmt (insgesamt $b%u$b Votes)", vote_genre->name, vote_genre->votes);
 	return 1;
 }
 
-static void genrevote_free_genres()
+static void genrevote_free()
 {
 	if(!genre_vote.genres)
 		return;
@@ -859,6 +905,14 @@ static void genrevote_free_genres()
 	for(int i = 0; i < genre_vote.num_genres; i++)
 		free(genre_vote.genres[i].name);
 	free(genre_vote.genres);
+	genre_vote.num_genres = 0;
+
+	if(genre_vote.voted_nicks)
+		stringlist_free(genre_vote.voted_nicks);
+	if(genre_vote.voted_hosts)
+		stringlist_free(genre_vote.voted_hosts);
+	genre_vote.voted_nicks = NULL;
+	genre_vote.voted_hosts = NULL;
 }
 
 static void genrevote_reset()
@@ -871,18 +925,19 @@ static void genrevote_reset()
 	timer_del_boundname(this, "genrevote_finish");
 	genre_vote.active = 0;
 	genre_vote.endtime = 0;
-	genrevote_free_genres();
-	genre_vote.num_genres = 0;
+	genrevote_free();
 }
 
 static void genrevote_finish(void *bound, void *data)
 {
 	debug("genre vote expired");
-	genre_vote.active = 0;
 	// TODO: process vote results
 	// TODO: announce results
 	// TODO: load new genre if necessary
+	genre_vote.active = 0;
+	genrevote_free();
 }
+
 
 static void check_countdown()
 {
