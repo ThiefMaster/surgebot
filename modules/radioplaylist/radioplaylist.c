@@ -794,8 +794,7 @@ COMMAND(playlist_genrevote)
 		}
 
 		genre_vote.active = 1;
-		// use songtime-10 so there's some time to load the playlist before the new one is accessed
-		vote_duration = radioplaylist_conf.genrevote_duration + (song_time_remaining >= 10 ? song_time_remaining - 10 : song_time_remaining);
+		vote_duration = radioplaylist_conf.genrevote_duration + song_time_remaining;
 		genre_vote.endtime = now + vote_duration;
 		timer_del_boundname(this, "genrevote_finish"); // just to be sure
 		timer_add(this, "genrevote_finish", genre_vote.endtime, genrevote_finish, NULL, 0, 0);
