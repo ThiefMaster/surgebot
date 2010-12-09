@@ -119,8 +119,8 @@ static struct {
 	uint8_t lame_quality;
 	const char *teamchan;
 	const char *radiochan;
-	uint16_t genrevote_duration;
 	const char *genrevote_file;
+	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
 } radioplaylist_conf;
 
@@ -909,9 +909,6 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/lame_quality", DB_STRING);
 	radioplaylist_conf.lame_quality = str ? atoi(str) : 3;
-
-	str = conf_get("radioplaylist/genrevote_file", DB_STRING);
-	radioplaylist_conf.genrevote_file = str;
 	pthread_mutex_unlock(&conf_mutex); // unlock config
 
 	str = conf_get("radioplaylist/teamchan", DB_STRING);
@@ -919,6 +916,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/radiochan", DB_STRING);
 	radioplaylist_conf.radiochan = str;
+
+	str = conf_get("radioplaylist/genrevote_file", DB_STRING);
+	radioplaylist_conf.genrevote_file = str;
 
 	str = conf_get("radioplaylist/genrevote_duration", DB_STRING);
 	radioplaylist_conf.genrevote_duration = str ? atoi(str) : 300;
