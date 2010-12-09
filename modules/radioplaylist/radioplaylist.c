@@ -56,9 +56,18 @@ struct scan_state {
 	uint32_t updated_count;
 };
 
+struct genre_vote_genre {
+	uint8_t id;
+	uint8_t db_id;
+	uint16_t votes;
+	char *name;
+};
+
 struct genre_vote {
 	uint8_t active;
 	time_t endtime;
+	uint8_t num_genres;
+	struct genre_vote_genre *genres;
 };
 
 IRC_HANDLER(nick);
@@ -75,6 +84,8 @@ COMMAND(playlist_scan);
 COMMAND(playlist_check);
 COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
+static void genrevote_free_genres();
+static void genrevote_reset();
 static void genrevote_finish(void *bound, void *data);
 static void check_countdown();
 static void check_scan_result();
@@ -726,6 +737,13 @@ COMMAND(playlist_genrevote)
 {
 	uint8_t genre_list_shown = 0;
 	uint8_t rc = 0;
+	PGresult *res;
+
+	if(!pg_conn)
+	{
+		reply("Datenbank ist nicht verfügbar");
+		return 0;
+	}
 
 	if(!genre_vote.active)
 	{
@@ -781,18 +799,39 @@ COMMAND(playlist_genrevote)
 		if(stream_state.playlist)
 		{
 			char idbuf[8];
-			PGresult *res;
 			uint8_t genre_id = stream_state.playlist->genre_id;
 			snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
 			res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 			if(res && pgsql_num_rows(res))
 				irc_send("PRIVMSG %s :Aktuelles Genre: $b%s$b", radioplaylist_conf.radiochan, pgsql_nvalue(res, 0, "genre"));
 			pgsql_free(res);
-
-			// TODO: send genre list
-			genre_list_shown = 1;
-			rc = 1;
 		}
+
+		// send genre list to channel
+		res = pgsql_query(pg_conn, "SELECT * FROM genres ORDER BY genre ASC", 1, NULL);
+		if(!res || !(genre_vote.num_genres = pgsql_num_rows(res)))
+		{
+			log_append(LOG_WARNING, "Could not load genre list");
+			irc_send("PRIVMSG %s :Fehler - Genre-Vote abgebrochen!", radioplaylist_conf.radiochan);
+			reply("Beim Starten des Genre-Votes ist ein Fehler aufgetreten.");
+			genrevote_reset();
+			pgsql_free(res);
+			return 0;
+		}
+
+		genre_vote.genres = calloc(genre_vote.num_genres, sizeof(struct genre_vote_genre));
+		for(int i = 0; i < genre_vote.num_genres; i++)
+		{
+			genre_vote.genres[i].id = i + 1;
+			genre_vote.genres[i].db_id = atoi(pgsql_nvalue(res, i, "id"));
+			genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
+			irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, genre_vote.genres[i].id, genre_vote.genres[i].name);
+		}
+		pgsql_free(res);
+
+		reply("Genre-Vote wurde gestartet.");
+		genre_list_shown = 1;
+		rc = 1;
 	}
 
 	if(argc < 2)
@@ -805,6 +844,30 @@ COMMAND(playlist_genrevote)
 
 	// TODO: register vote
 	return 1;
+}
+
+static void genrevote_free_genres()
+{
+	if(!genre_vote.genres)
+		return;
+
+	for(int i = 0; i < genre_vote.num_genres; i++)
+		free(genre_vote.genres[i].name);
+	free(genre_vote.genres);
+}
+
+static void genrevote_reset()
+{
+	pthread_mutex_lock(&stream_state_mutex);
+	// That will leak memory but it only happens if an error occurs...
+	stream_state.announce_vote = NULL;
+	pthread_mutex_unlock(&stream_state_mutex);
+
+	timer_del_boundname(this, "genrevote_finish");
+	genre_vote.active = 0;
+	genre_vote.endtime = 0;
+	genrevote_free_genres();
+	genre_vote.num_genres = 0;
 }
 
 static void genrevote_finish(void *bound, void *data)
