@@ -204,6 +204,7 @@ MODULE_FINI
 
 	unreg_conf_reload_func(conf_reload_hook);
 	timer_del_boundname(this, "genrevote_finish");
+	genrevote_free();
 
 	pthread_mutex_destroy(&conf_mutex);
 	pthread_mutex_destroy(&stream_state_mutex);
@@ -899,12 +900,12 @@ COMMAND(playlist_genrevote)
 
 static void genrevote_free()
 {
-	if(!genre_vote.genres)
-		return;
-
-	for(int i = 0; i < genre_vote.num_genres; i++)
-		free(genre_vote.genres[i].name);
-	free(genre_vote.genres);
+	if(genre_vote.genres)
+	{
+		for(int i = 0; i < genre_vote.num_genres; i++)
+			free(genre_vote.genres[i].name);
+		free(genre_vote.genres);
+	}
 	genre_vote.num_genres = 0;
 
 	if(genre_vote.voted_nicks)
