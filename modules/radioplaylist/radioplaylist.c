@@ -834,11 +834,15 @@ COMMAND(playlist_genrevote)
 		rc = 1;
 	}
 
+	assert_return(genre_vote.active, 0);
+
 	if(argc < 2)
 	{
 		if(genre_list_shown)
 			return rc;
-		// TODO: show genre list (and votes?)
+		reply("Verfügbare Genres:");
+		for(int i = 0; i < genre_vote.num_genres; i++)
+			reply("$b%u$b: %s [%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes);
 		return rc;
 	}
 
