@@ -7,21 +7,24 @@ void tools_init();
 void tools_fini();
 void split_mask(char *mask, char **nick, char **ident, char **host);
 unsigned char aredigits(const char *text);
-char *duration2string(time_t time);
-char *time2string(time_t time);
-const char *chanmodes2string(int modes, unsigned int limit, const char *key);
 int IsChannelName(const char *name);
 unsigned int validate_string(const char *str, const char *allowed, char *c);
 int match(const char *mask, const char *name);
-const char *strtab(unsigned int num);
 size_t strlcpy(char *out, const char *in, size_t len);
 size_t strlcat(char *out, const char *in, size_t len);
 unsigned int is_valid_string(const char *str);
-char *strtolower(char *str);
-char *strtoupper(char *str);
 unsigned char check_date(int day, int month, int year);
 char *strip_codes(char *str);
 unsigned char file_exists(const char *file);
+
+// conversion functions
+char *duration2string(time_t time);
+char *time2string(time_t time);
+char *int2string(int i);
+const char *chanmodes2string(int modes, unsigned int limit, const char *key);
+const char *strtab(unsigned int num);
+char *strtolower(char *str);
+char *strtoupper(char *str);
 
 static inline long min(long a, long b)
 {

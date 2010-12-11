@@ -190,6 +190,40 @@ void unreg_loop_func(loop_func *func)
 	loop_func_list_del(loop_funcs, func);
 }
 
+unsigned char write_pid_file(const char *filename)
+{
+	// get own PID
+	char *pid = int2string(getpid());
+	size_t pid_len = strlen(pid);
+
+	// write PID file
+	FILE *pid_fd = fopen(filename, "w");
+	if(pid_fd == NULL) {
+		log_append(LOG_ERROR, "Could not open file to write PID: %s: %s", filename, strerror(errno));
+		free(pid);
+		return 1;
+	}
+	size_t written = fwrite(pid, sizeof(char), pid_len, pid_fd);
+	fclose(pid_fd);
+	free(pid);
+
+	if(written != pid_len) {
+		log_append(LOG_ERROR, "Could not write to PID file: %s", filename);
+		return 1;
+	}
+	return 0;
+}
+
+unsigned char delete_pid_file(const char *filename)
+{
+	// remove PID file
+	if(remove(filename) != 0) {
+		log_append(LOG_ERROR, "Could not delete PID file: %s: %s", filename, strerror(errno));
+		return 1;
+	}
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	chdir(dirname(argv[0])); // make sure we are in the bot's main directory
@@ -199,6 +233,11 @@ int main(int argc, char **argv)
 	// Always generate core dumps when crashing
 	struct rlimit rl = {RLIM_INFINITY, RLIM_INFINITY};
 	setrlimit(RLIMIT_CORE, &rl);
+
+	// write PID file
+	const char *pid_filename = "surgebot.pid";
+	if(write_pid_file(pid_filename) != 0)
+		return 1;
 
 	signal_init();
 	tools_init();
@@ -265,7 +304,7 @@ int main(int argc, char **argv)
 	log_fini();
 	conf_fini();
 	tools_fini();
-
+	delete_pid_file(pid_filename);
 	return 0;
 }
 

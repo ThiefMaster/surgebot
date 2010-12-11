@@ -441,3 +441,14 @@ unsigned char file_exists(const char *file)
 	struct stat statbuf;
 	return (stat(file, &statbuf) == 0);
 }
+
+char *int2string(int i)
+{
+	int size = 20;
+	char *str = malloc(size);
+	while(snprintf(str, size, "%d", i) >= size) {
+		size *= 2;
+		str = realloc(str, size);
+	}
+	return str;
+}
