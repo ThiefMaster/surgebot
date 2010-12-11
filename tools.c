@@ -444,11 +444,7 @@ unsigned char file_exists(const char *file)
 
 char *int2string(int i)
 {
-	int size = 20;
-	char *str = malloc(size);
-	while(snprintf(str, size, "%d", i) >= size) {
-		size *= 2;
-		str = realloc(str, size);
-	}
-	return str;
+	static char result[20];
+	snprintf(result, sizeof(result), "%d", i);
+	return result;
 }

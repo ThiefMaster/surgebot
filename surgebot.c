@@ -200,12 +200,10 @@ unsigned char write_pid_file(const char *filename)
 	FILE *pid_fd = fopen(filename, "w");
 	if(pid_fd == NULL) {
 		log_append(LOG_ERROR, "Could not open file to write PID: %s: %s", filename, strerror(errno));
-		free(pid);
 		return 1;
 	}
 	size_t written = fwrite(pid, sizeof(char), pid_len, pid_fd);
 	fclose(pid_fd);
-	free(pid);
 
 	if(written != pid_len) {
 		log_append(LOG_ERROR, "Could not write to PID file: %s", filename);
