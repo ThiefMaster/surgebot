@@ -135,7 +135,7 @@ static struct {
 	uint8_t lame_quality;
 	const char *teamchan;
 	const char *radiochan;
-	const char *genrevote_file;
+	struct stringlist *genrevote_files;
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
 	uint8_t genrevote_min_votes;
@@ -785,10 +785,10 @@ COMMAND(playlist_genrevote)
 			return 0;
 		}
 
-		if(stream_state.playing && radioplaylist_conf.genrevote_file)
+		if(stream_state.playing && radioplaylist_conf.genrevote_files && radioplaylist_conf.genrevote_files->count)
 		{
 			// Create node and store it (will be enqueued later)
-			if((node = stream_state.playlist->make_node(stream_state.playlist, radioplaylist_conf.genrevote_file)))
+			if((node = stream_state.playlist->make_node(stream_state.playlist, radioplaylist_conf.genrevote_files->data[mt_rand(0, radioplaylist_conf.genrevote_files->count - 1)])))
 			{
 				song_time_remaining = stream_state.endtime - now;
 				// Don't announce vote if the next song might be starting while we try to enqueue the vote announcement
@@ -1087,6 +1087,7 @@ static void check_scan_result()
 static void conf_reload_hook()
 {
 	const char *str;
+	struct stringlist *slist;
 
 	str = conf_get("radioplaylist/db_conn_string", DB_STRING);
 	radioplaylist_conf.db_conn_string = str ? str : "";
@@ -1126,8 +1127,8 @@ static void conf_reload_hook()
 	str = conf_get("radioplaylist/radiochan", DB_STRING);
 	radioplaylist_conf.radiochan = str;
 
-	str = conf_get("radioplaylist/genrevote_file", DB_STRING);
-	radioplaylist_conf.genrevote_file = str;
+	slist = conf_get("radioplaylist/genrevote_files", DB_STRINGLIST);
+	radioplaylist_conf.genrevote_files = slist;
 
 	str = conf_get("radioplaylist/genrevote_duration", DB_STRING);
 	radioplaylist_conf.genrevote_duration = str ? atoi(str) : 300;
