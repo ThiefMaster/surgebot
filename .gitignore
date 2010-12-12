@@ -6,6 +6,7 @@
 *.so
 .tmp
 surgebot
+surgebot.pid
 core
 module-config.h
 modules.build
