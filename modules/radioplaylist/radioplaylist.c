@@ -62,6 +62,7 @@ struct scan_state {
 struct genre_vote_genre {
 	uint8_t id;
 	uint8_t db_id;
+	uint8_t min_votes;
 	uint16_t votes;
 	char *name;
 };
@@ -138,7 +139,6 @@ static struct {
 	struct stringlist *genrevote_files;
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
-	uint8_t genrevote_min_votes;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", NULL);
@@ -844,6 +844,7 @@ COMMAND(playlist_genrevote)
 		{
 			genre_vote.genres[i].id = i + 1;
 			genre_vote.genres[i].db_id = atoi(pgsql_nvalue(res, i, "id"));
+			genre_vote.genres[i].min_votes = atoi(pgsql_nvalue(res, i, "min_votes"));
 			genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
 			irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, genre_vote.genres[i].id, genre_vote.genres[i].name);
 		}
@@ -867,7 +868,7 @@ COMMAND(playlist_genrevote)
 			return rc;
 		reply("Verfügbare Genres:");
 		for(int i = 0; i < genre_vote.num_genres; i++)
-			reply("$b%u$b: %s [%u/%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, radioplaylist_conf.genrevote_min_votes);
+			reply("$b%u$b: %s [%u/%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, genre_vote.genres[i].min_votes);
 		reply("Verbleibende Zeit: $b%02u:%02u$b", remaining / 60, remaining % 60);
 		return rc;
 	}
@@ -960,7 +961,7 @@ static void genrevote_finish(void *bound, void *data)
 	{
 		struct genre_vote_genre *tmp = &genre_vote.genres[i];
 		debug("genre %s got %u votes", tmp->name, tmp->votes);
-		if(tmp->votes < radioplaylist_conf.genrevote_min_votes)
+		if(tmp->votes < tmp->min_votes)
 			continue;
 
 		if(tmp->votes > highest_vote)
@@ -1135,9 +1136,6 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_frequency", DB_STRING);
 	radioplaylist_conf.genrevote_frequency = str ? atoi(str) : 3600;
-
-	str = conf_get("radioplaylist/genrevote_min_votes", DB_STRING);
-	radioplaylist_conf.genrevote_min_votes = str ? atoi(str) : 3;
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
