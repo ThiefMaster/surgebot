@@ -5,6 +5,8 @@
 *.db
 *.so
 .tmp
+.cproject
+.project
 surgebot
 surgebot.pid
 core
