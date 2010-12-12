@@ -23,7 +23,7 @@ void dict_set_free_funcs(struct dict *dict, dict_free_f free_keys_func, dict_fre
 	dict->free_data_func = free_data_func;
 }
 
-void dict_insert(struct dict *dict, char *key, void *data)
+struct dict_node *dict_insert(struct dict *dict, char *key, void *data)
 {
 	struct dict_node *node = malloc(sizeof(struct dict_node));
 	memset(node, 0, sizeof(struct dict_node));
@@ -41,6 +41,7 @@ void dict_insert(struct dict *dict, char *key, void *data)
 		dict->tail = node;
 
 	dict->count++;
+	return node;
 }
 
 struct dict_node *dict_find_node(struct dict *dict, const char *key)
