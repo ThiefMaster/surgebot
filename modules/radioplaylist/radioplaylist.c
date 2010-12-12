@@ -379,6 +379,8 @@ COMMAND(playlist_status)
 {
 	uint16_t elapsed, duration;
 	struct playlist_node *cur;
+	char idbuf[8];
+	PGresult *res;
 
 	if(!stream_state.playing)
 	{
@@ -401,6 +403,16 @@ COMMAND(playlist_status)
 		reply("Playlist ist aktiv: [%"PRIu32"] %s - %s - %s [%02u:%02u/%02u:%02u]", cur->id, cur->artist, cur->album, cur->title, elapsed / 60, elapsed % 60, duration / 60, duration % 60);
 	else
 		reply("Playlist ist aktiv: unknown [%02u:%02u/%02u:%02u]", elapsed / 60, elapsed % 60, duration / 60, duration % 60);
+
+
+	if(stream_state.playlist->genre_id)
+	{
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
+		res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		if(res && pgsql_num_rows(res))
+			reply("Aktuelles Genre: %s", pgsql_nvalue(res, 0, "genre"));
+		pgsql_free(res);
+	}
 	return 1;
 }
 
