@@ -15,7 +15,7 @@ void shared_memory_set(struct module *module, const char *key, void *data);
 void *shared_memory_get(const char *module_name, const char *key, void *fallback);
 
 /*
- * Set a free function to free date upon module's shared memory deletion
+ * Set a free function to free data upon module's shared memory deletion
  */
 void shared_memory_set_free_func(struct module *module, shared_memory_free_f *free_func);
 
