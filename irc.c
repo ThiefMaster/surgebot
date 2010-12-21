@@ -10,6 +10,8 @@
 
 IMPLEMENT_LIST(disconnected_func_list, disconnected_f *)
 
+IRC_HANDLER(005);
+
 extern struct surgebot_conf bot_conf;
 extern int quit_poll;
 static struct disconnected_func_list *disconnected_funcs;
@@ -34,13 +36,40 @@ void irc_init()
 
 	reg_conf_reload_func(irc_conf_reload);
 	disconnected_funcs = disconnected_func_list_create();
+	reg_irc_handler("005", 005);
 }
 
 void irc_fini()
 {
+	reg_irc_handler("005", 005);
 	disconnected_func_list_free(disconnected_funcs);
 	unreg_conf_reload_func(irc_conf_reload);
 	unreg_loop_func(irc_poll_sendq);
+}
+
+IRC_HANDLER(005)
+{
+	// argv[0] is 005, argv[1] the bot's name, argv[argc-1] the long text
+	for(int i = 2; i < (argc-1); ++i)
+	{
+		// get =
+		char *equal = strchr(argv[i], '=');
+		size_t pos = equal - argv[i];
+		char *key, *value;
+
+		if(equal == NULL)
+		{
+			key = strdup(argv[i]);
+			value = NULL;
+		}
+		else
+		{
+			key = strndup(argv[i], pos);
+			value = strdup(equal+1);
+		}
+
+		dict_insert(bot.server.capabilities, key, value);
+	}
 }
 
 static void irc_conf_reload()

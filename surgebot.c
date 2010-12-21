@@ -114,6 +114,8 @@ static int bot_init()
 	bot.linked = now;
 	bot.sendq = stringlist_create();
 	bot.burst_lines = stringlist_create();
+	bot.server.capabilities = dict_create();
+	dict_set_free_funcs(bot.server.capabilities, free, free);
 
 	reg_conf_reload_func((conf_reload_f *)bot_conf_reload);
 	return bot_conf_reload();
@@ -131,6 +133,7 @@ static void bot_fini()
 
 	stringlist_free(bot.sendq);
 	stringlist_free(bot.burst_lines);
+	dict_free(bot.server.capabilities);
 
 	unreg_conf_reload_func((conf_reload_f *)bot_conf_reload);
 }

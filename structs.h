@@ -28,6 +28,12 @@ struct surgebot
 	char		*username;
 	char		*hostname;
 	char		*realname;
+
+	struct {
+		// this will hold values such as "SILENCE=15" with "SILENCE" as key and "15" as value
+		// capabilities without value, such as "USERIP" will be stored as key with a NULL value
+		struct dict *capabilities;
+	} server;
 };
 
 struct surgebot_conf
