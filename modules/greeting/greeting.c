@@ -156,6 +156,42 @@ COMMAND(greeting)
 			}
 			else // set greeting
 			{
+				// find the maximum nicklength
+				char *sz_nicklength = dict_find(bot.server.capabilities, "MAXNICKLEN");
+				// default value in case of error
+				size_t max_nick_length = 30;
+				if(sz_nicklength)
+				{
+					long int nicklength = strtol(sz_nicklength, NULL, 10);
+					errno = 0;
+					if(errno > 0)
+					{
+						log_append(LOG_ERROR, "Could not convert string \"%s\" to number.", sz_nicklength);
+					}
+					else if(nicklength < 0 || nicklength > 100)
+					{
+						log_append(LOG_ERROR, "MAXNICKLEN has an absurd value of %ld, ignoring.", nicklength);
+					}
+					else
+					{
+						max_nick_length = nicklength;
+						debug("max_nick_length=%zu", max_nick_length);
+					}
+				}
+
+				// 512 - (length of ":<botnick>!<botident>@<bothost> NOTICE <nick>:" + length of "\r\n\0")
+				// length of ":!@ NOTICE :\r\n\0" = 15
+				size_t max_greeting_length = 512 - strlen(bot.nickname) - strlen(bot.username) - strlen(bot.hostname) - 15 - max_nick_length;
+				debug("max_greeting_length=%zu", max_greeting_length);
+
+				char *greeting = untokenize(argc - 2, argv + 2, " ");
+				size_t len = strlen(greeting);
+				if(len > max_greeting_length)
+				{
+					reply("Your greeting exceeds the maximal allowed length of %zu bytes by %zu bytes. ", max_greeting_length, len - max_greeting_length);
+					return 0;
+				}
+
 				if(!channel_greetings)
 				{
 					channel_greetings = stringlist_create();
@@ -170,12 +206,14 @@ COMMAND(greeting)
 						return 0;
 					}
 					else
-						stringlist_add(channel_greetings, untokenize(argc - 2, argv + 2, " "));
+					{
+						stringlist_add(channel_greetings, greeting);
+					}
 				}
 				else // change existing greeting
 				{
 					free(channel_greetings->data[idx]);
-					channel_greetings->data[idx] = untokenize(argc - 2, argv + 2, " ");
+					channel_greetings->data[idx] = greeting;
 				}
 			}
 		}
