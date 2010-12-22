@@ -14,4 +14,6 @@ void shared_memory_set(struct module *module, const char *key, void *data, share
  */
 void *shared_memory_get(const char *module_name, const char *key, void *fallback);
 
+DECLARE_HOOKABLE(shared_memory_changed, (struct module *module, const char *key, void *old, void *new));
+
 #endif

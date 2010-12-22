@@ -1,8 +1,11 @@
 #include "global.h"
 #include "module.h"
 #include "dict.h"
+#include "hook.h"
 #include "sharedmem.h"
 MODULE_DEPENDS(NULL);
+
+IMPLEMENT_HOOKABLE(shared_memory_changed)
 
 struct shared_memory
 {
@@ -25,12 +28,23 @@ MODULE_INIT
 
 MODULE_FINI
 {
+	clear_shared_memory_changed_hooks();
 	unreg_module_load_func(NULL, module_unloaded);
 	dict_free(shared_memory);
 }
 
 static void module_unloaded(struct module *module)
 {
+	struct dict *module_node = dict_find(shared_memory, module->name);
+	if(module_node == NULL)
+		return;
+
+	dict_iter(node, module_node)
+	{
+		struct shared_memory *memory = node->data;
+		CALL_HOOKS(shared_memory_changed, (module, node->key, memory->data, NULL));
+	}
+
 	dict_delete(shared_memory, module->name);
 }
 
@@ -46,6 +60,8 @@ void shared_memory_set(struct module *module, const char *key, void *data, share
 	// find module node
 	struct dict *module_node = dict_find(shared_memory, module->name);
 	struct shared_memory *memory;
+	void *old_data = NULL;
+	shared_memory_free_f *old_free_func = NULL;
 
 	if(module_node == NULL)
 	{
@@ -58,10 +74,9 @@ void shared_memory_set(struct module *module, const char *key, void *data, share
 
 	if((memory = dict_find(module_node, key)))
 	{
-		// free old value
-		if(memory->free_func && memory->data)
-			memory->free_func(memory->data);
-		memory->data = NULL;
+		// save old data/func so it can be used after calling hooks
+		old_data = memory->data;
+		old_free_func = memory->free_func;
 	}
 	else
 	{
@@ -73,7 +88,12 @@ void shared_memory_set(struct module *module, const char *key, void *data, share
 
 	memory->free_func = free_func;
 	memory->data = data;
-	debug("shared_memory_set: (%s,%s) -> %s", module->name, key, (const char *)data);
+
+	CALL_HOOKS(shared_memory_changed, (module, key, old_data, data));
+
+	// free old value
+	if(old_free_func && old_data)
+		old_free_func(old_data);
 }
 
 void *shared_memory_get(const char *module_name, const char *key, void *fallback)
