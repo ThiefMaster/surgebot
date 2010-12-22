@@ -1,6 +1,7 @@
 #include "global.h"
 #include "module.h"
 #include "modules/commands/commands.h"
+#include "modules/sharedmem/sharedmem.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "conf.h"
@@ -141,7 +142,7 @@ static struct {
 	uint16_t genrevote_frequency;
 } radioplaylist_conf;
 
-MODULE_DEPENDS("commands", NULL);
+MODULE_DEPENDS("commands", "sharedmem", NULL);
 
 
 MODULE_INIT
@@ -589,6 +590,7 @@ COMMAND(playlist_reload)
 	else
 	{
 		reply("Playlist wurde geladen (%"PRIu32" tracks)", playlist->count);
+		shared_memory_set(this, "genre", genre ? strdup(genre) : NULL, free);
 		if(genre)
 			reply("Genre: %s", genre);
 		pthread_mutex_lock(&playlist_mutex);
@@ -1008,6 +1010,7 @@ static void genrevote_finish(void *bound, void *data)
 			}
 			else
 			{
+				shared_memory_set(this, "genre", strdup(winner->name), free);
 				pthread_mutex_lock(&playlist_mutex);
 				if(stream_state.playlist)
 					stream_state.playlist->free(stream_state.playlist);
@@ -1158,7 +1161,20 @@ static void conf_reload_hook()
 				struct playlist *playlist = playlist_load(pg_conn, 0, PL_L_RANDOMIZE | PL_L_RANDOMGENRE);
 				if(playlist)
 				{
+					PGresult *res;
+					char idbuf[8];
+					const char *genre = NULL;
+
 					log_append(LOG_INFO, "playlist contains %"PRIu32" tracks", playlist->count);
+
+					// get genre name and store it in shared memory
+					snprintf(idbuf, sizeof(idbuf), "%"PRIu8, playlist->genre_id);
+					res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+					if(res && pgsql_num_rows(res))
+						genre = pgsql_nvalue(res, 0, "genre");
+					shared_memory_set(this, "genre", genre ? strdup(genre) : NULL, free);
+					pgsql_free(res);
+
 					pthread_mutex_lock(&playlist_mutex);
 					stream_state.playlist = playlist;
 					pthread_mutex_unlock(&playlist_mutex);
