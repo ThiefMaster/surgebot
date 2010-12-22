@@ -7,8 +7,10 @@
 .tmp
 .cproject
 .project
+.gdb_history
 surgebot
 surgebot.pid
 core
+vgcore.*
 module-config.h
 modules.build
