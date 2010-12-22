@@ -5,6 +5,7 @@
 #include "modules/commands/command_rule.h"
 #include "modules/help/help.h"
 #include "modules/httpd/http.h"
+#include "modules/sharedmem/sharedmem.h"
 #include "modules/tools/tools.h"
 #include "chanuser.h"
 #include "irc.h"
@@ -36,7 +37,7 @@
 // duration after which a polling ajax request is finished
 #define HTTP_POLL_DURATION 1800
 
-MODULE_DEPENDS("commands", "help", "httpd", "tools", NULL);
+MODULE_DEPENDS("commands", "help", "httpd", "sharedmem", "tools", NULL);
 
 static struct
 {
@@ -133,6 +134,7 @@ static int rb_http_client_outdated(struct rb_http_client *rb_client);
 static void http_stream_status_send(struct http_client *client, int timeout);
 void set_current_title(const char *title);
 const char *get_streamtitle();
+static void shared_memory_changed(struct module *module, const char *key, void *old, void *new);
 static time_t check_queue_full();
 static int in_wish_greet_channel(struct irc_user *user);
 static const char *sanitize_nick(const char *raw_nick);
@@ -223,6 +225,8 @@ MODULE_INIT
 
 	http_handler_add_list(handlers);
 
+	reg_shared_memory_changed_hook(shared_memory_changed);
+
 	DEFINE_COMMAND(this, "stats clients",	stats_clients,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "notify",		notify,		0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "send_update",	send_update,	3, 0, "group(admins)");
@@ -248,6 +252,7 @@ MODULE_INIT
 
 MODULE_FINI
 {
+	unreg_shared_memory_changed_hook(shared_memory_changed);
 	http_handler_del_list(handlers);
 	command_rule_unreg("mod_active");
 	unreg_irc_handler("NICK", nick);
@@ -487,6 +492,20 @@ void set_current_title(const char *title)
 const char *get_streamtitle()
 {
 	return current_streamtitle ? current_streamtitle : "n/a";
+}
+
+static void shared_memory_changed(struct module *module, const char *key, void *old, void *new)
+{
+	if(strcmp(module->name, "radioplaylist") || strcmp(key, "genre") || !new)
+		return;
+
+	// Is there a real mod? Don't do anything
+	if(current_mod)
+		return;
+
+	MyFree(current_streamtitle);
+	asprintf(&current_streamtitle, "Playlist [%s]", (const char *)new);
+	debug("Streamtitle changed -> %s", current_streamtitle);
 }
 
 static time_t check_queue_full()
