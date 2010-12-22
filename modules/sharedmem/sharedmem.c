@@ -1,10 +1,3 @@
-/*
- *TODO:das war mal
- * shared_memory is a dict with the module's names as keys and dicts as data.
- * These subsidiary dicts hold the actual shared memory, stored as
- * key -> shared data.
- */
-
 #include "global.h"
 #include "module.h"
 #include "dict.h"
