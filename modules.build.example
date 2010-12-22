@@ -4,8 +4,8 @@ MODULES += irc parser perform srvx tools
 # Common modules
 MODULES += autoop bitly chandict chanfw chanlog chanserv_access chanserv_eventlog
 MODULES += chanserv_users chanspy ctcp db github google greeting http httpd ipv6
-MODULES += misc paste php quote serverstats spelling timers tinyurl topic urbandict
-MODULES += webinterface youtube
+MODULES += misc paste php quote serverstats sharedmem spelling timers tinyurl topic
+MODULES += urbandict webinterface youtube
 # Less common modules:
 #MODULES += klostervote
 #MODULES += maxfrag
