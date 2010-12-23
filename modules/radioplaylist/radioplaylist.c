@@ -971,6 +971,12 @@ COMMAND(playlist_songvote)
 		return 0;
 	}
 
+	if(!stream_state.playing)
+	{
+		reply("Die Playlist ist nicht an");
+		return 1;
+	}
+
 	if(!stream_state.playlist)
 	{
 		reply("Es ist keine Playlist geladen");
