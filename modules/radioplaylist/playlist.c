@@ -434,6 +434,9 @@ static void playlist_free(struct playlist *playlist)
 	if(playlist->queue_cur)
 		playlist_node_free(playlist->queue_cur);
 
+	// Move queue after playlist so it gets free'd, too
+	playlist->tail->next = playlist->queue;
+
 	for(struct playlist_node *node = playlist->head; node; )
 	{
 		struct playlist_node *next = node->next;
