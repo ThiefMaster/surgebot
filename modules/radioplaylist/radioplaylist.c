@@ -137,9 +137,13 @@ static struct {
 	uint8_t lame_quality;
 	const char *teamchan;
 	const char *radiochan;
+
 	struct stringlist *genrevote_files;
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
+
+	uint16_t songvote_frequency;
+	uint8_t songvote_songs;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", "sharedmem", NULL);
@@ -1139,6 +1143,12 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_frequency", DB_STRING);
 	radioplaylist_conf.genrevote_frequency = str ? atoi(str) : 3600;
+
+	str = conf_get("radioplaylist/songvote_frequency", DB_STRING);
+	radioplaylist_conf.songvote_frequency = str ? atoi(str) : 3600;
+
+	str = conf_get("radioplaylist/songvote_songs", DB_STRING);
+	radioplaylist_conf.songvote_songs = str ? atoi(str) : 3;
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
