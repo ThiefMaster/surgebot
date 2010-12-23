@@ -58,9 +58,11 @@ struct playlist
 	int8_t (*blacklist_node)(struct playlist *playlist, struct playlist_node *node);
 	int8_t (*blacklist_id)(struct playlist *playlist, uint32_t id);
 	// Note: make_node and get_node are ONLY for enqueue. They both allocate
-	// memory which cannot be free'd except by enqueuing the nodes.
+	// memory which can only be freed by enqueueing the nodes **OR** freeing them
+	// with free_node.
 	struct playlist_node* (*make_node)(struct playlist *playlist, const char *file);
 	struct playlist_node* (*get_node)(struct playlist *playlist, uint32_t id);
+	void (*free_node)(struct playlist_node *node);
 	void (*enqueue)(struct playlist *playlist, struct playlist_node *node);
 	void (*enqueue_first)(struct playlist *playlist, struct playlist_node *node);
 };

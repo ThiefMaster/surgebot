@@ -422,6 +422,7 @@ static struct playlist *playlist_create()
 	playlist->blacklist_id = playlist_blacklist_id;
 	playlist->make_node = playlist_make_node;
 	playlist->get_node = playlist_get_node;
+	playlist->free_node = playlist_node_free;
 	playlist->enqueue = playlist_enqueue_tail;
 	playlist->enqueue_first = playlist_enqueue_head;
 
