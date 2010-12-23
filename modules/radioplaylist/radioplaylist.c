@@ -77,6 +77,23 @@ struct genre_vote {
 	struct stringlist *voted_hosts;
 };
 
+struct song_vote_song {
+	uint8_t id;
+	uint16_t votes;
+	struct playlist_node *node;
+	char *name;
+	char *short_name;
+};
+
+struct song_vote {
+	uint8_t active;
+	time_t endtime;
+	uint8_t num_songs;
+	struct song_vote_song *songs;
+	struct stringlist *voted_nicks;
+	struct stringlist *voted_hosts;
+};
+
 IRC_HANDLER(nick);
 COMMAND(playlist_on);
 COMMAND(playlist_off);
@@ -91,6 +108,10 @@ COMMAND(playlist_scan);
 COMMAND(playlist_check);
 COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
+COMMAND(playlist_songvote);
+static void songvote_free();
+static void songvote_reset();
+static void songvote_finish(void *bound, void *data);
 static void genrevote_free();
 static void genrevote_reset();
 static void genrevote_finish(void *bound, void *data);
@@ -113,6 +134,7 @@ static struct module *this;
 static struct stream_state stream_state;
 static struct scan_state scan_state;
 static struct genre_vote genre_vote;
+static struct song_vote song_vote;
 static struct pgsql *pg_conn;
 static char *playlist_cd_by;
 static time_t playlist_cd_tick;
@@ -142,6 +164,7 @@ static struct {
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
 
+	uint16_t songvote_duration;
 	uint16_t songvote_frequency;
 	uint8_t songvote_songs;
 } radioplaylist_conf;
@@ -180,6 +203,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "playlist check",		playlist_check,		0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist truncate",	playlist_truncate,	0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "genrevote",		playlist_genrevote,	0, CMD_LOG_HOSTMASK, "true");
+	DEFINE_COMMAND(this, "songvote",		playlist_songvote,	0, CMD_LOG_HOSTMASK, "true");
 }
 
 
@@ -212,6 +236,8 @@ MODULE_FINI
 	unreg_conf_reload_func(conf_reload_hook);
 	timer_del_boundname(this, "genrevote_finish");
 	genrevote_free();
+	timer_del_boundname(this, "songvote_finish");
+	songvote_free();
 
 	pthread_mutex_destroy(&conf_mutex);
 	pthread_mutex_destroy(&stream_state_mutex);
@@ -543,6 +569,12 @@ COMMAND(playlist_reload)
 		return 0;
 	}
 
+	if(song_vote.active)
+	{
+		reply("Es läuft gerade ein Song-Vote");
+		return 0;
+	}
+
 	if(argc > 1 && !strcmp(argv[1], "0"))
 	{
 		genre_id = 0;
@@ -785,6 +817,12 @@ COMMAND(playlist_genrevote)
 			return 0;
 		}
 
+		if(song_vote.active)
+		{
+			reply("Es läuft gerade ein Song-Vote. Daher kann kein Genre-Vote gestartet werden.");
+			return 0;
+		}
+
 		if(stream_state.play == 2)
 		{
 			reply("Es läuft gerade ein Countdown. Daher kann kein Genre-Vote gestartet werden.");
@@ -920,6 +958,246 @@ COMMAND(playlist_genrevote)
 	reply("Du hast für $b%s$b gestimmt (insgesamt $b%u$b Votes)", vote_genre->name, vote_genre->votes);
 	return 1;
 }
+
+COMMAND(playlist_songvote)
+{
+	struct song_vote_song *vote_song = NULL;
+	uint8_t id;
+	PGresult *res;
+
+	if(!pg_conn)
+	{
+		reply("Datenbank ist nicht verfügbar");
+		return 0;
+	}
+
+	if(!stream_state.playlist)
+	{
+		reply("Es ist keine Playlist geladen");
+		return 0;
+	}
+
+	if(!song_vote.active)
+	{
+		uint16_t vote_duration = 0;
+		char idbuf[8], limitbuf[8];
+		int num_rows;
+
+		if(now < (song_vote.endtime + radioplaylist_conf.songvote_frequency))
+		{
+			uint16_t wait_time = (song_vote.endtime + radioplaylist_conf.songvote_frequency) - now;
+			reply("Der nächste Song-Vote kann erst in $b%02u:%02u$b gestartet werden.", wait_time / 60, wait_time % 60);
+			return 0;
+		}
+
+		if(genre_vote.active)
+		{
+			reply("Es läuft gerade ein Genre-Vote. Daher kann kein Song-Vote gestartet werden.");
+			return 0;
+		}
+
+		if(stream_state.play == 2)
+		{
+			reply("Es läuft gerade ein Countdown. Daher kann kein Song-Vote gestartet werden.");
+			return 0;
+		}
+
+		song_vote.active = 1;
+		vote_duration = radioplaylist_conf.songvote_duration;
+		song_vote.endtime = now + vote_duration;
+		timer_del_boundname(this, "songvote_finish"); // just to be sure
+		timer_add(this, "songvote_finish", song_vote.endtime, songvote_finish, NULL, 0, 0);
+		debug("song vote started; duration: %u, by: %s", vote_duration, src->nick);
+
+		irc_send("PRIVMSG %s :$b%s$b hat einen Song-Vote gestartet.", radioplaylist_conf.radiochan, src->nick);
+		irc_send("PRIVMSG %s :Benutze $b*songvote <id>$b um abzustimmen. Verbleibende Zeit: $b%02u:%02u$b", radioplaylist_conf.radiochan, vote_duration / 60, vote_duration % 60);
+
+		// send song list to channel
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
+		snprintf(limitbuf, sizeof(limitbuf), "%"PRIu8, radioplaylist_conf.songvote_songs);
+		res = pgsql_query(pg_conn, "SELECT id \
+					    FROM playlist \
+					    JOIN song_genres s ON (s.song_id = playlist.id) \
+					    WHERE blacklist = false AND s.genre_id = $1 \
+					    ORDER BY random() \
+					    LIMIT $2;", 1, stringlist_build_n(2, idbuf, limitbuf));
+		if(!res || !(num_rows = pgsql_num_rows(res)))
+		{
+			log_append(LOG_WARNING, "Could not load song list");
+			irc_send("PRIVMSG %s :Fehler - Song-Vote abgebrochen!", radioplaylist_conf.radiochan);
+			reply("Beim Starten des Song-Votes ist ein Fehler aufgetreten.");
+			songvote_reset();
+			pgsql_free(res);
+			return 0;
+		}
+
+		song_vote.num_songs = 0;
+		song_vote.songs = calloc(num_rows, sizeof(struct song_vote_song));
+		for(int i = 0; i < num_rows; i++)
+		{
+			uint32_t song_id = strtoul(pgsql_nvalue(res, i, "id"), NULL, 10);
+			struct playlist_node *node = stream_state.playlist->get_node(stream_state.playlist, song_id);
+			if(!node || !node->title)
+				continue;
+			song_vote.songs[song_vote.num_songs].id = song_vote.num_songs + 1;
+			song_vote.songs[song_vote.num_songs].node = node;
+			if(node->artist)
+			{
+				asprintf(&song_vote.songs[song_vote.num_songs].short_name, "%s - %s", node->artist, node->title);
+				asprintf(&song_vote.songs[song_vote.num_songs].name, "%s - %s [%02u:%02u]", node->artist, node->title, node->duration / 60, node->duration % 60);
+			}
+			else
+			{
+				song_vote.songs[song_vote.num_songs].short_name = strdup(node->title);
+				asprintf(&song_vote.songs[song_vote.num_songs].name, "%s [%02u:%02u]", node->title, node->duration / 60, node->duration % 60);
+			}
+			irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, song_vote.songs[song_vote.num_songs].id, song_vote.songs[song_vote.num_songs].name);
+			song_vote.num_songs++;
+		}
+		pgsql_free(res);
+
+		song_vote.voted_nicks = stringlist_create();
+		song_vote.voted_hosts = stringlist_create();
+		reply("Song-Vote wurde gestartet.");
+		return 1;
+	}
+
+	// display current songvote state
+	if(argc < 2)
+	{
+		uint16_t remaining = song_vote.endtime - now;
+
+		reply("Songs:");
+		for(int i = 0; i < song_vote.num_songs; i++)
+			reply("$b%u$b: %s [%u]", song_vote.songs[i].id, song_vote.songs[i].name, song_vote.songs[i].votes);
+		reply("Verbleibende Zeit: $b%02u:%02u$b", remaining / 60, remaining % 60);
+		return 0;
+	}
+
+	// process vote
+	if(stringlist_find(song_vote.voted_nicks, src->nick) != -1 || stringlist_find(song_vote.voted_hosts, src->host) != -1)
+	{
+		reply("Du hast schon abgestimmt...");
+		return 0;
+	}
+
+	id = atoi(argv[1]);
+	for(int i = 0; i < song_vote.num_songs; i++)
+	{
+		struct song_vote_song *tmp = &song_vote.songs[i];
+		if(id == tmp->id)
+		{
+			// ID or full name match? no need to check anything else
+			vote_song = tmp;
+			break;
+		}
+	}
+
+	if(!vote_song)
+	{
+		reply("Ungültiger Song: $b%s$b", argv[1]);
+		return 0;
+	}
+
+	stringlist_add(song_vote.voted_nicks, strdup(src->nick));
+	stringlist_add(song_vote.voted_hosts, strdup(src->host));
+	vote_song->votes++;
+	reply("Du hast für $b%s$b gestimmt (insgesamt $b%u$b Votes)", vote_song->short_name, vote_song->votes);
+	return 1;
+}
+
+static void songvote_free()
+{
+	if(song_vote.songs)
+	{
+		for(int i = 0; i < song_vote.num_songs; i++)
+		{
+			free(song_vote.songs[i].name);
+			free(song_vote.songs[i].short_name);
+			if(song_vote.songs[i].node)
+				stream_state.playlist->free_node(song_vote.songs[i].node);
+		}
+		free(song_vote.songs);
+		song_vote.songs = NULL;
+	}
+	song_vote.num_songs = 0;
+
+	if(song_vote.voted_nicks)
+		stringlist_free(song_vote.voted_nicks);
+	if(song_vote.voted_hosts)
+		stringlist_free(song_vote.voted_hosts);
+	song_vote.voted_nicks = NULL;
+	song_vote.voted_hosts = NULL;
+}
+
+static void songvote_reset()
+{
+	timer_del_boundname(this, "songvote_finish");
+	song_vote.active = 0;
+	song_vote.endtime = 0;
+	songvote_free();
+}
+
+static void songvote_finish(void *bound, void *data)
+{
+	uint16_t highest_vote = 0;
+	uint16_t num_highest = 0;
+	struct song_vote_song *winner = NULL;
+	struct ptrlist *candidates = ptrlist_create();
+
+	debug("song vote expired");
+
+	// process vote results
+	for(int i = 0; i < song_vote.num_songs; i++)
+	{
+		struct song_vote_song *tmp = &song_vote.songs[i];
+		debug("song %s got %u votes", tmp->name, tmp->votes);
+
+		if(tmp->votes > highest_vote)
+		{
+			// New highest vote -> mark as potential winner
+			ptrlist_clear(candidates);
+			highest_vote = tmp->votes;
+			winner = tmp;
+		}
+		else if(tmp->votes == highest_vote)
+		{
+			// Another winner candidate...
+			if(winner)
+			{
+				ptrlist_add(candidates, 0, winner);
+				winner = NULL;
+			}
+			ptrlist_add(candidates, 0, tmp);
+		}
+	}
+
+	debug("winner: %p, candidates: %u", winner, candidates->count);
+	if(candidates->count)
+	{
+		// Choose random candidate
+		winner = candidates->data[mt_rand(0, candidates->count - 1)]->ptr;
+	}
+
+	ptrlist_free(candidates);
+
+	if(winner)
+	{
+		irc_send("PRIVMSG %s :Song-Vote beendet. In Kürze wird $b%s$b laufen (%u Votes)", radioplaylist_conf.radiochan, winner->short_name, winner->votes);
+		pthread_mutex_lock(&playlist_mutex);
+		stream_state.playlist->enqueue(stream_state.playlist, winner->node);
+		pthread_mutex_unlock(&playlist_mutex);
+		winner->node = NULL; // so it's not free'd in songvote_free()
+	}
+	else
+	{
+		irc_send("PRIVMSG %s :Song-Vote beendet. Es wurde kein Song gewählt.", radioplaylist_conf.radiochan);
+	}
+
+	song_vote.active = 0;
+	songvote_free();
+}
+
 
 static void genrevote_free()
 {
@@ -1143,6 +1421,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_frequency", DB_STRING);
 	radioplaylist_conf.genrevote_frequency = str ? atoi(str) : 3600;
+
+	str = conf_get("radioplaylist/songvote_duration", DB_STRING);
+	radioplaylist_conf.songvote_duration = str ? atoi(str) : 120;
 
 	str = conf_get("radioplaylist/songvote_frequency", DB_STRING);
 	radioplaylist_conf.songvote_frequency = str ? atoi(str) : 3600;
