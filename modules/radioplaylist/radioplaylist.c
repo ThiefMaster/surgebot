@@ -172,6 +172,7 @@ static struct {
 
 	uint8_t songvote_disable_inactive;
 	uint8_t songvote_songs;
+	uint16_t songvote_block_duration;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", "sharedmem", NULL);
@@ -1069,7 +1070,7 @@ COMMAND(playlist_songvote)
 static void songvote_stream_song_changed()
 {
 	uint16_t vote_duration = 0;
-	char idbuf[8], limitbuf[8];
+	char idbuf[16], limitbuf[8], tsbuf[16];
 	int num_rows;
 	PGresult *res;
 
@@ -1122,23 +1123,27 @@ static void songvote_stream_song_changed()
 	// send song list to channel
 	snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
 	snprintf(limitbuf, sizeof(limitbuf), "%"PRIu8, radioplaylist_conf.songvote_songs);
+	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
 	res = pgsql_query(pg_conn, "SELECT id \
 			FROM playlist \
 			JOIN song_genres s ON (s.song_id = playlist.id) \
-			WHERE blacklist = false AND s.genre_id = $1 \
+			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $3 \
 			ORDER BY random() \
-			LIMIT $2;", 1, stringlist_build_n(2, idbuf, limitbuf));
-	if(!res || !(num_rows = pgsql_num_rows(res)))
+			LIMIT $2;", 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
+	if(!res || (num_rows = pgsql_num_rows(res)) < 2)
 	{
-		log_append(LOG_WARNING, "Could not load song list");
+		log_append(LOG_WARNING, "Could not load song list (res=%p, rows=%d)", res, res ? num_rows : -1);
 		irc_send("PRIVMSG %s :Fehler - Song-Vote abgebrochen!", radioplaylist_conf.radiochan);
 		songvote_reset();
+		debug("disabled song vote");
+		song_vote.enabled = 0;
 		pgsql_free(res);
 		return;
 	}
 
 	song_vote.num_songs = 0;
 	song_vote.songs = calloc(num_rows, sizeof(struct song_vote_song));
+	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)now);
 	for(int i = 0; i < num_rows; i++)
 	{
 		uint32_t song_id = strtoul(pgsql_nvalue(res, i, "id"), NULL, 10);
@@ -1158,6 +1163,8 @@ static void songvote_stream_song_changed()
 			asprintf(&song_vote.songs[song_vote.num_songs].name, "%s [%02u:%02u]", node->title, node->duration / 60, node->duration % 60);
 		}
 		irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, song_vote.songs[song_vote.num_songs].id, song_vote.songs[song_vote.num_songs].name);
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, song_id);
+		pgsql_query(pg_conn, "UPDATE playlist SET last_vote = $1 WHERE id = $2", 0, stringlist_build_n(2, tsbuf, idbuf));
 		song_vote.num_songs++;
 	}
 	pgsql_free(res);
@@ -1510,6 +1517,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/songvote_disable_inactive", DB_STRING);
 	radioplaylist_conf.songvote_disable_inactive = str ? atoi(str) : 6;
+
+	str = conf_get("radioplaylist/songvote_block_duration", DB_STRING);
+	radioplaylist_conf.songvote_block_duration = str ? atoi(str) : 3600;
 
 	str = conf_get("radioplaylist/songvote_songs", DB_STRING);
 	radioplaylist_conf.songvote_songs = str ? atoi(str) : 3;

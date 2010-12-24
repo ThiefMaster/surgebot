@@ -10,6 +10,7 @@ CREATE TABLE playlist
 	st_inode integer NOT NULL,
 	st_size integer NOT NULL,
 	st_mtime integer NOT NULL,
+	last_vote integer NOT NULL DEFAULT 0,
 	CONSTRAINT playlist_pkey PRIMARY KEY (id)
 )
 WITH (
