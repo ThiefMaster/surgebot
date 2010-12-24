@@ -1716,8 +1716,8 @@ static int decode_mp3(struct stream_ctx *stream)
 	int result;
 
 	mad_decoder_init(&decoder, stream,
-			 input_cb, NULL /* header */, NULL /* filter */, output_cb,
-			 error_cb, NULL /* message */);
+			input_cb, NULL /* header */, NULL /* filter */, output_cb,
+			error_cb, NULL /* message */);
 
 	result = mad_decoder_run(&decoder, MAD_DECODER_MODE_SYNC);
 	olen = lame_encode_flush_nogap(stream->lame, mp3buf, sizeof(mp3buf));
@@ -1810,8 +1810,8 @@ static enum mad_flow error_cb(void *data, struct mad_stream *stream, struct mad_
 		return MAD_FLOW_CONTINUE;
 
 	debug("decoding error 0x%04x (%s) at byte offset %zu",
-		stream->error, mad_stream_errorstr(stream),
-		stream->this_frame - ctx->start);
+			stream->error, mad_stream_errorstr(stream),
+			stream->this_frame - ctx->start);
 
 	return MAD_FLOW_CONTINUE;
 }
