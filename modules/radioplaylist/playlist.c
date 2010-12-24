@@ -53,7 +53,7 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint
 	if((flags & PL_L_RANDOMGENRE))
 	{
 		PGresult *genre_res;
-		genre_res = pgsql_query(playlist->conn, "SELECT id FROM genres ORDER BY random() LIMIT 1", 1, NULL);
+		genre_res = pgsql_query(playlist->conn, "SELECT id FROM genres WHERE public = true ORDER BY random() LIMIT 1", 1, NULL);
 		if(!genre_res)
 		{
 			pgsql_free(genre_res);
