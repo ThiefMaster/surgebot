@@ -547,16 +547,24 @@ static int8_t playlist_scan_dir(const char *path, struct pgsql *conn, struct pla
 	if(!*path)
 		return -1;
 
+	len = strlcpy(new_path, path, sizeof(new_path));
+	if(new_path[len - 1] == '/')
+		new_path[--len] = '\0';
+
+	// check for block file
+	strlcpy(new_path + len, "/.playlist-scan-ignore", sizeof(new_path) - len);
+	if(stat(new_path, &sb) != -1)
+	{
+		debug("block file %s found; skipping folder", new_path);
+		return 0;
+	}
+
 	if(!(dir = opendir(path)))
 	{
 		char errbuf[64];
 		log_append(LOG_WARNING, "could not opendir(%s): %s", path, strerror_r(errno, errbuf, sizeof(errbuf)));
 		return errno == EACCES ? 0 : -1;
 	}
-
-	len = strlcpy(new_path, path, sizeof(new_path));
-	if(new_path[len - 1] == '/')
-		new_path[--len] = '\0';
 
 	while((dirent = readdir(dir)))
 	{
