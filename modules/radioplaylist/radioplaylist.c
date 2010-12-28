@@ -1293,7 +1293,10 @@ static void genrevote_free()
 	if(genre_vote.genres)
 	{
 		for(int i = 0; i < genre_vote.num_genres; i++)
+		{
 			free(genre_vote.genres[i].name);
+			MyFree(genre_vote.genres[i].desc);
+		}
 		free(genre_vote.genres);
 		genre_vote.genres = NULL;
 	}
