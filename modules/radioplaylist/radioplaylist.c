@@ -884,8 +884,8 @@ COMMAND(playlist_genrevote)
 			pgsql_free(res);
 		}
 
-		// send genre list to channel
-		res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE public = true ORDER BY genre ASC", 1, NULL);
+		// build genre list and show it
+		res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE public = true ORDER BY sortorder ASC, genre ASC", 1, NULL);
 		if(!res || !(genre_vote.num_genres = pgsql_num_rows(res)))
 		{
 			log_append(LOG_WARNING, "Could not load genre list");

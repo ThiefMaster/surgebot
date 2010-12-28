@@ -30,6 +30,7 @@ CREATE TABLE genres
 	min_votes smallint NOT NULL DEFAULT 1,
 	public boolean NOT NULL DEFAULT yes,
 	description character varying,
+	sortorder smallint NOT NULL DEFAULT 0,
 	CONSTRAINT genres_pkey PRIMARY KEY (id)
 )
 WITH (
