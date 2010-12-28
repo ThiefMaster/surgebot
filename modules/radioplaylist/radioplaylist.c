@@ -7,6 +7,7 @@
 #include "conf.h"
 #include "mtrand.h"
 #include "ptrlist.h"
+#include "stringbuffer.h"
 #include "stringlist.h"
 #include "surgebot.h"
 #include "timer.h"
@@ -170,6 +171,7 @@ static struct {
 	struct stringlist *genrevote_files;
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
+	uint8_t genrevote_genres_per_line;
 
 	uint8_t songvote_disable_inactive;
 	uint8_t songvote_songs;
@@ -819,6 +821,8 @@ COMMAND(playlist_genrevote)
 		uint16_t vote_duration = 0;
 		struct playlist_node *node;
 		uint8_t song_vote_cancelled = 0;
+		struct stringbuffer *genre_line;
+		struct stringlist *genre_lines;
 
 		if(now < (genre_vote.endtime + radioplaylist_conf.genrevote_frequency))
 		{
@@ -897,6 +901,8 @@ COMMAND(playlist_genrevote)
 		}
 
 		genre_vote.genres = calloc(genre_vote.num_genres, sizeof(struct genre_vote_genre));
+		genre_lines = stringlist_create();
+		genre_line = stringbuffer_create();
 		for(int i = 0; i < genre_vote.num_genres; i++)
 		{
 			const char *str;
@@ -905,9 +911,22 @@ COMMAND(playlist_genrevote)
 			genre_vote.genres[i].min_votes = atoi(pgsql_nvalue(res, i, "min_votes"));
 			genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
 			genre_vote.genres[i].desc = (str = pgsql_nvalue(res, i, "description")) ? strdup(str) : NULL;
-			irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, genre_vote.genres[i].id, genre_vote.genres[i].name);
+			if(genre_line->len)
+				stringbuffer_append_char(genre_line, ' ');
+			stringbuffer_append_printf(genre_line, "[$b%u$b: %s]", genre_vote.genres[i].id, genre_vote.genres[i].name);
+			if((i > 0 && ((i + 1) % radioplaylist_conf.genrevote_genres_per_line) == 0) || (i == (genre_vote.num_genres - 1)))
+			{
+				stringlist_add(genre_lines, strdup(genre_line->string));
+				stringbuffer_flush(genre_line);
+			}
 		}
+		stringbuffer_free(genre_line);
 		pgsql_free(res);
+
+		for(unsigned int i = 0; i < genre_lines->count; i++)
+			irc_send("PRIVMSG %s :%s", radioplaylist_conf.radiochan, genre_lines->data[i]);
+
+		stringlist_free(genre_lines);
 
 		genre_vote.voted_nicks = stringlist_create();
 		genre_vote.voted_hosts = stringlist_create();
@@ -1525,6 +1544,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_frequency", DB_STRING);
 	radioplaylist_conf.genrevote_frequency = str ? atoi(str) : 3600;
+
+	str = conf_get("radioplaylist/genrevote_genres_per_line", DB_STRING);
+	radioplaylist_conf.genrevote_genres_per_line = str ? atoi(str) : 3;
 
 	str = conf_get("radioplaylist/songvote_disable_inactive", DB_STRING);
 	radioplaylist_conf.songvote_disable_inactive = str ? atoi(str) : 6;
