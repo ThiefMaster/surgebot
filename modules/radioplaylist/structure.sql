@@ -28,7 +28,7 @@ CREATE TABLE genres
 	id serial NOT NULL,
 	genre character varying(32) NOT NULL,
 	min_votes smallint NOT NULL DEFAULT 1,
-	public boolean NOT NULL DEFAULT yes,
+	public boolean NOT NULL DEFAULT true,
 	description character varying,
 	sortorder smallint NOT NULL DEFAULT 0,
 	CONSTRAINT genres_pkey PRIMARY KEY (id)
