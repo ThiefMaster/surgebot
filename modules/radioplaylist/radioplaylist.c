@@ -67,6 +67,7 @@ struct genre_vote_genre {
 	uint8_t min_votes;
 	uint16_t votes;
 	char *name;
+	char *desc;
 };
 
 struct genre_vote {
@@ -898,10 +899,12 @@ COMMAND(playlist_genrevote)
 		genre_vote.genres = calloc(genre_vote.num_genres, sizeof(struct genre_vote_genre));
 		for(int i = 0; i < genre_vote.num_genres; i++)
 		{
+			const char *str;
 			genre_vote.genres[i].id = i + 1;
 			genre_vote.genres[i].db_id = atoi(pgsql_nvalue(res, i, "id"));
 			genre_vote.genres[i].min_votes = atoi(pgsql_nvalue(res, i, "min_votes"));
 			genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
+			genre_vote.genres[i].desc = (str = pgsql_nvalue(res, i, "description")) ? strdup(str) : NULL;
 			irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, genre_vote.genres[i].id, genre_vote.genres[i].name);
 		}
 		pgsql_free(res);
@@ -924,7 +927,12 @@ COMMAND(playlist_genrevote)
 			return rc;
 		reply("Verfügbare Genres:");
 		for(int i = 0; i < genre_vote.num_genres; i++)
-			reply("$b%u$b: %s [%u/%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, genre_vote.genres[i].min_votes);
+		{
+			if(genre_vote.genres[i].desc)
+				reply("$b%u$b: %s [%u/%u] - %s", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, genre_vote.genres[i].min_votes, genre_vote.genres[i].desc);
+			else
+				reply("$b%u$b: %s [%u/%u]", genre_vote.genres[i].id, genre_vote.genres[i].name, genre_vote.genres[i].votes, genre_vote.genres[i].min_votes);
+		}
 		reply("Verbleibende Zeit: $b%02u:%02u$b", remaining / 60, remaining % 60);
 		return rc;
 	}

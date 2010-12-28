@@ -29,6 +29,7 @@ CREATE TABLE genres
 	genre character varying(32) NOT NULL,
 	min_votes smallint NOT NULL DEFAULT 1,
 	public boolean NOT NULL DEFAULT yes,
+	description character varying,
 	CONSTRAINT genres_pkey PRIMARY KEY (id)
 )
 WITH (
