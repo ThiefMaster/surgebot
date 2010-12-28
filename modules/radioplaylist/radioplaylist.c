@@ -2,6 +2,7 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/sharedmem/sharedmem.h"
+#include "chanuser.h"
 #include "irc.h"
 #include "irc_handler.h"
 #include "conf.h"
@@ -115,6 +116,7 @@ COMMAND(playlist_check);
 COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
 COMMAND(playlist_songvote);
+static uint8_t in_team_channel(struct irc_user *user);
 static void songvote_stream_song_changed();
 static void songvote_free();
 static void songvote_reset();
@@ -837,6 +839,12 @@ COMMAND(playlist_genrevote)
 			return 0;
 		}
 
+		if(!stream_state.playing && !in_team_channel(user))
+		{
+			reply("Du kannst keinen Genre-Vote starten solange die Playlist nicht aktiv ist.");
+			return 0;
+		}
+
 		if(song_vote.active)
 		{
 			song_vote_cancelled = 1;
@@ -1092,6 +1100,14 @@ COMMAND(playlist_songvote)
 	vote_song->votes++;
 	reply("Du hast für $b%s$b gestimmt (insgesamt $b%u$b Votes)", vote_song->short_name, vote_song->votes);
 	return 1;
+}
+
+static uint8_t in_team_channel(struct irc_user *user)
+{
+	struct irc_channel *chan;
+	if((chan = channel_find(radioplaylist_conf.teamchan)) && channel_user_find(chan, user))
+		return 1;
+	return 0;
 }
 
 static void songvote_stream_song_changed()
