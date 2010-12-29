@@ -170,6 +170,7 @@ COMMAND(module_deps)
 COMMAND(module_add)
 {
 	struct module *module;
+	const char *filename = NULL;
 	int result;
 
 	if((module = module_find(argv[1])))
@@ -178,7 +179,10 @@ COMMAND(module_add)
 		return 0;
 	}
 
-	if((result = module_add(argv[1])) == 0 && (module = module_find(argv[1])))
+	if(argc > 2)
+		filename = argv[2];
+
+	if((result = module_add(argv[1], filename)) == 0 && (module = module_find(argv[1])))
 		reply("Module $b%s$b loaded.", module->name);
 	else
 		reply("Could not load module $b%s$b; error $b%d$b.", argv[1], result);

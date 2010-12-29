@@ -63,7 +63,7 @@
 		"module add" = {
 			"description" = "Loads the specified module.";
 			"help" = (
-				"$bUsage$b: /msg $N module add <modulename>",
+				"$bUsage$b: /msg $N module add <modulename> [libname]",
 				"Loads the specified module.",
 				"Note that it will be unloaded again when you use REHASH; to keep it loaded, add it to the config file.",
 			);

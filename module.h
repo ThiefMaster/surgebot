@@ -26,6 +26,7 @@ enum module_states {
 
 struct module {
 	char		*name;
+	char		*lib_name;
 	void		*handle;
 
 	enum module_states	state;
@@ -42,11 +43,13 @@ void module_init();
 void module_fini();
 
 struct dict *module_dict();
-int module_add(const char *name);
+int module_add(const char *name, const char *lib_name);
+int module_add_smart(const char *name);
 void module_reload_cmd(const char *name, const char *src_nick);
 int module_reload(const char *name);
 void module_get_rdeps(struct module *module, struct stringlist *rdeps);
 struct module *module_find(const char *name);
+struct module *module_find_bylib(const char *lib_name);
 int module_del(const char *name);
 
 void module_set_depends(struct module *mod, const char *name, ...);

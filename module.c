@@ -20,6 +20,7 @@ static void module_release_dependencies(struct module *module);
 static void module_free(struct module *module);
 static int module_solve_dependencies(struct module *module);
 static const char *module_get_filename(const char *name);
+static const char *module_get_aliased_name(struct module *module);
 
 static struct {
 	char	*name;
@@ -42,7 +43,7 @@ void module_init()
 	if((slist = conf_get("core/modules", DB_STRINGLIST)))
 	{
 		for(i = 0; i < slist->count; i++)
-			module_add(slist->data[i]);
+			module_add_smart(slist->data[i]);
 	}
 
 	CALL_HOOKS(modules_loaded, ());
@@ -84,10 +85,7 @@ static void module_conf_reload()
 	}
 
 	for(i = 0; i < slist->count; i++)
-	{
-		if(module_find(slist->data[i]) == NULL)
-			module_add(slist->data[i]);
-	}
+		module_add_smart(slist->data[i]);
 
 	// we must try deleting modules multiple times to ensure all modules get unloaded which were just dependencies
 	i = dict_size(module_list);
@@ -99,7 +97,7 @@ static void module_conf_reload()
 			struct module *module = node->data;
 			node = node->prev;
 
-			if(stringlist_find(slist, module->name) == -1 && module->rdepend->count == 0)
+			if(stringlist_find(slist, module_get_aliased_name(module)) == -1 && module->rdepend->count == 0)
 				module_del(module->name);
 		}
 	}
@@ -112,29 +110,88 @@ struct dict *module_dict()
 
 struct module *module_find(const char *name)
 {
-	return dict_find(module_list, name);
+	char *mod_name, *colon;
+	struct module *mod;
+
+	if(!strchr(name, ':'))
+		return dict_find(module_list, name);
+
+	mod_name = strdup(name);
+	colon = strchr(mod_name, ':');
+	*colon = '\0';
+	mod = dict_find(module_list, mod_name);
+	free(mod_name);
+	return mod;
 }
 
-int module_add(const char *name)
+struct module *module_find_bylib(const char *lib_name)
+{
+	dict_iter(node, module_list)
+	{
+		struct module *mod = node->data;
+		if(mod->lib_name && !strcmp(mod->lib_name, lib_name))
+			return mod;
+		else if(!strcmp(mod->name, lib_name))
+			return mod;
+	}
+
+	return NULL;
+}
+
+int module_add_smart(const char *name)
+{
+	int rc = -1;
+	char *mod_name;
+	const char *mod_lib_name;
+	if(strchr(name, ':'))
+	{
+		char *colon;
+		mod_name = strdup(name);
+		colon = strchr(mod_name, ':');
+		*colon = '\0';
+		mod_lib_name = colon + 1;
+	}
+	else
+	{
+		mod_name = strdup(name);
+		mod_lib_name = NULL;
+	}
+
+	if(module_find(mod_name) == NULL)
+		rc = module_add(mod_name, mod_lib_name);
+	free(mod_name);
+	return rc;
+}
+
+int module_add(const char *name, const char *lib_name)
 {
 	struct module *module;
 	char filename[PATH_MAX];
 	module_f *depend_func;
 
-	if((module = module_find(name)))
+	if(module_find_bylib(name))
 	{
 		log_append(LOG_INFO, "Module %s is already loaded", name);
+		return -1;
+	}
+	else if(lib_name && module_find_bylib(lib_name))
+	{
+		log_append(LOG_WARNING, "Module %s is already loaded; cannot load it as %s", lib_name, name);
 		return -1;
 	}
 
 	module = malloc(sizeof(struct module));
 	memset(module, 0, sizeof(struct module));
 	module->name	= strdup(name);
+	module->lib_name= lib_name ? strdup(lib_name) : NULL;
 	module->state	= MODULE_LOADING;
 	module->depend	= stringlist_create();
 	module->rdepend	= stringlist_create();
 
-	safestrncpy(filename, module_get_filename(name), sizeof(filename));
+	if(!lib_name)
+		lib_name = name;
+
+	safestrncpy(filename, module_get_filename(lib_name), sizeof(filename));
 	log_append(LOG_INFO, "Loading module %s (%s)", name, filename);
 
 	module->handle = dlopen(filename, RTLD_LAZY);
@@ -245,7 +302,7 @@ int module_reload(const char *name)
 
 	reloading_module = 1;
 	modules = stringlist_create();
-	stringlist_add(modules, strdup(module->name));
+	stringlist_add(modules, strdup(module_get_aliased_name(module)));
 	module_get_rdeps(module, modules);
 
 	while(unloaded < modules->count)
@@ -264,7 +321,7 @@ int module_reload(const char *name)
 	for(unsigned int i = 0; i < modules->count; i++)
 	{
 		if(module_find(modules->data[i]) == NULL)
-			ret += module_add(modules->data[i]) ? 1 : 0;
+			ret += module_add_smart(modules->data[i]) ? 1 : 0;
 	}
 
 	stringlist_free(modules);
@@ -278,8 +335,8 @@ void module_get_rdeps(struct module *module, struct stringlist *rdeps)
 	{
 		struct module *depmod = module_find(module->rdepend->data[i]);
 		assert_continue(depmod);
-		if(stringlist_find(rdeps, depmod->name) == -1)
-			stringlist_add(rdeps, strdup(depmod->name));
+		if(stringlist_find(rdeps, module_get_aliased_name(depmod)) == -1)
+			stringlist_add(rdeps, strdup(module_get_aliased_name(depmod)));
 		module_get_rdeps(depmod, rdeps);
 	}
 }
@@ -341,6 +398,7 @@ static void module_free(struct module *module)
 
 	stringlist_free(module->depend);
 	stringlist_free(module->rdepend);
+	MyFree(module->lib_name);
 	free(module->name);
 	free(module);
 }
@@ -371,7 +429,7 @@ static int module_solve_dependencies(struct module *module)
 			continue;
 		}
 
-		if((module_add(name) == 0) && (depmod = module_find(name))) // loaded successfully
+		if((module_add(name, NULL) == 0) && (depmod = module_find(name))) // loaded successfully
 		{
 			log_append(LOG_INFO, "Loaded dependency %s for module %s", name, module->name);
 			stringlist_add(depmod->rdepend, strdup(module->name));
@@ -417,6 +475,16 @@ static const char *module_get_filename(const char *name)
 		path = ".";
 
 	snprintf(buf, sizeof(buf), "%s/%s.so", path, name);
+	return buf;
+}
+
+static const char *module_get_aliased_name(struct module *module)
+{
+	static char buf[256];
+	if(module->lib_name)
+		snprintf(buf, sizeof(buf), "%s:%s", module->name, module->lib_name);
+	else
+		strlcpy(buf, module->name, sizeof(buf));
 	return buf;
 }
 
