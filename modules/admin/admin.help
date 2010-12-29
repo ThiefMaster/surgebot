@@ -10,7 +10,7 @@
 				"admin.rehash"
 			);
 		};
-		
+
 		"conf get" = {
 			"description" = "Displays the value of the given configuration key.";
 			"help" = (
@@ -19,7 +19,7 @@
 				"If the key is an object, all available subkeys are displayed."
 			);
 		};
-		
+
 		"rehash" = {
 			"description" = "Causes the bot to re-read its configuration file and use updated values wherever it's possible.";
 			"help" = (
@@ -30,7 +30,7 @@
 				"admin.die"
 			);
 		};
-		
+
 		// Module commands
 		"module list" = {
 			"description" = "Displays all loaded modules.";
@@ -45,7 +45,7 @@
 				"admin.module reload"
 			);
 		};
-		
+
 		"module deps" = {
 			"description" = "Displays which modules depend on which other modules.";
 			"help" = (
@@ -59,7 +59,7 @@
 				"admin.module reload"
 			);
 		};
-		
+
 		"module add" = {
 			"description" = "Loads the specified module.";
 			"help" = (
@@ -74,7 +74,7 @@
 				"admin.module reload"
 			);
 		};
-		
+
 		"module del" = {
 			"description" = "Unloads the specified module.";
 			"help" = (
@@ -89,7 +89,7 @@
 				"admin.module reload"
 			);
 		};
-		
+
 		"module reload" = {
 			"description" = "Reloads the specified module.";
 			"help" = (
@@ -104,7 +104,7 @@
 				"admin.module del"
 			);
 		};
-		
+
 		// Binding commands
 		"binding add" = {
 			"description" = "Binds a command from a module.";
@@ -119,7 +119,7 @@
 				"admin.binding rule"
 			);
 		};
-		
+
 		"binding del" = {
 			"description" = "Removes the specified binding.";
 			"help" = (
@@ -131,7 +131,7 @@
 				"admin.binding add"
 			);
 		};
-		
+
 		"binding rule" = {
 			"description" = "Changes the access rule for a binding.";
 			"help" = (
@@ -144,7 +144,7 @@
 				"admin.binding del"
 			);
 		};
-		
+
 		"*access rules" = {
 			"*" = (
 				"Access rules define who may use a command.",
