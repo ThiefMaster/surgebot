@@ -102,6 +102,7 @@ struct song_vote {
 };
 
 IRC_HANDLER(nick);
+IRC_HANDLER(join);
 COMMAND(playlist_on);
 COMMAND(playlist_off);
 COMMAND(playlist_countdown);
@@ -174,6 +175,7 @@ static struct {
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
 	uint8_t genrevote_genres_per_line;
+	const char *genrevote_greeting;
 
 	uint8_t songvote_disable_inactive;
 	uint8_t songvote_songs;
@@ -197,6 +199,7 @@ MODULE_INIT
 	conf_reload_hook(); // Loads the playlist
 
 	reg_irc_handler("NICK", nick);
+	reg_irc_handler("JOIN", join);
 	reg_loop_func(check_song_changed);
 
 	debug("starting stream thread");
@@ -244,6 +247,7 @@ MODULE_FINI
 		pgsql_fini(pg_conn);
 
 	unreg_loop_func(check_song_changed);
+	unreg_irc_handler("JOIN", join);
 	unreg_irc_handler("NICK", nick);
 
 	unreg_conf_reload_func(conf_reload_hook);
@@ -267,6 +271,19 @@ IRC_HANDLER(nick)
 		MyFree(playlist_cd_by);
 		playlist_cd_by = strdup(argv[1]);
 	}
+}
+
+IRC_HANDLER(join)
+{
+	assert(argc > 1);
+
+	if(!radioplaylist_conf.genrevote_greeting || !genre_vote.active)
+		return;
+
+	if(strcasecmp(argv[1], radioplaylist_conf.radiochan))
+		return;
+
+	irc_send("NOTICE %s :%s", src->nick, radioplaylist_conf.genrevote_greeting);
 }
 
 COMMAND(playlist_on)
@@ -1563,6 +1580,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/genrevote_genres_per_line", DB_STRING);
 	radioplaylist_conf.genrevote_genres_per_line = str ? atoi(str) : 3;
+
+	str = conf_get("radioplaylist/genrevote_greeting", DB_STRING);
+	radioplaylist_conf.genrevote_greeting = str;
 
 	str = conf_get("radioplaylist/songvote_disable_inactive", DB_STRING);
 	radioplaylist_conf.songvote_disable_inactive = str ? atoi(str) : 6;
