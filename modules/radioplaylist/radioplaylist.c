@@ -740,7 +740,8 @@ COMMAND(playlist_scan)
 COMMAND(playlist_check)
 {
 	struct pgsql *conn;
-	int32_t count;
+	int8_t rc;
+	uint32_t count;
 
 	if(!(conn = pgsql_init(radioplaylist_conf.db_conn_string)))
 	{
@@ -749,8 +750,8 @@ COMMAND(playlist_check)
 	}
 
 	pgsql_begin(conn);
-	count = playlist_scan(NULL, conn, PL_S_REMOVE_MISSING, NULL, NULL);
-	if(count < 0)
+	rc = playlist_scan(NULL, conn, PL_S_REMOVE_MISSING, NULL, &count);
+	if(count != 0)
 	{
 		pgsql_rollback(conn);
 		reply("Beim Überprüfen ist ein Fehler aufgetreten");
@@ -758,7 +759,7 @@ COMMAND(playlist_check)
 	else
 	{
 		pgsql_commit(conn);
-		reply("Überprüfung abgeschlossen; es wurde%s %"PRId32" Songs gelöscht", (count != 1 ? "n" : ""), count);
+		reply("Überprüfung abgeschlossen; es wurde%s %"PRIu32" Songs gelöscht", (count != 1 ? "n" : ""), count);
 	}
 
 	pgsql_fini(conn);
