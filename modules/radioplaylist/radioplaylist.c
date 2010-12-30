@@ -751,7 +751,7 @@ COMMAND(playlist_check)
 
 	pgsql_begin(conn);
 	rc = playlist_scan(NULL, conn, PL_S_REMOVE_MISSING, NULL, &count);
-	if(count != 0)
+	if(rc != 0)
 	{
 		pgsql_rollback(conn);
 		reply("Beim Überprüfen ist ein Fehler aufgetreten");
