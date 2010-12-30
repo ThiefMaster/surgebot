@@ -1161,7 +1161,6 @@ static void songvote_stream_song_changed()
 	timer_add(this, "songvote_finish", song_vote.endtime, songvote_finish, NULL, 0, 0);
 	debug("song vote started; duration: %u", vote_duration);
 
-	irc_send("PRIVMSG %s :Es wurde ein Song-Vote gestartet.", radioplaylist_conf.radiochan);
 	irc_send("PRIVMSG %s :Benutze $b*songvote <id>$b um abzustimmen. Verbleibende Zeit: $b%02u:%02u$b", radioplaylist_conf.radiochan, vote_duration / 60, vote_duration % 60);
 
 	// send song list to channel
