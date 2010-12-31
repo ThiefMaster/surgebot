@@ -1072,7 +1072,7 @@ COMMAND(playlist_songvote)
 
 	if(!song_vote.active)
 	{
-		reply("Der Song-Vote ist zwar aktiv, es läuft allerdings gerade kein Vote. Bitte warte, bis neue Songs im Channel angezeigt werden.");
+		reply("Der Song-Vote ist zwar aktiv, allerdings gibt es gerade keine Möglichkeit abzustimmen. Bitte warte, bis die neuen Songs im Channel angezeigt werden.");
 		return 0;
 	}
 
@@ -1322,7 +1322,7 @@ static void songvote_finish(void *bound, void *data)
 	}
 	else
 	{
-		irc_send("PRIVMSG %s :Song-Vote beendet. Es wurde kein Song gewählt.", radioplaylist_conf.radiochan);
+		irc_send("PRIVMSG %s :Song-Vote beendet. Es wurde kein Song gewählt, daher wird ein zufälliger Song aus der Playlist laufen.", radioplaylist_conf.radiochan);
 		song_vote.inactive_songs++;
 		debug("songvote inactive for %u songs", song_vote.inactive_songs);
 	}
