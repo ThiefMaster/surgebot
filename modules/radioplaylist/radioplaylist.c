@@ -1175,9 +1175,9 @@ COMMAND(playlist_report)
 	}
 
 	if(msg)
-		irc_send("PRIVMSG %s :Song gemeldet: [%"PRIu32"] %s - %s - %s @ %s: %s", radioplaylist_conf.adminchan, cur->id, cur->artist, cur->album, cur->title, genre, msg);
+		irc_send("PRIVMSG %s :Song gemeldet von %s: [%"PRIu32"] %s - %s - %s @ %s: %s", radioplaylist_conf.adminchan, src->nick, cur->id, cur->artist, cur->album, cur->title, genre, msg);
 	else
-		irc_send("PRIVMSG %s :Song gemeldet: [%"PRIu32"] %s - %s - %s @ %s", radioplaylist_conf.adminchan, cur->id, cur->artist, cur->album, cur->title, genre);
+		irc_send("PRIVMSG %s :Song gemeldet von %s: [%"PRIu32"] %s - %s - %s @ %s", radioplaylist_conf.adminchan, src->nick, cur->id, cur->artist, cur->album, cur->title, genre);
 
 	MyFree(genre);
 	return 1;
