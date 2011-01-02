@@ -1158,7 +1158,7 @@ COMMAND(playlist_report)
 
 	if(!cur)
 	{
-		reply("Fehler: Der aktueller Song konnte nicht ausgelesen werden.");
+		reply("Fehler: Der aktuelle Song konnte nicht ausgelesen werden.");
 		return 0;
 	}
 
