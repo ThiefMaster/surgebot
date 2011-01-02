@@ -53,3 +53,16 @@ WITH (
 	OIDS=FALSE
 );
 
+
+
+CREATE TABLE history
+(
+	id serial NOT NULL,
+	song_id integer NOT NULL,
+	ts timestamp without time zone NOT NULL DEFAULT now(),
+	CONSTRAINT history_pkey PRIMARY KEY (id),
+	CONSTRAINT history_song_id_fkey FOREIGN KEY (song_id) REFERENCES playlist (id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE CASCADE
+)
+WITH (
+	OIDS=FALSE
+);

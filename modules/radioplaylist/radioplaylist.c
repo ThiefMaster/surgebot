@@ -182,6 +182,7 @@ static struct {
 	uint8_t songvote_disable_inactive;
 	uint8_t songvote_songs;
 	uint16_t songvote_block_duration;
+	const char *songvote_block_artist_interval;
 } radioplaylist_conf;
 
 MODULE_DEPENDS("commands", "sharedmem", NULL);
@@ -1194,7 +1195,7 @@ static uint8_t in_team_channel(struct irc_user *user)
 static void songvote_stream_song_changed()
 {
 	uint16_t vote_duration = 0;
-	char idbuf[16], limitbuf[8], tsbuf[16];
+	char idbuf[16], limitbuf[8], tsbuf[16], querybuf[768];
 	int num_rows;
 	PGresult *res;
 
@@ -1247,14 +1248,20 @@ static void songvote_stream_song_changed()
 	snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
 	snprintf(limitbuf, sizeof(limitbuf), "%"PRIu8, radioplaylist_conf.songvote_songs);
 	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
-	res = pgsql_query(pg_conn, "SELECT * FROM ( \
+	snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
 			SELECT DISTINCT ON (artist) id \
 			FROM playlist \
 			JOIN song_genres s ON (s.song_id = playlist.id) \
-			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $3 \
+			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $3 AND NOT EXISTS ( \
+				SELECT h.id \
+				FROM history h \
+				JOIN playlist h_pl ON (h_pl.id = h.song_id) \
+				WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist \
+			) \
 			ORDER BY artist, random()) _anon \
 		ORDER BY random() \
-		LIMIT $2", 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
+		LIMIT $2", radioplaylist_conf.songvote_block_artist_interval);
+	res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
 	if(!res || (num_rows = pgsql_num_rows(res)) < 2)
 	{
 		log_append(LOG_WARNING, "Could not load song list (res=%p, rows=%d)", res, res ? num_rows : -1);
@@ -1379,7 +1386,10 @@ static void songvote_finish(void *bound, void *data)
 
 	if(winner)
 	{
+		char idbuf[16];
 		irc_send("PRIVMSG %s :Song-Vote beendet. In Kürze wird $b%s$b laufen (%u Votes)", radioplaylist_conf.radiochan, winner->short_name, winner->votes);
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, winner->node->id);
+		pgsql_query(pg_conn, "INSERT INTO history (song_id) VALUES ($1)", 0, stringlist_build_n(1, idbuf));
 		pthread_mutex_lock(&playlist_mutex);
 		stream_state.playlist->enqueue(stream_state.playlist, winner->node);
 		pthread_mutex_unlock(&playlist_mutex);
@@ -1671,6 +1681,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/songvote_songs", DB_STRING);
 	radioplaylist_conf.songvote_songs = str ? atoi(str) : 3;
+
+	str = conf_get("radioplaylist/songvote_block_artist_interval", DB_STRING);
+	radioplaylist_conf.songvote_block_artist_interval = str ? str : "30 minutes";
 
 	if(!pg_conn || !(str = conf_get_old("radioplaylist/db_conn_string", DB_STRING)) || strcmp(str, radioplaylist_conf.db_conn_string))
 	{
