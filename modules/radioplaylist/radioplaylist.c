@@ -369,6 +369,8 @@ COMMAND(playlist_off)
 		if(song_vote.active)
 		{
 			songvote_reset();
+			song_vote.inactive_songs = 0;
+			song_vote.enabled = 0;
 			irc_send("PRIVMSG %s :Der aktuelle Song-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
 		}
 		if(genre_vote.active)
