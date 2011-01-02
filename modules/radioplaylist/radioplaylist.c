@@ -117,6 +117,7 @@ COMMAND(playlist_check);
 COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
 COMMAND(playlist_songvote);
+COMMAND(playlist_report);
 static uint8_t in_team_channel(struct irc_user *user);
 static void songvote_stream_song_changed();
 static void songvote_free();
@@ -168,6 +169,7 @@ static struct {
 	uint16_t lame_bitrate;
 	uint16_t lame_samplerate;
 	uint8_t lame_quality;
+	const char *adminchan;
 	const char *teamchan;
 	const char *radiochan;
 
@@ -219,6 +221,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "playlist truncate",	playlist_truncate,	0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "genrevote",		playlist_genrevote,	0, CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(this, "songvote",		playlist_songvote,	0, CMD_LOG_HOSTMASK, "true");
+	DEFINE_COMMAND(this, "report",			playlist_report,	0, CMD_LOG_HOSTMASK, "true");
 }
 
 
@@ -1134,6 +1137,52 @@ COMMAND(playlist_songvote)
 	return 1;
 }
 
+COMMAND(playlist_report)
+{
+	struct playlist_node *cur;
+	char idbuf[8];
+	char *msg, *genre;
+	PGresult *res;
+
+	if(!stream_state.playing)
+	{
+		reply("Die Playlist ist nicht an");
+		return 1;
+	}
+
+	// Lock stream state as we have to read multiple values which should be from the same song
+	pthread_mutex_lock(&playlist_mutex);
+	if(!(cur = stream_state.playlist->queue_cur))
+		cur = stream_state.playlist->cur;
+	pthread_mutex_unlock(&playlist_mutex);
+
+	if(!cur)
+	{
+		reply("Fehler: Der aktueller Song konnte nicht ausgelesen werden.");
+		return 0;
+	}
+
+	msg = argc > 1 ? untokenize(argc - 1, argv + 1, " ") : NULL;
+	reply("Song wurde gemeldet: %s - %s", cur->artist, cur->title);
+
+	if(stream_state.playlist->genre_id)
+	{
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
+		res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		if(res && pgsql_num_rows(res))
+			genre = strdup(pgsql_nvalue(res, 0, "genre"));
+		pgsql_free(res);
+	}
+
+	if(msg)
+		irc_send("PRIVMSG %s :Song gemeldet: [%"PRIu32"] %s - %s - %s @ %s: %s", radioplaylist_conf.adminchan, cur->id, cur->artist, cur->album, cur->title, genre, msg);
+	else
+		irc_send("PRIVMSG %s :Song gemeldet: [%"PRIu32"] %s - %s - %s @ %s", radioplaylist_conf.adminchan, cur->id, cur->artist, cur->album, cur->title, genre);
+
+	MyFree(genre);
+	return 1;
+}
+
 static uint8_t in_team_channel(struct irc_user *user)
 {
 	struct irc_channel *chan;
@@ -1587,6 +1636,9 @@ static void conf_reload_hook()
 	str = conf_get("radioplaylist/lame_quality", DB_STRING);
 	radioplaylist_conf.lame_quality = str ? atoi(str) : 3;
 	pthread_mutex_unlock(&conf_mutex); // unlock config
+
+	str = conf_get("radioplaylist/adminchan", DB_STRING);
+	radioplaylist_conf.adminchan = str;
 
 	str = conf_get("radioplaylist/teamchan", DB_STRING);
 	radioplaylist_conf.teamchan = str;
