@@ -1247,12 +1247,14 @@ static void songvote_stream_song_changed()
 	snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
 	snprintf(limitbuf, sizeof(limitbuf), "%"PRIu8, radioplaylist_conf.songvote_songs);
 	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
-	res = pgsql_query(pg_conn, "SELECT id \
+	res = pgsql_query(pg_conn, "SELECT * FROM ( \
+			SELECT DISTINCT ON (artist) id \
 			FROM playlist \
 			JOIN song_genres s ON (s.song_id = playlist.id) \
 			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $3 \
-			ORDER BY random() \
-			LIMIT $2;", 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
+			ORDER BY artist, random()) _anon \
+		ORDER BY random() \
+		LIMIT $2", 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
 	if(!res || (num_rows = pgsql_num_rows(res)) < 2)
 	{
 		log_append(LOG_WARNING, "Could not load song list (res=%p, rows=%d)", res, res ? num_rows : -1);
