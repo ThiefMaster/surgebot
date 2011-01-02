@@ -1525,6 +1525,8 @@ static void genrevote_finish(void *bound, void *data)
 		irc_send("PRIVMSG %s :Genre-Vote beendet. Es wurde kein neues Genre gewählt.", radioplaylist_conf.radiochan);
 	}
 
+	if(!winner)
+		genre_vote.endtime = 0;
 	genre_vote.active = 0;
 	genrevote_free();
 }
