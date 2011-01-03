@@ -505,8 +505,11 @@ static void shared_memory_changed(struct module *module, const char *key, void *
 
 	MyFree(current_streamtitle);
 	asprintf(&current_streamtitle, "Playlist [%s]", (const char *)new);
+	MyFree(current_show);
+	current_show = strdup(current_streamtitle);
 	debug("Streamtitle changed -> %s", current_streamtitle);
 	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, "Playlist", current_streamtitle, radiobot_conf.site_url);
+	show_updated();
 }
 
 static time_t check_queue_full()
