@@ -884,12 +884,6 @@ COMMAND(playlist_genrevote)
 			return 0;
 		}
 
-		if(song_vote.active)
-		{
-			song_vote_cancelled = 1;
-			songvote_reset();
-		}
-
 		if(stream_state.playing && radioplaylist_conf.genrevote_files && radioplaylist_conf.genrevote_files->count)
 		{
 			// Create node and store it (will be enqueued later)
@@ -913,6 +907,13 @@ COMMAND(playlist_genrevote)
 		genre_vote.active = 1;
 		vote_duration = radioplaylist_conf.genrevote_duration + song_time_remaining;
 		genre_vote.endtime = now + vote_duration;
+
+		if(song_vote.active && genre_vote.endtime < (song_vote.endtime + 30))
+		{
+			song_vote_cancelled = 1;
+			songvote_reset();
+		}
+
 		timer_del_boundname(this, "genrevote_finish"); // just to be sure
 		timer_add(this, "genrevote_finish", genre_vote.endtime, genrevote_finish, NULL, 0, 0);
 		debug("genre vote started; duration: %u, by: %s", vote_duration, src->nick);
