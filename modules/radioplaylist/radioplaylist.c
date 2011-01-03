@@ -119,6 +119,8 @@ COMMAND(playlist_truncate);
 COMMAND(playlist_genrevote);
 COMMAND(playlist_songvote);
 COMMAND(playlist_report);
+COMMAND(playlist_cancelvote_song);
+COMMAND(playlist_cancelvote_genre);
 static uint8_t in_team_channel(struct irc_user *user);
 static void songvote_stream_song_changed();
 static void songvote_free();
@@ -226,6 +228,8 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "genrevote",		playlist_genrevote,	0, CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(this, "songvote",		playlist_songvote,	0, CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(this, "report",			playlist_report,	0, CMD_LOG_HOSTMASK, "true");
+	DEFINE_COMMAND(this, "cancelsongvote",		playlist_cancelvote_song, 0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "cancelgenrevote",		playlist_cancelvote_genre, 0, CMD_LOG_HOSTMASK, "group(admins)");
 }
 
 
@@ -1187,6 +1191,36 @@ COMMAND(playlist_report)
 		irc_send("PRIVMSG %s :Song gemeldet von %s: [%"PRIu32"] %s - %s - %s @ %s", radioplaylist_conf.adminchan, src->nick, cur->id, cur->artist, cur->album, cur->title, genre);
 
 	MyFree(genre);
+	return 1;
+}
+
+COMMAND(playlist_cancelvote_song)
+{
+	if(!song_vote.enabled && !song_vote.active)
+	{
+		reply("Der Song-Vote-Modus ist nicht aktiv.");
+		return 0;
+	}
+
+	songvote_reset();
+	song_vote.inactive_songs = 0;
+	song_vote.enabled = 0;
+	irc_send("PRIVMSG %s :Der aktuelle Song-Vote wurde von %s abgebrochen.", radioplaylist_conf.radiochan, src->nick);
+	reply("Song-Vote wurde abgebrochen/deaktiviert.");
+	return 1;
+}
+
+COMMAND(playlist_cancelvote_genre)
+{
+	if(!genre_vote.active)
+	{
+		reply("Es läuft gerade kein Genre-Vote.");
+		return 0;
+	}
+
+	genrevote_reset();
+	irc_send("PRIVMSG %s :Der aktuelle Genre-Vote wurde von %s abgebrochen.", radioplaylist_conf.radiochan, src->nick);
+	reply("Genre-Vote wurde abgebrochen.");
 	return 1;
 }
 
