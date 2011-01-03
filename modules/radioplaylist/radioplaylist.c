@@ -2,6 +2,7 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/sharedmem/sharedmem.h"
+#include "modules/help/help.h"
 #include "chanuser.h"
 #include "irc.h"
 #include "irc_handler.h"
@@ -185,12 +186,14 @@ static struct {
 	const char *songvote_block_artist_interval;
 } radioplaylist_conf;
 
-MODULE_DEPENDS("commands", "sharedmem", NULL);
+MODULE_DEPENDS("commands", "sharedmem", "help", NULL);
 
 
 MODULE_INIT
 {
 	this = self;
+
+	help_load(this, "radioplaylist.help");
 
 	pthread_cond_init(&stream_cond, NULL);
 	pthread_mutex_init(&stream_mutex, NULL);

@@ -1,0 +1,35 @@
+"genrevote" = {
+	"description" = "Startet einen Genrevote oder nimmt an einer aktuell laufenden Abstimmung teil.";
+	"help" = (
+		"$bSyntax$b: {HELP_BINDING_PUBCMD} [id|genre]",
+		"Startet einen Genre-Vote oder nimmt an einer aktuell laufenden Abstimmung teil."
+	);
+	"see_also" = (
+		"radioplaylist.genrevote",
+		"radioplaylist.songvote"
+	);
+};
+
+"songvote" = {
+	"description" = "Startet einen Song-Vote oder nimmt an einer aktuell laufenden Songabstimmung teil.";
+	"help" = (
+		"$bSyntax$b: {HELP_BINDING_PUBCMD} [id]",
+		"Startet einen Song-Vote oder nimmt an einer aktuell laufenden Songabstimmung teil."
+	);
+	"see_also" = (
+		"radioplaylist.genrevote",
+		"radioplaylist.songvote"
+	);
+};
+
+"report" = {
+	"description" = "Meldet einen Song der Playlist an die Radioleitung.";
+	"help" = (
+		"$bSyntax$b: {HELP_BINDING_PUBCMD} [msg]",
+		"Meldet den gerade laufenden Song der Playlist an die Radioleitung.",
+		"Benutze diesen Befehl wenn du der Meinung bist, dass ein Song im falschen Genre einsortiert ist",
+		"oder er lange Stillephasen oder Störgeräusche enthält und daher nicht mehr gespielt werden sollte."
+	);
+};
+
+// vim: ft=cfg ts=8 sw=8 noet
