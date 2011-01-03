@@ -1232,6 +1232,7 @@ static void songvote_stream_song_changed()
 	if(song_time_remaining < 40)
 	{
 		debug("not enough song time remaining (%d); waiting for next song", song_time_remaining);
+		irc_send("PRIVMSG %s :Da das aktuell laufende Lied zu kurz für einen Song-Vote ist wird der nächste Vote nach dem aktuellen Lied gestartet.", radioplaylist_conf.radiochan);
 		return;
 	}
 
