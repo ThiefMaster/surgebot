@@ -162,6 +162,7 @@ static char *current_title = NULL;
 static char *current_show = NULL;
 static char *status_nick = NULL;
 static char *listener_nick = NULL;
+static char *playlist_genre = NULL;
 static int last_peak = -1;
 static time_t last_peak_time;
 static char *last_peak_mod = NULL;
@@ -302,6 +303,7 @@ MODULE_FINI
 	MyFree(current_show);
 	MyFree(status_nick);
 	MyFree(listener_nick);
+	MyFree(playlist_genre);
 	MyFree(last_peak_mod);
 	MyFree(stream_stats.title);
 
@@ -498,6 +500,9 @@ static void shared_memory_changed(struct module *module, const char *key, void *
 {
 	if(strcmp(module->name, "radioplaylist") || strcmp(key, "genre") || !new)
 		return;
+
+	MyFree(playlist_genre);
+	playlist_genre = strdup((const char *)new);
 
 	// Is there a real mod? Don't do anything
 	if(current_mod)
@@ -999,7 +1004,10 @@ COMMAND(setmod)
 	if(!strcasecmp(showtitle, "Playlist"))
 	{
 		free(showtitle);
-		showtitle = strdup("Playlist");
+		if(playlist_genre)
+			asprintf(&showtitle, "Playlist [%s]", playlist_genre);
+		else
+			showtitle = strdup("Playlist");
 		MyFree(current_playlist);
 	}
 	else
