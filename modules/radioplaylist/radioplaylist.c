@@ -1533,6 +1533,9 @@ static void genrevote_finish(void *bound, void *data)
 		genre_vote.endtime = 0;
 	genre_vote.active = 0;
 	genrevote_free();
+
+	if(!stream_state.song_changed)
+		songvote_stream_song_changed();
 }
 
 
