@@ -180,6 +180,8 @@ static struct http_handler handlers[] = {
 
 MODULE_INIT
 {
+	const char *str;
+
 	this = self;
 
 	help_load(this, "radiobot.help");
@@ -227,6 +229,8 @@ MODULE_INIT
 	http_handler_add_list(handlers);
 
 	reg_shared_memory_changed_hook(shared_memory_changed);
+	playlist_genre = (str = shared_memory_get("radioplaylist", "genre", NULL)) ? strdup(str) : NULL;
+	debug("current playlist genre: %s", playlist_genre);
 
 	DEFINE_COMMAND(this, "stats clients",	stats_clients,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "notify",		notify,		0, 0, "group(admins)");
