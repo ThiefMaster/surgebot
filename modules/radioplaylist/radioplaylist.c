@@ -373,18 +373,20 @@ COMMAND(playlist_off)
 	debug("stream is now %s", stream_state.playing ? "active" : "inactive");
 	if(!stream_state.playing)
 	{
-		if(song_vote.active)
+		if(song_vote.active || song_vote.enabled)
 		{
 			songvote_reset();
 			song_vote.inactive_songs = 0;
 			song_vote.enabled = 0;
 			irc_send("PRIVMSG %s :Der aktuelle Song-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
 		}
+
 		if(genre_vote.active)
 		{
 			genrevote_reset();
 			irc_send("PRIVMSG %s :Der aktuelle Genre-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
 		}
+
 		irc_send("PRIVMSG %s :Die Playlist ist jetzt $c4AUS$c", radioplaylist_conf.teamchan);
 	}
 	else
@@ -1554,16 +1556,19 @@ static void check_countdown()
 	// If the stream has stopped now, notify the user
 	if(!stream_state.playing)
 	{
-                if(song_vote.active)
-                {
-                        songvote_reset();
-                        irc_send("PRIVMSG %s :Der aktuelle Song-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
-                }
-                if(genre_vote.active)
-                {
-                        genrevote_reset();
-                        irc_send("PRIVMSG %s :Der aktuelle Genre-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
-                }
+		if(song_vote.active || song_vote.enabled)
+		{
+			songvote_reset();
+			song_vote.inactive_songs = 0;
+			song_vote.enabled = 0;
+			irc_send("PRIVMSG %s :Der aktuelle Song-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
+		}
+
+		if(genre_vote.active)
+		{
+			genrevote_reset();
+			irc_send("PRIVMSG %s :Der aktuelle Genre-Vote wurde abgebrochen weil die Playlist gerade gestoppt wurde.", radioplaylist_conf.radiochan);
+		}
 
 		irc_send("PRIVMSG %s,%s :Die Playlist ist jetzt $c4AUS$c -> ab auf den Stream, $b%s$b", radioplaylist_conf.teamchan, playlist_cd_by, playlist_cd_by);
 		unreg_loop_func(check_countdown);
