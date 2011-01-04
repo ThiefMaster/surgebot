@@ -1481,8 +1481,11 @@ static void genrevote_free()
 static void genrevote_reset()
 {
 	pthread_mutex_lock(&stream_state_mutex);
-	stream_state.playlist->free_node(stream_state.announce_vote);
-	stream_state.announce_vote = NULL;
+	if(stream_state.announce_vote)
+	{
+		stream_state.playlist->free_node(stream_state.announce_vote);
+		stream_state.announce_vote = NULL;
+	}
 	pthread_mutex_unlock(&stream_state_mutex);
 
 	timer_del_boundname(this, "genrevote_finish");
