@@ -1435,6 +1435,7 @@ static void songvote_finish(void *bound, void *data)
 		stream_state.playlist->enqueue(stream_state.playlist, winner->node);
 		pthread_mutex_unlock(&playlist_mutex);
 		winner->node = NULL; // so it's not free'd in songvote_free()
+		song_vote.inactive_songs = 0;
 	}
 	else
 	{
