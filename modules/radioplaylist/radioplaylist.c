@@ -1427,10 +1427,7 @@ static void songvote_finish(void *bound, void *data)
 
 	if(winner)
 	{
-		char idbuf[16];
 		irc_send("PRIVMSG %s :Song-Vote beendet. In Kürze wird $b%s$b laufen (%u Votes)", radioplaylist_conf.radiochan, winner->short_name, winner->votes);
-		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, winner->node->id);
-		pgsql_query(pg_conn, "INSERT INTO history (song_id) VALUES ($1)", 0, stringlist_build_n(1, idbuf));
 		pthread_mutex_lock(&playlist_mutex);
 		stream_state.playlist->enqueue(stream_state.playlist, winner->node);
 		pthread_mutex_unlock(&playlist_mutex);
@@ -1636,12 +1633,30 @@ static void check_countdown()
 
 static void check_song_changed()
 {
+	struct playlist_node *cur;
+
 	if(!stream_state.song_changed)
 		return;
 
 	pthread_mutex_lock(&stream_state_mutex);
 	stream_state.song_changed = 0;
 	pthread_mutex_unlock(&stream_state_mutex);
+
+	if(stream_state.playlist)
+	{
+		pthread_mutex_lock(&playlist_mutex);
+		if(!(cur = stream_state.playlist->queue_cur))
+			cur = stream_state.playlist->cur;
+		pthread_mutex_unlock(&playlist_mutex);
+
+		if(cur && cur->id && pg_conn)
+		{
+			char idbuf[16];
+			snprintf(idbuf, sizeof(idbuf), "%"PRIu32, cur->id);
+			pgsql_query(pg_conn, "INSERT INTO history (song_id) VALUES ($1)", 0, stringlist_build_n(1, idbuf));
+		}
+	}
+
 
 	songvote_stream_song_changed();
 }
