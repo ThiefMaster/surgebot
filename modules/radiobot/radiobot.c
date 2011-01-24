@@ -820,9 +820,9 @@ HTTP_HANDLER(http_wish_greet)
 		}
 		else if(!strcasecmp(type, "greet"))
 		{
-			irc_send("PRIVMSG %s :Desktop-Gru\xc3\x9f von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, name, msg);
+			irc_send("PRIVMSG %s :Desktop-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, name, msg);
 			if(current_mod_2)
-				irc_send("PRIVMSG %s :Desktop-Gru\xc3\x9f von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, name, msg);
+				irc_send("PRIVMSG %s :Desktop-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, name, msg);
 		}
 	}
 
@@ -1030,7 +1030,7 @@ COMMAND(setmod)
 	queue_full = 0;
 
 	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? sanitize_nick(current_mod) : "Playlist"), current_show, radiobot_conf.site_url);
-	irc_send("PRIVMSG %s :Mod geändert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), current_show);
+	irc_send("PRIVMSG %s :Mod geändert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), to_utf8(current_show));
 	reply("Aktueller Mod: $b%s$b (Showtitel/Streamtitel: $b%s$b)", (current_mod ? current_mod : "[Playlist]"), current_show);
 	database_write(radiobot_db);
 	show_updated();
@@ -1101,7 +1101,7 @@ COMMAND(settitle)
 		current_streamtitle = strdup(current_show);
 	}
 
-	irc_send("PRIVMSG %s :Streamsongtitel geändert auf $b%s$b.", radiobot_conf.teamchan, (current_streamtitle ? current_streamtitle : "n/a"));
+	irc_send("PRIVMSG %s :Streamsongtitel geändert auf $b%s$b.", radiobot_conf.teamchan, (current_streamtitle ? to_utf8(current_streamtitle) : "n/a"));
 	reply("Aktueller Streamsongtitel: $b%s$b", (current_streamtitle ? current_streamtitle : "n/a"));
 	database_write(radiobot_db);
 	show_updated();
@@ -1325,6 +1325,7 @@ COMMAND(wish)
 COMMAND(greet)
 {
 	char *msg;
+	const char *msg_utf8;
 
 	if(!current_mod)
 	{
@@ -1345,14 +1346,13 @@ COMMAND(greet)
 	}
 
 	msg = untokenize(argc - 1, argv + 1, " ");
-	const char *sz = "ß";
-	if(is_utf8(msg))
-		sz = "\xc3\x9f";
-	irc_send("PRIVMSG %s :IRC-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, sz, src->nick, msg);
-	if(current_mod_2)
-		irc_send("PRIVMSG %s :IRC-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, sz, src->nick, msg);
-	reply("Dein Gruß wurde weitergeleitet.");
+	msg_utf8 = to_utf8(msg);
 	free(msg);
+
+	irc_send("PRIVMSG %s :IRC-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, src->nick, msg_utf8);
+	if(current_mod_2)
+		irc_send("PRIVMSG %s :IRC-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, src->nick, msg_utf8);
+	reply("Dein Gruß wurde weitergeleitet.");
 
 	return 1;
 }
@@ -1526,20 +1526,20 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 	}
 	else if(argc > 2 && (!strcasecmp(argv[0], "GREET") || !strcasecmp(argv[0], "QGREET")))
 	{
+		const char *msg_utf8;
+
 		if(!current_mod)
 		{
 			sock_write_fmt(sock, "ERR NOMOD :No mod active\n");
 			return;
 		}
 
-		const char *sz = "ß";
-		if(is_utf8(argv[2]))
-			sz = "\xc3\x9f";
-		irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
-			 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
+		msg_utf8 = to_utf8(argv[2]);
+		irc_send("PRIVMSG %s :%s-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod,
+			 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), argv[1], msg_utf8);
 		if(current_mod_2)
-			irc_send("PRIVMSG %s :%s-Gru%s von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2,
-				 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), sz, argv[1], argv[2]);
+			irc_send("PRIVMSG %s :%s-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2,
+				 (!strcasecmp(argv[0], "QGREET") ? "QNet" : "Web"), argv[1], msg_utf8);
 		sock_write_fmt(sock, "SUCCESS 0\n");
 		return;
 	}
