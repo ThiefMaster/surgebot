@@ -21,6 +21,7 @@ static unsigned int next_rule_idx = 1;
 PARSER_FUNC(group);
 PARSER_FUNC(inchannel);
 PARSER_FUNC(channel);
+PARSER_FUNC(mask);
 PARSER_FUNC(opped);
 PARSER_FUNC(voiced);
 struct command_rule *command_rule_get(unsigned int rule_idx);
@@ -32,6 +33,7 @@ void command_rule_init()
 	REG_COMMAND_RULE("group", group);
 	REG_COMMAND_RULE("inchannel", inchannel);
 	REG_COMMAND_RULE("channel", channel);
+	REG_COMMAND_RULE("mask", mask);
 	REG_COMMAND_RULE("opped", opped);
 	REG_COMMAND_RULE("voiced", voiced);
 }
@@ -41,6 +43,7 @@ void command_rule_fini()
 	command_rule_unreg("group");
 	command_rule_unreg("inchannel");
 	command_rule_unreg("channel");
+	command_rule_unreg("mask");
 	command_rule_unreg("opped");
 	command_rule_unreg("voiced");
 	parser_free(parser);
@@ -222,6 +225,20 @@ PARSER_FUNC(channel)
 		return RET_TRUE;
 
 	return RET_FALSE;
+}
+
+PARSER_FUNC(mask)
+{
+	char *mask;
+	enum parser_func_retval ret;
+	struct command_rule_context *cr_ctx = ctx;
+
+	if(!arg || !cr_ctx->user)
+		return RET_FALSE;
+	asprintf(&mask, "%s!%s@%s", cr_ctx->user->nick, cr_ctx->user->ident, cr_ctx->user->host);
+	ret = (match(arg, mask) == 0 ? RET_TRUE : RET_FALSE);
+	free(mask);
+	return ret;
 }
 
 PARSER_FUNC(opped)
