@@ -884,7 +884,7 @@ COMMAND(stats_clients)
 		uint32_t playtime = (client->playerState >> 10) & 0xfffff;
 		table->data[i][0] = client->client->ip;
 		table->data[i][1] = client->uuid;
-		table->data[i][2] = client->nick ? client->nick : "";
+		table->data[i][2] = client->nick ? strndupa(client->nick, 50) : "";
 		if(client->playerState == 0) // assume no data is available
 		{
 			table_col_str(table, i, 3, strdup(""));
