@@ -10,7 +10,8 @@
 #include <pthread.h>
 #endif
 
-#define REQUEST_MAX_SIZE 8192
+// this includes POST bodies!
+#define REQUEST_MAX_SIZE 1024000
 
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
 
