@@ -681,6 +681,7 @@ static void http_stream_status_send(struct http_client *client, int timeout)
 	timer_del(this, "http_poll_timeout", 0, NULL, client, TIMER_IGNORE_TIME | TIMER_IGNORE_FUNC);
 
 	struct json_object *response = json_object_new_object();
+	json_object_object_add(response, "timeout_seconds", json_object_new_int(HTTP_POLL_DURATION));
 	json_object_object_add(response, "timeout", json_object_new_boolean(timeout));
 	json_object_object_add(response, "mod", current_mod ? json_object_new_string(current_mod) : NULL);
 	json_object_object_add(response, "mod2", current_mod_2 ? json_object_new_string(current_mod_2) : NULL);
