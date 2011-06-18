@@ -1,2 +1,2 @@
-LIBS_mod += `xml2-config --libs` -lnetfilter_queue -ljson -lcap
+LIBS_mod += `xml2-config --libs` -lnetfilter_queue -ljson -lcap -lmemcached
 CFLAGS_mod += `xml2-config --cflags`

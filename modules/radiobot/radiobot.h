@@ -29,6 +29,7 @@ struct radiobot_conf
 	const char *graph_dir;
 	const char *gadget_update_url;
 	const char *gadget_current_version;
+	const char *memcached_config;
 };
 
 typedef void (radiobot_notify_func)(struct radiobot_conf *conf, const char *action, ...);

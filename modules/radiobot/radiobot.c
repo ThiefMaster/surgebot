@@ -24,6 +24,7 @@
 #include <libxml/tree.h>
 #include <json/json.h>
 #include <sys/capability.h>
+#include <libmemcached/memcached.h>
 
 #define RRD_DEFAULT_COLORS "-c BACK#FFFFFF -c CANVAS#F3F3F3 -c SHADEA#C8C8C8 -c SHADEB#969696 -c GRID#8C8C8C -c MGRID#821E1E -c FONT#000000 -c FRAME#000000 -c ARROW#FF0000"
 
@@ -135,6 +136,7 @@ static void http_stream_status_send(struct http_client *client, int timeout);
 void set_current_title(const char *title);
 const char *get_streamtitle();
 static void shared_memory_changed(struct module *module, const char *key, void *old, void *new);
+static void memcache_set(const char *key, time_t ttl, const char *format, ...);
 static time_t check_queue_full();
 static int in_wish_greet_channel(struct irc_user *user);
 static const char *sanitize_nick(const char *raw_nick);
@@ -169,6 +171,7 @@ static char *last_peak_mod = NULL;
 static time_t queue_full = 0;
 static radiobot_notify_func *notify_func = NULL;
 static int nfqueue_available = 0;
+static memcached_st *mc = NULL;
 
 static struct http_handler handlers[] = {
 	{ "/", http_root },
@@ -269,6 +272,8 @@ MODULE_FINI
 		nfqueue_fini();
 
 	unreg_conf_reload_func(radiobot_conf_reload);
+	if(mc)
+		memcached_free(mc);
 
 	timer_del_boundname(this, "kicksrc_timeout");
 	timer_del_boundname(this, "stats_timeout");
@@ -403,6 +408,10 @@ static void radiobot_conf_reload()
 	str = conf_get("radiobot/gadget_current_version", DB_STRING);
 	radiobot_conf.gadget_current_version = (str && *str) ? str : NULL;
 
+	// memcached
+	str = conf_get("radiobot/memcached_config", DB_STRING);
+	radiobot_conf.memcached_config = (str && *str) ? str : NULL;
+
 	// special config-related actions
 	if(cmd_sock)
 	{
@@ -432,6 +441,15 @@ static void radiobot_conf_reload()
 			i--;
 		}
 	}
+
+	if(mc)
+	{
+		memcached_free(mc);
+		mc = NULL;
+	}
+
+	if(radiobot_conf.memcached_config)
+		mc = memcached(radiobot_conf.memcached_config, strlen(radiobot_conf.memcached_config));
 }
 
 static void radiobot_db_read(struct database *db)
@@ -519,6 +537,26 @@ static void shared_memory_changed(struct module *module, const char *key, void *
 	debug("Streamtitle changed -> %s", current_streamtitle);
 	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, "Playlist", current_streamtitle, radiobot_conf.site_url);
 	show_updated();
+}
+
+static void memcache_set(const char *key, time_t ttl, const char *format, ...)
+{
+	va_list args;
+	char buf[1024];
+	memcached_return_t rc;
+
+	if(!mc)
+		return;
+
+	va_start(args, format);
+	vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
+
+	rc = memcached_set(mc, key, strlen(key), buf, strlen(buf), ttl, 0);
+	if(rc != MEMCACHED_SUCCESS)
+		rc = memcached_set(mc, key, strlen(key), buf, strlen(buf), ttl, 0); // retry
+	if(rc != MEMCACHED_SUCCESS)
+		log_append(LOG_WARNING, "memcached_set() failed: %s", memcached_strerror(mc, rc));
 }
 
 static time_t check_queue_full()
@@ -1621,6 +1659,12 @@ static void show_updated_readonly()
 		http_stream_status_send(client->client, 0);
 		i--;
 	}
+
+	memcache_set("radiobot.mod", 0, "%s", (current_mod ? sanitize_nick(current_mod) : ""));
+	memcache_set("radiobot.mod2", 0, "%s", (current_mod_2 ? sanitize_nick(current_mod_2) : ""));
+	memcache_set("radiobot.show", 0, "%s", (current_show ? to_utf8(current_show) : "Playlist"));
+	memcache_set("radiobot.song", 0, "%s", (current_title ? to_utf8(current_title) : ""));
+	memcache_set("radiobot.listeners", 0, "%u", stream_stats.listeners_current);
 }
 
 static void cmdsock_drop_client_tmr(void *bound, struct sock *sock)
