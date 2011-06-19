@@ -29,6 +29,7 @@
 #include <sys/param.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/types.h>
 #include <sys/wait.h>
