@@ -31,9 +31,10 @@ COMMAND(massmode)
 	// if only nickmask given, expand to hostmask
 	if(strchr(usermask, '!') == NULL && strchr(usermask, '@') == NULL) {
 		char *usermask_backup = usermask;
-		usermask = malloc(strlen(usermask_backup) + 5 /* !*@*\0 */);
+		const char *mask_suffix = "!*@*";
+		usermask = malloc(strlen(usermask_backup) + strlen(mask_suffix) + 1);
 		strcpy(usermask, usermask_backup);
-		strcat(usermask, "!*@*");
+		strcat(usermask, mask_suffix);
 		free(usermask_backup);
 	}
 
