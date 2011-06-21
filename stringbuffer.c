@@ -51,6 +51,12 @@ void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str)
 	stringbuffer_append_string_n(sbuf, str, strlen(str));
 }
 
+void stringbuffer_empty(struct stringbuffer *sbuf)
+{
+	sbuf->len = 0;
+	sbuf->string[0] = '\0';
+}
+
 void stringbuffer_erase(struct stringbuffer *sbuf, unsigned int start, unsigned int len)
 {
 	// Starting boundary beyond end of string
@@ -132,6 +138,17 @@ void stringbuffer_append_printf(struct stringbuffer *sbuf, const char *fmt, ...)
 
 	va_start(args, fmt);
 	stringbuffer_append_vprintf(sbuf, fmt, args);
+	va_end(args);
+}
+
+void stringbuffer_printf(struct stringbuffer *sbuf, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	stringbuffer_empty(sbuf);
+	stringbuffer_append_vprintf(sbuf, fmt, args);
+
 	va_end(args);
 }
 

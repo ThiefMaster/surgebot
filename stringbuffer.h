@@ -18,6 +18,7 @@ void stringbuffer_append_char(struct stringbuffer *sbuf, char c);
 void stringbuffer_append_string_n(struct stringbuffer *sbuf, const char *str, size_t len);
 void stringbuffer_append_string(struct stringbuffer *sbuf, const char *str);
 
+void stringbuffer_empty(struct stringbuffer *sbuf);
 void stringbuffer_erase(struct stringbuffer *sbuf, unsigned int start, unsigned int len);
 void stringbuffer_insert_n(struct stringbuffer *sbuf, unsigned int pos, const char *str, size_t n);
 void stringbuffer_insert(struct stringbuffer *sbuf, unsigned int pos, const char *str);
@@ -27,6 +28,7 @@ char *stringbuffer_shiftspn(struct stringbuffer *sbuf, const char *delim_list, u
 
 void stringbuffer_append_vprintf(struct stringbuffer *sbuf, const char *fmt, va_list args);
 void stringbuffer_append_printf(struct stringbuffer *sbuf, const char *fmt, ...);
+void stringbuffer_printf(struct stringbuffer *sbuf, const char *fmt, ...);
 
 void stringbuffer_flush(struct stringbuffer *sbuf);
 char *stringbuffer_flush_return(struct stringbuffer *sbuf, size_t len);
