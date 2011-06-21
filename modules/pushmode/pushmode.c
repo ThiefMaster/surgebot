@@ -22,9 +22,11 @@ static void pushmode_execute(void *bound, void *data);
 
 static struct dict *pushmode_dict;
 static long max_modes = 3;
+static struct module *this;
 
 MODULE_INIT
 {
+	this = self;
 	pushmode_dict = dict_create();
 	dict_set_free_funcs(pushmode_dict, (dict_free_f*)free, (dict_free_f*)ptrlist_free);
 
@@ -57,15 +59,15 @@ MODULE_FINI
 static void pushmode_add_timer()
 {
 	// only if timer not yet added
-	if(!timer_exists_boundname(NULL, "pushmode")) {
+	if(!timer_exists_boundname(this, "pushmode")) {
 		extern time_t now;
-		timer_add(NULL, "pushmode", now, pushmode_execute, NULL, 0, 0);
+		timer_add(this, "pushmode", now, pushmode_execute, NULL, 0, 0);
 	}
 }
 
 static void pushmode_del_timer()
 {
-	timer_del_boundname(NULL, "pushmode");
+	timer_del_boundname(this, "pushmode");
 }
 
 static void pushmode_free(struct delayed_mode *mode)
