@@ -149,9 +149,9 @@ IRC_HANDLER(privmsg)
 	const char *msg = argv[2];
 	//char *tmp;
 
-	if(src && src->nick)
+	if(IsChannelName(dst) && src && src->nick)
 	{
-		if(!strcasecmp(dst, "#help"))
+		if(!strcasecmp(dst, "#help") || !strcasecmp(dst, "#surgebot"))
 		{
 			struct irc_channel *irc_channel;
 			struct irc_user *irc_user;
@@ -191,6 +191,18 @@ IRC_HANDLER(privmsg)
 						"If you require GameSurge Staff interaction (such as channel registration), visit our #support channel. "
 						"Have a great day!")*/
 					 "Welcome. Ask. In here, not in a PM. We won't PM you either.");
+				last_msg = now;
+				return;
+			}
+		}
+		
+		if(IsChannelName(dst) && strcasecmp(dst, "#help") != 0 && strcasecmp(dst, "#gamesurge") != 0) {
+			size_t len = strlen(msg);
+			const time_t min_duration = 60;
+			static time_t last_msg = 0;
+
+			if(len >= 2 && len == strspn(msg, ".") && last_msg <= (now - min_duration)) {
+				irc_send("PRIVMSG %s :\001ACTION evolves into pacman and eats up all of %s's dots\001", dst, src->nick);
 				last_msg = now;
 				return;
 			}
