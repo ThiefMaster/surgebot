@@ -59,7 +59,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "slap",	slap,		0, CMD_REQUIRE_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "bday",	bday,		2, CMD_REQUIRE_AUTHED , "group(admins)");
 	DEFINE_COMMAND(self, "loadavg", loadavg,	0, 0, "group(admins)");
-	DEFINE_COMMAND(self, "blah",	blah,		0, 0, "group(admins)");
+	DEFINE_COMMAND(self, "blah",	blah,		0, CMD_REQUIRE_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "ducks",	ducks,		0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "apple",	apple,		0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "windows",	windows,	0, CMD_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
@@ -115,7 +115,7 @@ COMMAND(loadavg)
 IRC_HANDLER(lmgtfy)
 {
 	unsigned int count;
-	char *nick, *msgbak, *msgdup, *vec[3]; // Nick: lmgtfy <keyword(s)>
+	char *nick, *msgdup, *vec[3]; // Nick: lmgtfy <keyword(s)>
 	const char *msg, *dst = argv[1];
 	struct irc_user *user;
 	struct irc_channel *channel;
@@ -125,14 +125,13 @@ IRC_HANDLER(lmgtfy)
 
 	assert((channel = channel_find(dst)));
 
-	msg = argv[2];
-	msgbak = msgdup = strdup(msg);
+	msgdup = strdup(argv[2]);
 
 	count = tokenize(msgdup, vec, ArraySize(vec), ' ', 0);
 
 	if(count <= 2 || strcasecmp(vec[1], "lmgtfy"))
 	{
-		free(msgbak);
+		free(msgdup);
 		return;
 	}
 
@@ -141,7 +140,7 @@ IRC_HANDLER(lmgtfy)
 		irc_send("PRIVMSG %s :\002%s\002: http://lmgtfy.com/?q=%s", dst, nick, urlencode(vec[2]));
 
 	free(nick);
-	free(msgbak);
+	free(msgdup);
 }
 
 IRC_HANDLER(privmsg)
@@ -578,7 +577,7 @@ COMMAND(grammar_police)
 COMMAND(switzerland)
 {
 	const char *target = channel ? channel->name : src->nick;
-	
+
 	irc_send("PRIVMSG %s :\0034,4-------------------------------", target);
 	irc_send("PRIVMSG %s :\0034,4-------------\0030,0:::\0034,4---------------", target);
 	irc_send("PRIVMSG %s :\0034,4-------------\0030,0:::\0034,4---------------", target);
