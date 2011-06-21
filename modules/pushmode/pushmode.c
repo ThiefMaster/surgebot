@@ -103,7 +103,7 @@ void pushmode(struct irc_channel *channel, char *mode, const char *target)
 
 		int flag = 0;
 		if(*mode_bak == 'v') flag = MODE_VOICE;
-		else				 flag = MODE_OP;
+		else flag = MODE_OP;
 
 		if((sign == '+' && (chanuser->flags & flag)) || (sign == '-' && !(chanuser->flags & flag))) {
 			// mode already set, ignore
