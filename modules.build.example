@@ -6,6 +6,7 @@ MODULES += autoop bitly chandict chanfw chanlog chanserv_access chanserv_eventlo
 MODULES += chanserv_users chanspy ctcp db github google greeting http httpd ipv6
 MODULES += misc paste php quote serverstats sharedmem spelling timers tinyurl topic
 MODULES += urbandict webinterface youtube
+MODULES += pushmode massmode
 # Less common modules:
 #MODULES += klostervote
 #MODULES += maxfrag
