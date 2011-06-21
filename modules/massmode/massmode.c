@@ -3,6 +3,7 @@
 #include "stringbuffer.h"
 #include "dict.h"
 #include "irc.h"
+#include "chanuser.h"
 #include "modules/commands/commands.h"
 #include "modules/pushmode/pushmode.h"
 
@@ -24,6 +25,16 @@ MODULE_FINI
  */
 COMMAND(massmode)
 {
+	// check whether bot is oped
+	struct irc_user *ircuser = user_find(bot.nickname);
+	assert_return(ircuser != NULL, 0);
+	struct irc_chanuser *chanuser = channel_user_find(channel, ircuser);
+	assert_return(chanuser != NULL, 0);
+	if(!(chanuser->flags & MODE_OP)) {
+		reply("I must be opped on $b%s$b to modify channel modes.", channel->name);
+		return 0;
+	}
+
 	char *usermask = strdup(argv[2]);
 	char *usermode = argv[1];
 	struct stringbuffer *sbuf = stringbuffer_create();
