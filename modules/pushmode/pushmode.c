@@ -7,8 +7,9 @@
 #include "irc.h"
 #include "chanuser.h"
 #include "modules/pushmode/pushmode.h"
+#include "modules/tools/tools.h"
 
-MODULE_DEPENDS(NULL);
+MODULE_DEPENDS("tools", NULL);
 
 struct delayed_mode {
 	char *target;
@@ -88,27 +89,8 @@ void pushmode(struct irc_channel *channel, char *mode, const char *target)
 	}
 	// make sure there is exactly one mode specifier
 	assert(strlen(mode_bak) == 1);
-
-	if(*mode_bak == 'v' || *mode_bak == 'o') {
-		struct irc_user *ircuser = user_find(target);
-		if(!ircuser) {
-			debug("pushmode: User '%s' does not exist, tried to set usermode %s", target, mode);
-			return;
-		}
-		struct irc_chanuser *chanuser = channel_user_find(channel, ircuser);
-		if(!chanuser) {
-			debug("pushmode: User '%s' is not on %s, can't set usermode %s", target, channel->name, mode);
-			return;
-		}
-
-		int flag = 0;
-		if(*mode_bak == 'v') flag = MODE_VOICE;
-		else flag = MODE_OP;
-
-		if((sign == '+' && (chanuser->flags & flag)) || (sign == '-' && !(chanuser->flags & flag))) {
-			// mode already set, ignore
-			return;
-		}
+	if(!channel_mode_changes_state(channel, mode, target)) {
+		return;
 	}
 
 	// Is there a list of modes for this channel?
