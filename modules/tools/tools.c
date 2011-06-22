@@ -489,6 +489,7 @@ unsigned char channel_mode_changes_state(struct irc_channel *channel, const char
 				assert_return(arg != NULL, 0);
 			}
 			flag = MODE_LIMIT;
+			break;
 		case 'i':
 			flag = MODE_INVITEONLY;
 			break;
@@ -524,6 +525,9 @@ unsigned char channel_mode_changes_state(struct irc_channel *channel, const char
 		case 'z':
 			flag = MODE_REGISTERED;
 			break;
+		default:
+			log_append(LOG_ERROR, "channel_mode_changes_state: Unsupported mode: %s", mode);
+			return 0;
 	}
 	return ((flags & flag) != 0) != set;
 }

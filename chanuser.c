@@ -140,7 +140,6 @@ void channel_set_limit(struct irc_channel *channel, unsigned int limit)
 	channel->limit = limit;
 }
 
-
 /* User functions */
 struct dict *user_dict()
 {
