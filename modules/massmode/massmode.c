@@ -9,8 +9,9 @@
 #include "modules/commands/commands.h"
 #include "modules/commands/command_rule.h"
 #include "modules/pushmode/pushmode.h"
+#include "modules/tools/tools.h"
 
-MODULE_DEPENDS("commands", "pushmode", NULL);
+MODULE_DEPENDS("commands", "pushmode", "tools", NULL);
 
 static const long	default_max_modes = 1;
 static char *		default_override_rule = "group(admins)";
@@ -58,7 +59,7 @@ COMMAND(massmode)
 	struct irc_chanuser *chanuser = channel_user_find(channel, ircuser);
 	assert_return(chanuser != NULL, 0);
 	if(!(chanuser->flags & MODE_OP)) {
-		reply("I must be opped on $b%s$b to modify channel modes.", channel->name);
+		reply("I must be opped on $b%s$b to set channel modes.", channel->name);
 		return 0;
 	}
 
@@ -83,7 +84,8 @@ COMMAND(massmode)
 	{
 		struct irc_user *user = ((struct irc_chanuser *)node->data)->user;
 		stringbuffer_printf(sbuf, "%s!%s@%s", user->nick, user->ident, user->info);
-		if(match(usermask, sbuf->string) == 0) {
+		if(match(usermask, sbuf->string) == 0
+				&& channel_mode_changes_state(channel, usermode, user->nick)) {
 			ptrlist_add(userlist, 0, strdup(user->nick));
 		}
 		stringbuffer_empty(sbuf);
