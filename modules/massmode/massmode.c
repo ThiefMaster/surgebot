@@ -100,6 +100,7 @@ COMMAND(massmode)
 		for(size_t i = 0; i < userlist->count; ++i) {
 			pushmode(channel, usermode, userlist->data[i]->ptr);
 		}
+		reply("$b%d$b user(s) affected.", userlist->count);
 	}
 
 	free(usermask);
