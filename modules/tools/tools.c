@@ -1,6 +1,7 @@
 #include "global.h"
 #include "module.h"
 #include "stringbuffer.h"
+#include "chanuser.h"
 
 // Module header
 #include "tools.h"
@@ -450,4 +451,79 @@ void make_utf8(const char *str, char *buf, size_t bufsize)
 	}
 
 	buf[i] = '\0';
+}
+
+unsigned char channel_mode_changes_state(struct irc_channel *channel, const char *mode, const char *arg)
+{
+	char sign = '+';
+	if(*mode == '+' || *mode == '-') {
+		sign = *mode++;
+	}
+	// make sure there is only one mode character
+	assert_return(strlen(mode) == 1, 0);
+	unsigned char set = (sign == '+');
+	int flags = channel->modes;
+	int flag = 0;
+
+	switch(*mode) {
+		case 'v':
+		case 'o':
+			assert_return(arg != NULL, 0);
+			struct irc_user *ircuser = user_find(arg);
+			assert_return(ircuser != NULL, 0);
+			struct irc_chanuser *chanuser = channel_user_find(channel, ircuser);
+			assert_return(chanuser != NULL, 0);
+			flag = (*mode == 'v') ? MODE_VOICE : MODE_OP;
+			flags = chanuser->flags;
+			break;
+		case 'k':
+			assert_return(arg != NULL, 0);
+			if(flags & MODE_KEYED) {
+				// if a key is already set, the only allowed state change is removing the key
+				return !strcmp(channel->key, arg) && !set;
+			}
+			// otherwise, setting any key is a valid state change
+			return set;
+		case 'l':
+			if(set) {
+				assert_return(arg != NULL, 0);
+			}
+			flag = MODE_LIMIT;
+		case 'i':
+			flag = MODE_INVITEONLY;
+			break;
+		case 't':
+			flag = MODE_TOPICLIMIT;
+			break;
+		case 'p':
+			flag = MODE_PRIVATE;
+			break;
+		case 's':
+			flag = MODE_SECRET;
+			break;
+		case 'm':
+			flag = MODE_MODERATED;
+			break;
+		case 'n':
+			flag = MODE_NOPRIVMSGS;
+			break;
+		case 'D':
+			flag = MODE_DELJOINS;
+			break;
+		case 'd':
+			return 0;
+		case 'r':
+			flag = MODE_REGONLY;
+			break;
+		case 'c':
+			flag = MODE_NOCOLOUR;
+			break;
+		case 'C':
+			flag = MODE_NOCTCP;
+			break;
+		case 'z':
+			flag = MODE_REGISTERED;
+			break;
+	}
+	return ((flags & flag) != 0) != set;
 }
