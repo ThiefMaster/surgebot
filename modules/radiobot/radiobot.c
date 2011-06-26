@@ -1655,7 +1655,7 @@ static void show_updated_readonly()
 	for(unsigned int i = 0; i < http_clients->count; i++)
 	{
 		struct rb_http_client *client = http_clients->data[i];
-		debug("Notifying client %p %s %s", client, client->uuid, client->nick);
+		//debug("Notifying client %p %s %s", client, client->uuid, client->nick);
 		http_stream_status_send(client->client, 0);
 		i--;
 	}
