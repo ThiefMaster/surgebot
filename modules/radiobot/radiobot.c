@@ -787,7 +787,7 @@ HTTP_HANDLER(http_stream_status)
 
 	http_request_detach(client, NULL);
 	client->dead_callback = http_stream_status_dead;
-	timer_add(this, "http_poll_timeout", now + HTTP_POLL_DURATION, (timer_f *)http_stream_status_timeout, client, 0, 1);
+	timer_add(this, "http_poll_timeout", now + HTTP_POLL_DURATION, (timer_f *)http_stream_status_timeout, client, 0, 0);
 
 	rb_client = malloc(sizeof(struct rb_http_client));
 	memset(rb_client, 0, sizeof(struct rb_http_client));
@@ -802,7 +802,7 @@ HTTP_HANDLER(http_stream_status)
 		rb_client->playerState = strtoul(str, NULL, 10);
 	if((str = dict_find(get_vars, "uuid")) && !strpbrk(str, "\r\n"))
 		strlcpy(rb_client->uuid, str, sizeof(rb_client->uuid));
-	debug("Client connected: %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
+	//debug("Client connected: %p %s %s", rb_client, rb_client->uuid, rb_client->nick);
 	rb_http_client_list_add(http_clients, rb_client);
 	dict_free(get_vars);
 }
