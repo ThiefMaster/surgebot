@@ -745,7 +745,7 @@ static void http_process_request(struct http_client *client)
 		return;
 	}
 
-	debug("Processing http request for client %p", client);
+	//debug("Processing http request for client %p", client);
 	if(!client->content_start && !http_parse(client)) // http_parse returns non-zero when headers are parsed completely
 		return;
 
@@ -773,7 +773,7 @@ static void http_process_request(struct http_client *client)
 
 void http_request_finalize(struct http_client *client)
 {
-	debug("Finalizing client %p %s?%s", client, client->uri, client->query_string);
+	//debug("Finalizing client %p %s?%s", client, client->uri, client->query_string);
 	client->delay = 0;
 	http_write_header_default(client);
 	http_writesock(client);
@@ -812,7 +812,7 @@ static void http_request_complete(struct http_client *client)
 {
 	unsigned int size;
 
-	debug("Request for '%s' (client %p) is completed", client->uri, client);
+	//debug("Request for '%s' (client %p) is completed", client->uri, client);
 	requests_served++;
 	if(client->state & HTTP_CONNECTION_CLOSE)
 	{
