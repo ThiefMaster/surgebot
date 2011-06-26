@@ -1761,6 +1761,7 @@ static void stats_sock_connect()
 	{
 		log_append(LOG_WARNING, "connect() to stream server (%s:%d) failed.", radiobot_conf.stream_ip_stats, radiobot_conf.stream_port_stats);
 		stats_sock = NULL;
+		timer_add(this, "stats_timeout", now + 60, stats_sock_timeout, NULL, 0, 0);
 		return;
 	}
 
