@@ -69,7 +69,7 @@ COMMAND(schedule_add)
 
 	memset(&show_info, 0, sizeof(struct show_info));
 
-	if(match("??:??", argv[1]) != 0)
+	if(match("??:??", argv[1]) != 0 && match("?:??", argv[1]) != 0)
 	{
 		debug("First argument doesn't seem to be a timespec; assuming nick");
 		nick = argv[1];
