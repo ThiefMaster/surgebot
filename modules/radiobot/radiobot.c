@@ -91,6 +91,7 @@ COMMAND(setmod);
 COMMAND(setsecmod);
 COMMAND(setplaylist);
 COMMAND(settitle);
+COMMAND(sendsongtitle);
 COMMAND(queuefull);
 COMMAND(playlist);
 COMMAND(dj);
@@ -242,6 +243,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "setsecmod",	setsecmod,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "setplaylist",	setplaylist,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "settitle",	settitle,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "sendsongtitle",	sendsongtitle,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "queuefull",	queuefull,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "playlist",	playlist,	0, 0, "true");
 	DEFINE_COMMAND(this, "dj",		dj,		0, 0, "true");
@@ -1144,6 +1146,26 @@ COMMAND(settitle)
 	reply("Aktueller Streamsongtitel: $b%s$b", (current_streamtitle ? current_streamtitle : "n/a"));
 	database_write(radiobot_db);
 	show_updated();
+	return 1;
+}
+
+COMMAND(sendsongtitle)
+{
+	char *tmp;
+
+	if(argc < 2)
+	{
+		reply("Aktueller Songtitel: $b%s$b", (current_title ? current_title : "n/a"));
+		return 0;
+	}
+
+	tmp = untokenize(argc - 1, argv + 1, " ");
+	set_current_title(tmp);
+	free(tmp);
+
+	irc_send("PRIVMSG %s :Songtitel geändert auf $b%s$b.", radiobot_conf.teamchan, to_utf8(current_title));
+	reply("Aktueller Songtitel: $b%s$b", to_utf8(current_title));
+	show_updated_readonly();
 	return 1;
 }
 
