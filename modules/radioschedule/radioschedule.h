@@ -1,12 +1,11 @@
 #ifndef RADIOSCHEDULE_H
 #define RADIOSCHEDULE_H
 
+struct pgsql;
 struct
 {
-	const char *mysql_host;
-	const char *mysql_user;
-	const char *mysql_pass;
-	const char *mysql_db;
+	const char *db_conn_string;
+	struct pgsql *pg_conn;
 } radioschedule_conf;
 
 struct show_info

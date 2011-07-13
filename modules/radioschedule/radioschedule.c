@@ -2,11 +2,13 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/help/help.h"
+#include "modules/radioplaylist/pgsql.h"
 #include "irc.h"
 #include "conf.h"
 #include "radioschedule.h"
 
-MODULE_DEPENDS("commands", "help", "tools", NULL);
+MODULE_DEPENDS("commands", "help", "tools", "radioplaylist", NULL);
+// TODO: remove radioplaylist dependency as soon as pgsql is a module
 
 COMMAND(schedule_add);
 COMMAND(schedule_extend);
@@ -41,17 +43,19 @@ static void radioschedule_conf_reload()
 {
 	char *str;
 
-	str = conf_get("radioschedule/mysql_host", DB_STRING);
-	radioschedule_conf.mysql_host = str ? str : "localhost";
+	str = conf_get("radioschedule/db_conn_string", DB_STRING);
+	radioschedule_conf.db_conn_string = str ? str : "";
 
-	str = conf_get("radioschedule/mysql_user", DB_STRING);
-	radioschedule_conf.mysql_user = str ? str : "root";
-
-	str = conf_get("radioschedule/mysql_pass", DB_STRING);
-	radioschedule_conf.mysql_pass = str ? str : "";
-
-	str = conf_get("radioschedule/mysql_db", DB_STRING);
-	radioschedule_conf.mysql_db = str ? str : "test";
+	if(!radioschedule_conf.pg_conn || !(str = conf_get_old("radioschedule/db_conn_string", DB_STRING)) || strcmp(str, radioschedule_conf.db_conn_string))
+	{
+		struct pgsql *new_conn = pgsql_init(radioschedule_conf.db_conn_string);
+		if(new_conn)
+		{
+			if(radioschedule_conf.pg_conn)
+				pgsql_fini(radioschedule_conf.pg_conn);
+			radioschedule_conf.pg_conn = new_conn;
+		}
+	}
 }
 
 COMMAND(schedule_add)
