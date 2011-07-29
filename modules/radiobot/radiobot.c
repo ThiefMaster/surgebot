@@ -31,6 +31,7 @@
 // %s: DJ
 // %s: Show title
 #define TOPIC_FMT	"-=={{ Radio eXodus }}=={{ OnAir: %s }}=={{ Showtitel: %s }}=={{ %s }}=={{ Befehle: *dj *stream *status *title *wunsch *gruss }}==-"
+#define TOPIC_FMT_PL	"-=={{ Radio eXodus }}=={{ %s }}=={{ Genre: %s }}=={{ %s }}=={{ Befehle: *nextmod *stream *status *title *genrevote *songvote }}==-"
 // only used if CACHE_STATS is defined:
 #define STATS_DELAY	15
 // #define CACHE_STATS
@@ -539,7 +540,7 @@ static void shared_memory_changed(struct module *module, const char *key, void *
 	MyFree(current_show);
 	current_show = strdup(current_streamtitle);
 	debug("Streamtitle changed -> %s", current_streamtitle);
-	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, "Playlist", current_streamtitle, radiobot_conf.site_url);
+	irc_send("TOPIC %s :" TOPIC_FMT_PL, radiobot_conf.radiochan, "Playlist", playlist_genre, radiobot_conf.site_url);
 	show_updated();
 }
 
@@ -1072,7 +1073,12 @@ COMMAND(setmod)
 	current_streamtitle = strdup(showtitle);
 	queue_full = 0;
 
-	irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, (current_mod ? sanitize_nick(current_mod) : "Playlist"), current_show, radiobot_conf.site_url);
+	if(current_mod) {
+		irc_send("TOPIC %s :" TOPIC_FMT, radiobot_conf.radiochan, sanitize_nick(current_mod), current_show, radiobot_conf.site_url);
+	}
+	else {
+		irc_send("TOPIC %s :" TOPIC_FMT_PL, radiobot_conf.radiochan, "Playlist", playlist_genre ? playlist_genre : "n/a", radiobot_conf.site_url);
+	}
 	irc_send("PRIVMSG %s :Mod geändert auf $b%s$b (Showtitel/Streamtitel: $b%s$b).", radiobot_conf.teamchan, (current_mod ? current_mod : "[Playlist]"), to_utf8(current_show));
 	reply("Aktueller Mod: $b%s$b (Showtitel/Streamtitel: $b%s$b)", (current_mod ? current_mod : "[Playlist]"), current_show);
 	database_write(radiobot_db);
