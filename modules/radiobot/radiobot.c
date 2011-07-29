@@ -1129,7 +1129,7 @@ COMMAND(setplaylist)
 	if(!strcmp(current_playlist, "*"))
 		MyFree(current_playlist);
 
-	if(current_playlist && !strcasecmp(current_playlist, "on"))
+	if(current_playlist && (!strcasecmp(current_playlist, "on") || !strcasecmp(current_playlist, "playlist")))
 		irc_send("PRIVMSG %s :%s, bist du sicher, dass du die $bPlaylist-URL$b auf $b%s$b setzen wolltest, statt die Playlist einzuschalten?!", radiobot_conf.teamchan, src->nick, current_playlist);
 
 	irc_send("PRIVMSG %s :Playlist geändert auf $b%s$b.", radiobot_conf.teamchan, (current_playlist ? current_playlist : "[Keine]"));
