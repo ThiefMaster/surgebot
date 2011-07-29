@@ -378,6 +378,9 @@ static void radiobot_conf_reload()
 	str = conf_get("radiobot/teamchan", DB_STRING);
 	radiobot_conf.teamchan = str;
 
+	str = conf_get("radiobot/adminchan", DB_STRING);
+	radiobot_conf.adminchan = str;
+
 	// server for wishes/greets from website
 	radiobot_conf.cmd_sock_host = conf_get("radiobot/cmd_sock_host", DB_STRING);
 	radiobot_conf.cmd_sock_port = ((str = conf_get("radiobot/cmd_sock_port", DB_STRING)) ? atoi(str) : 0);
@@ -577,6 +580,8 @@ static int in_wish_greet_channel(struct irc_user *user)
 	if((chan = channel_find(radiobot_conf.radiochan)) && channel_user_find(chan, user))
 		return 1;
 	else if((chan = channel_find(radiobot_conf.teamchan)) && channel_user_find(chan, user))
+		return 1;
+	else if(radiobot_conf.adminchan && (chan = channel_find(radiobot_conf.adminchan)) && channel_user_find(chan, user))
 		return 1;
 	return 0;
 }
@@ -1615,6 +1620,13 @@ static void cmdsock_read(struct sock *sock, char *buf, size_t len)
 	else if(argc > 1 && !strcasecmp(argv[0], "TEAMMSG"))
 	{
 		irc_send("PRIVMSG %s :%s", radiobot_conf.teamchan, argv[1]);
+		sock_write_fmt(sock, "SUCCESS\n");
+		return;
+	}
+	else if(argc > 1 && !strcasecmp(argv[0], "ADMINMSG"))
+	{
+		if(radiobot_conf.adminchan)
+			irc_send("PRIVMSG %s :%s", radiobot_conf.adminchan, argv[1]);
 		sock_write_fmt(sock, "SUCCESS\n");
 		return;
 	}

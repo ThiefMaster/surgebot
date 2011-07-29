@@ -19,6 +19,7 @@ struct radiobot_conf
 	const char *stream_url_ram;
 	const char *radiochan;
 	const char *teamchan;
+	const char *adminchan;
 	const char *cmd_sock_host;
 	unsigned int cmd_sock_port;
 	const char *cmd_sock_pass;
