@@ -234,6 +234,7 @@ MODULE_INIT
 
 	reg_shared_memory_changed_hook(shared_memory_changed);
 	playlist_genre = (str = shared_memory_get("radioplaylist", "genre", NULL)) ? strdup(str) : NULL;
+	memcache_set("radiobot.playlist_genre", 0, "%s", (playlist_genre ? to_utf8(playlist_genre) : ""));
 	debug("current playlist genre: %s", playlist_genre);
 
 	DEFINE_COMMAND(this, "stats clients",	stats_clients,	0, 0, "group(admins)");
@@ -527,6 +528,7 @@ static void shared_memory_changed(struct module *module, const char *key, void *
 
 	MyFree(playlist_genre);
 	playlist_genre = strdup((const char *)new);
+	memcache_set("radiobot.playlist_genre", 0, "%s", to_utf8(playlist_genre));
 
 	// Is there a real mod? Don't do anything
 	if(current_mod)
