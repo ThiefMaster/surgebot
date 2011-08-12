@@ -48,6 +48,8 @@ struct playlist
 	struct playlist_node *head;
 	struct playlist_node *tail;
 	struct playlist_node *cur;
+	struct playlist_node *next_random;
+	struct playlist_node *next_random_cur;
 	uint32_t count;
 
 	uint8_t load_flags;
@@ -65,6 +67,7 @@ struct playlist
 	void (*free_node)(struct playlist_node *node);
 	void (*enqueue)(struct playlist *playlist, struct playlist_node *node);
 	void (*enqueue_first)(struct playlist *playlist, struct playlist_node *node);
+	void (*prepare)(struct playlist *playlist, struct playlist_node *node);
 };
 
 int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_t *new_count, uint32_t *updated_count);

@@ -123,6 +123,7 @@ COMMAND(playlist_cancelvote_song);
 COMMAND(playlist_cancelvote_genre);
 static uint8_t in_team_channel(struct irc_user *user);
 static void songvote_stream_song_changed();
+static void prepare_new_song();
 static void songvote_free();
 static void songvote_reset();
 static void songvote_finish(void *bound, void *data);
@@ -447,7 +448,7 @@ COMMAND(playlist_next)
 	}
 
 	pthread_mutex_lock(&playlist_mutex);
-	if(!(cur = stream_state.playlist->queue_cur))
+	if(!(cur = stream_state.playlist->next_random_cur) && !(cur = stream_state.playlist->queue_cur))
 		cur = stream_state.playlist->cur;
 	pthread_mutex_unlock(&playlist_mutex);
 
@@ -483,7 +484,7 @@ COMMAND(playlist_status)
 	pthread_mutex_unlock(&stream_state_mutex);
 
 	pthread_mutex_lock(&playlist_mutex);
-	if(!(cur = stream_state.playlist->queue_cur))
+	if(!(cur = stream_state.playlist->next_random_cur) && !(cur = stream_state.playlist->queue_cur))
 		cur = stream_state.playlist->cur;
 	pthread_mutex_unlock(&playlist_mutex);
 
@@ -1163,7 +1164,7 @@ COMMAND(playlist_report)
 
 	// Lock stream state as we have to read multiple values which should be from the same song
 	pthread_mutex_lock(&playlist_mutex);
-	if(!(cur = stream_state.playlist->queue_cur))
+	if(!(cur = stream_state.playlist->next_random_cur) && !(cur = stream_state.playlist->queue_cur))
 		cur = stream_state.playlist->cur;
 	pthread_mutex_unlock(&playlist_mutex);
 
@@ -1230,6 +1231,48 @@ static uint8_t in_team_channel(struct irc_user *user)
 	if((chan = channel_find(radioplaylist_conf.teamchan)) && channel_user_find(chan, user))
 		return 1;
 	return 0;
+}
+
+static void prepare_new_song()
+{
+	char idbuf[16], tsbuf[16], querybuf[768];
+	PGresult *res;
+	int num_rows;
+	uint32_t song_id;
+	struct playlist_node *node;
+
+	snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
+	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
+	snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
+			SELECT DISTINCT ON (artist) id \
+			FROM playlist \
+			JOIN song_genres s ON (s.song_id = playlist.id) \
+			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $2 AND NOT EXISTS ( \
+				SELECT h.id \
+				FROM history h \
+				JOIN playlist h_pl ON (h_pl.id = h.song_id) \
+				WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist \
+			) \
+			ORDER BY artist, random()) _anon \
+		ORDER BY random()", radioplaylist_conf.songvote_block_artist_interval);
+	res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(2, idbuf, tsbuf));
+	if(!res || !(num_rows = pgsql_num_rows(res)))
+	{
+		log_append(LOG_WARNING, "Could not load new song (res=%p, rows=%d)", res, res ? num_rows : -1);
+		pgsql_free(res);
+		return;
+	}
+
+	song_id = strtoul(pgsql_nvalue(res, 0, "id"), NULL, 10);
+	pgsql_free(res);
+	node = stream_state.playlist->get_node(stream_state.playlist, song_id);
+	if(!node || !node->title)
+		return;
+
+	debug("Preparing song: %s - %s - %s", node->artist, node->album, node->title);
+	pthread_mutex_lock(&playlist_mutex);
+	stream_state.playlist->prepare(stream_state.playlist, node);
+	pthread_mutex_unlock(&playlist_mutex);
 }
 
 static void songvote_stream_song_changed()
@@ -1634,6 +1677,7 @@ static void check_countdown()
 static void check_song_changed()
 {
 	struct playlist_node *cur;
+	uint8_t prepare_node = 0;
 
 	if(!stream_state.song_changed)
 		return;
@@ -1645,8 +1689,9 @@ static void check_song_changed()
 	if(stream_state.playlist)
 	{
 		pthread_mutex_lock(&playlist_mutex);
-		if(!(cur = stream_state.playlist->queue_cur))
+		if(!(cur = stream_state.playlist->next_random_cur) && !(cur = stream_state.playlist->queue_cur))
 			cur = stream_state.playlist->cur;
+		prepare_node = (stream_state.playlist->next_random == NULL);
 		pthread_mutex_unlock(&playlist_mutex);
 
 		if(cur && cur->id && pg_conn)
@@ -1659,6 +1704,8 @@ static void check_song_changed()
 
 
 	songvote_stream_song_changed();
+	if(prepare_node)
+		prepare_new_song();
 }
 
 static void check_scan_result()

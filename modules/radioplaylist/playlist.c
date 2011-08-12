@@ -22,6 +22,7 @@ static struct playlist_node *playlist_make_node(struct playlist *playlist, const
 static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32_t id);
 static void playlist_enqueue_head(struct playlist *playlist, struct playlist_node *node);
 static void playlist_enqueue_tail(struct playlist *playlist, struct playlist_node *node);
+static void playlist_prepare(struct playlist *playlist, struct playlist_node *node);
 static struct playlist *playlist_create();
 static void playlist_free(struct playlist *playlist);
 
@@ -151,6 +152,13 @@ static struct playlist_node *playlist_next(struct playlist *playlist)
 {
 	struct playlist_node *node = NULL;
 
+	// If we have an old (not-so-)random item, free it now
+	if(playlist->next_random_cur)
+	{
+		playlist_node_free(playlist->next_random_cur);
+		playlist->next_random_cur = NULL;
+	}
+
 	// If we have an old queued item, free it now
 	if(playlist->queue_cur)
 	{
@@ -167,6 +175,15 @@ static struct playlist_node *playlist_next(struct playlist *playlist)
 			playlist->queue->prev = NULL;
 		node->next = NULL;
 		playlist->queue_cur = node;
+		return node;
+	}
+
+	// If we have prepared a "random" song, use it
+	if(playlist->next_random)
+	{
+		node = playlist->next_random;
+		playlist->next_random_cur = node;
+		playlist->next_random = NULL;
 		return node;
 	}
 
@@ -411,6 +428,13 @@ static void playlist_enqueue_head(struct playlist *playlist, struct playlist_nod
 	playlist->queue = node;
 }
 
+static void playlist_prepare(struct playlist *playlist, struct playlist_node *node)
+{
+	if(playlist->next_random)
+		playlist_node_free(playlist->next_random);
+	playlist->next_random = node;
+}
+
 static struct playlist *playlist_create()
 {
 	struct playlist *playlist = malloc(sizeof(struct playlist));
@@ -425,12 +449,17 @@ static struct playlist *playlist_create()
 	playlist->free_node = playlist_node_free;
 	playlist->enqueue = playlist_enqueue_tail;
 	playlist->enqueue_first = playlist_enqueue_head;
+	playlist->prepare = playlist_prepare;
 
 	return playlist;
 }
 
 static void playlist_free(struct playlist *playlist)
 {
+	if(playlist->next_random_cur)
+		playlist_node_free(playlist->next_random_cur);
+	if(playlist->next_random)
+		playlist_node_free(playlist->next_random);
 	if(playlist->queue_cur)
 		playlist_node_free(playlist->queue_cur);
 
