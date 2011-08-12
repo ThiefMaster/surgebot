@@ -703,7 +703,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 		return 0;
 	}
 
-	debug("%s - %s - %s [%02u:%02u]", artist, album, title, duration_secs / 60, duration_secs % 60);
+	debug("new song: %s - %s - %s [%02u:%02u]", artist, album, title, duration_secs / 60, duration_secs % 60);
 
 	snprintf(durationbuf, sizeof(durationbuf), "%u", duration_secs);
 	snprintf(inodebuf, sizeof(inodebuf), "%lu", sb->st_ino);
