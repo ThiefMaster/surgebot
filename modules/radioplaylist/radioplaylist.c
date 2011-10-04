@@ -486,6 +486,14 @@ COMMAND(playlist_status)
 	if(!stream_state.playing)
 	{
 		reply("Die Playlist ist nicht an");
+		if(stream_state.playlist && stream_state.playlist->genre_id)
+		{
+			snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
+			res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+			if(res && pgsql_num_rows(res))
+				reply("Aktuelles Genre: %s", pgsql_nvalue(res, 0, "genre"));
+			pgsql_free(res);
+		}
 		return 1;
 	}
 
