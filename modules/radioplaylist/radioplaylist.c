@@ -1255,9 +1255,9 @@ static uint8_t should_play_promo()
 	else if(interval >= radioplaylist_conf.promo.max_delay)
 		return 1;
 	else if(interval < radioplaylist_conf.promo.avg_delay)
-		return mt_rand(0, 100) <= radioplaylist_conf.promo.chance_early;
+		return rnd <= radioplaylist_conf.promo.chance_early;
 	else if(interval < radioplaylist_conf.promo.max_delay)
-		return mt_rand(0, 100) <= radioplaylist_conf.promo.chance_late;
+		return rnd <= radioplaylist_conf.promo.chance_late;
 	return 0; // shouldn't happen
 }
 
