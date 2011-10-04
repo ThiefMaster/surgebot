@@ -725,7 +725,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	}
 
 	duration_secs = (uint16_t)round(mad_timer_count(*duration, MAD_UNITS_MILLISECONDS) / 1000.0);
-	if(duration_secs < 5)
+	if(duration_secs < 2)
 	{
 		log_append(LOG_WARNING, "file %s has an extremely short duration (%"PRIu16" secs), skipping", file, duration_secs);
 		MyFree(artist);
