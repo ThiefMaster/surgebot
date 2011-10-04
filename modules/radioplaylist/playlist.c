@@ -393,15 +393,46 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 		}
 	}
 
-	if(!existing)
-		return NULL;
+	if(existing)
+	{
+		debug("cloning node with id %"PRIu32" (%s)", existing->id, existing->file);
+		node = playlist_node_create(existing->id, existing->file);
+		node->duration = existing->duration;
+		node->artist = existing->artist ? strdup(existing->artist) : NULL;
+		node->album = existing->album ? strdup(existing->album) : NULL;
+		node->title = existing->title ? strdup(existing->title) : NULL;
+	}
+	else if(playlist->conn)
+	{
+		char idbuf[16];
+		PGresult *res;
 
-	debug("cloning node with id %"PRIu32" (%s)", existing->id, existing->file);
-	node = playlist_node_create(existing->id, existing->file);
-	node->duration = existing->duration;
-	node->artist = existing->artist ? strdup(existing->artist) : NULL;
-	node->album = existing->album ? strdup(existing->album) : NULL;
-	node->title = existing->title ? strdup(existing->title) : NULL;
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, id);
+		res = pgsql_query(playlist->conn, "SELECT * FROM playlist WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		if(!res || !pgsql_num_rows(res))
+		{
+			pgsql_free(res);
+			return NULL;
+		}
+
+		const char *tmp;
+		char *file = pgsql_nvalue_bytea(res, 0, "file");
+		uint32_t id = strtoul(pgsql_nvalue(res, 0, "id"), NULL, 10);
+		node = playlist_node_create(id, file);
+		free(file);
+		if((tmp = pgsql_nvalue(res, 0, "artist")))
+			node->artist = strdup(tmp);
+		if((tmp = pgsql_nvalue(res, 0, "album")))
+			node->album = strdup(tmp);
+		if((tmp = pgsql_nvalue(res, 0, "title")))
+			node->title = strdup(tmp);
+		node->duration = atoi(pgsql_nvalue(res, 0, "duration"));
+		node->blacklist = !strcmp(pgsql_nvalue(res, 0, "blacklist"), "t");
+		node->inode = strtoul(pgsql_nvalue(res, 0, "st_inode"), NULL, 10);
+		node->size = strtol(pgsql_nvalue(res, 0, "st_size"), NULL, 10);
+		node->mtime = strtol(pgsql_nvalue(res, 0, "st_mtime"), NULL, 10);
+	}
+
 	return node;
 }
 
