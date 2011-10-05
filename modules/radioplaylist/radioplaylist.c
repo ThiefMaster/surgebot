@@ -1327,18 +1327,20 @@ static void prepare_new_song()
 				SELECT DISTINCT ON (artist) id \
 				FROM playlist \
 				JOIN song_genres s ON (s.song_id = playlist.id) \
-				WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $2 AND NOT EXISTS ( \
+				WHERE blacklist = false AND s.genre_id = $3 AND last_vote < $2 AND NOT EXISTS ( \
 					SELECT h.id \
 					FROM history h \
 					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-					WHERE ( \
-						(h.ts >= now() - interval '%s' AND h_pl.id = playlist.id) OR \
-						(h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist) \
-					) \
+					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist.id \
+				) AND NOT EXISTS ( \
+					SELECT h.id \
+					FROM history h \
+					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
+					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist \
 				) AND EXISTS ( \
 					SELECT sg2.song_id \
 					FROM song_genres sg2 \
-					WHERE sg2.song_id = playlist.id AND sg2.genre_id = $3 \
+					WHERE sg2.song_id = playlist.id AND sg2.genre_id = $1 \
 				) \
 				ORDER BY artist, random()) _anon \
 			ORDER BY random()", radioplaylist_conf.promo.block_song_interval, radioplaylist_conf.promo.block_artist_interval);
