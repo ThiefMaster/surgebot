@@ -1408,7 +1408,7 @@ static void prepare_new_song()
 	if(!node || !node->title)
 		return;
 
-	debug("Preparing song: %s - %s - %s [promo=%u, jingle=%u]", node->artist, node->album, node->title, has_promo, has_jingle);
+	log_append((has_promo || has_jingle) ? LOG_INFO : LOG_DEBUG, "Preparing song: %s - %s - %s [promo=%u, jingle=%u]", node->artist, node->album, node->title, has_promo, has_jingle);
 	pthread_mutex_lock(&playlist_mutex);
 	stream_state.playlist->prepare(stream_state.playlist, node);
 	pthread_mutex_unlock(&playlist_mutex);
