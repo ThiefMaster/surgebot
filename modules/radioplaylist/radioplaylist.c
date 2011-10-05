@@ -201,6 +201,7 @@ static struct {
 		uint8_t chance_late;
 		uint16_t delay_after_jingle;
 		const char *block_song_interval;
+		const char *block_artist_interval;
 	} promo;
 
 	struct {
@@ -1309,7 +1310,7 @@ static uint8_t should_play_jingle()
 
 static void prepare_new_song()
 {
-	char specialidbuf[16], idbuf[16], tsbuf[16], querybuf[768];
+	char specialidbuf[16], idbuf[16], tsbuf[16], querybuf[1024];
 	PGresult *res;
 	int num_rows;
 	uint8_t has_promo = 0, has_jingle = 0;
@@ -1330,14 +1331,17 @@ static void prepare_new_song()
 					SELECT h.id \
 					FROM history h \
 					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist.id \
+					WHERE ( \
+						(h.ts >= now() - interval '%s' AND h_pl.id = playlist.id) OR \
+						(h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist) \
+					) \
 				) AND EXISTS ( \
 					SELECT sg2.song_id \
 					FROM song_genres sg2 \
 					WHERE sg2.song_id = playlist.id AND sg2.genre_id = $3 \
 				) \
 				ORDER BY artist, random()) _anon \
-			ORDER BY random()", radioplaylist_conf.promo.block_song_interval);
+			ORDER BY random()", radioplaylist_conf.promo.block_song_interval, radioplaylist_conf.promo.block_artist_interval);
 		res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(3, idbuf, tsbuf, specialidbuf));
 		if(!res || !(num_rows = pgsql_num_rows(res)))
 		{
@@ -1962,6 +1966,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/promo/block_song_interval", DB_STRING);
 	radioplaylist_conf.promo.block_song_interval = str ? str : "1 day";
+
+	str = conf_get("radioplaylist/promo/block_artist_interval", DB_STRING);
+	radioplaylist_conf.promo.block_artist_interval = str ? str : "1 hour";
 
 	str = conf_get("radioplaylist/jingles/genre_id", DB_STRING);
 	radioplaylist_conf.jingles.genre_id = str ? atoi(str) : 0;
