@@ -199,6 +199,7 @@ static struct {
 		uint16_t max_delay;
 		uint8_t chance_early;
 		uint8_t chance_late;
+		uint16_t delay_after_jingle;
 		const char *block_song_interval;
 	} promo;
 
@@ -209,6 +210,7 @@ static struct {
 		uint16_t max_delay;
 		uint8_t chance_early;
 		uint8_t chance_late;
+		uint16_t delay_after_promo;
 		const char *block_song_interval;
 	} jingles;
 } radioplaylist_conf;
@@ -1269,32 +1271,40 @@ static uint8_t should_play_promo()
 {
 	time_t interval = now - last_promo_song;
 	uint8_t rnd = mt_rand(0, 100);
-	debug("Promo song check: interval=%lu, rnd=%u", (unsigned long)interval, rnd);
-	if(interval < radioplaylist_conf.promo.min_delay)
-		return 0;
+	uint8_t recent_jingle = (now - last_jingle_song) < radioplaylist_conf.promo.delay_after_jingle;
+	uint8_t rc = 0;
+	if(recent_jingle)
+		rc = 0;
+	else if(interval < radioplaylist_conf.promo.min_delay)
+		rc = 0;
 	else if(interval >= radioplaylist_conf.promo.max_delay)
-		return 1;
+		rc = 1;
 	else if(interval < radioplaylist_conf.promo.avg_delay)
-		return rnd <= radioplaylist_conf.promo.chance_early;
+		rc = rnd <= radioplaylist_conf.promo.chance_early;
 	else if(interval < radioplaylist_conf.promo.max_delay)
-		return rnd <= radioplaylist_conf.promo.chance_late;
-	return 0; // shouldn't happen
+		rc = rnd <= radioplaylist_conf.promo.chance_late;
+	debug("Promo song check: interval=%lu, rnd=%u, recent_jingle=%u --> %u", (unsigned long)interval, rnd, recent_jingle, rc);
+	return rc;
 }
 
 static uint8_t should_play_jingle()
 {
 	time_t interval = now - last_jingle_song;
 	uint8_t rnd = mt_rand(0, 100);
-	debug("Jingle song check: interval=%lu, rnd=%u", (unsigned long)interval, rnd);
-	if(interval < radioplaylist_conf.jingles.min_delay)
-		return 0;
+	uint8_t recent_promo = (now - last_promo_song) < radioplaylist_conf.jingles.delay_after_promo;
+	uint8_t rc = 0;
+	if(recent_promo)
+		rc = 0;
+	else if(interval < radioplaylist_conf.jingles.min_delay)
+		rc = 0;
 	else if(interval >= radioplaylist_conf.jingles.max_delay)
-		return 1;
+		rc = 1;
 	else if(interval < radioplaylist_conf.jingles.avg_delay)
-		return rnd <= radioplaylist_conf.jingles.chance_early;
+		rc = rnd <= radioplaylist_conf.jingles.chance_early;
 	else if(interval < radioplaylist_conf.jingles.max_delay)
-		return rnd <= radioplaylist_conf.jingles.chance_late;
-	return 0; // shouldn't happen
+		rc = rnd <= radioplaylist_conf.jingles.chance_late;
+	debug("Jingle song check: interval=%lu, rnd=%u, recent_promo=%u --> %u", (unsigned long)interval, rnd, recent_promo, rc);
+	return rc;
 }
 
 static void prepare_new_song()
@@ -1947,6 +1957,9 @@ static void conf_reload_hook()
 	str = conf_get("radioplaylist/promo/chance_late", DB_STRING);
 	radioplaylist_conf.promo.chance_late = str ? atoi(str) : 75;
 
+	str = conf_get("radioplaylist/promo/delay_after_jingle", DB_STRING);
+	radioplaylist_conf.promo.delay_after_jingle = str ? atoi(str) : 600;
+
 	str = conf_get("radioplaylist/promo/block_song_interval", DB_STRING);
 	radioplaylist_conf.promo.block_song_interval = str ? str : "1 day";
 
@@ -1967,6 +1980,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/jingles/chance_late", DB_STRING);
 	radioplaylist_conf.jingles.chance_late = str ? atoi(str) : 75;
+
+	str = conf_get("radioplaylist/jingles/delay_after_promo", DB_STRING);
+	radioplaylist_conf.jingles.delay_after_promo = str ? atoi(str) : 600;
 
 	str = conf_get("radioplaylist/jingles/block_song_interval", DB_STRING);
 	radioplaylist_conf.jingles.block_song_interval = str ? str : "1 day";
