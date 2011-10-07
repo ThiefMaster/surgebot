@@ -465,7 +465,10 @@ static void radiobot_db_read(struct database *db)
 
 	// show info
 	if((str = database_fetch(db->nodes, "showinfo/mod", DB_STRING)))
+	{
 		current_mod = strdup(str);
+		shared_memory_set(this, "mod", strdup(sanitize_nick(current_mod)), free);
+	}
 	if((str = database_fetch(db->nodes, "showinfo/mod2", DB_STRING)))
 		current_mod_2 = strdup(str);
 	if((str = database_fetch(db->nodes, "showinfo/playlist", DB_STRING)))
@@ -515,8 +518,11 @@ static int radiobot_db_write(struct database *db)
 
 void set_current_title(const char *title)
 {
+	uint8_t changed = !current_title || strcmp(current_title, title);
 	MyFree(current_title);
 	current_title = strdup(title);
+	if(changed)
+		shared_memory_set(this, "song", strdup(current_title), free);
 	show_updated_readonly();
 }
 
@@ -898,6 +904,7 @@ IRC_HANDLER(nick)
 	{
 		MyFree(current_mod);
 		current_mod = strdup(argv[1]);
+		shared_memory_set(this, "mod", strdup(sanitize_nick(current_mod)), free);
 		database_write(radiobot_db);
 	}
 
@@ -1062,10 +1069,12 @@ COMMAND(setmod)
 		else
 			showtitle = strdup("Playlist");
 		MyFree(current_playlist);
+		shared_memory_set(this, "mod", NULL, NULL);
 	}
 	else
 	{
 		current_mod = strdup(src->nick);
+		shared_memory_set(this, "mod", strdup(sanitize_nick(current_mod)), free);
 		if(notify_func && !same_mod)
 			notify_func(&radiobot_conf, "setmod", current_mod, showtitle);
 	}
@@ -1977,7 +1986,10 @@ static void stats_parse_row(const char *key, const char *value)
 		value = "";
 
 	if(!strcasecmp(key, "CURRENTLISTENERS"))
+	{
 		stream_stats.listeners_current = atoi(value);
+		shared_memory_set(this, "listeners", strdup(value), free);
+	}
 	else if(!strcasecmp(key, "PEAKLISTENERS"))
 		stream_stats.listeners_peak = atoi(value);
 	else if(!strcasecmp(key, "MAXLISTENERS"))
