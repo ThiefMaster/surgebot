@@ -3,6 +3,7 @@
 #include "modules/commands/commands.h"
 #include "modules/sharedmem/sharedmem.h"
 #include "modules/help/help.h"
+#include "modules/pgsql/pgsql.h"
 #include "chanuser.h"
 #include "irc.h"
 #include "irc_handler.h"
@@ -14,7 +15,6 @@
 #include "surgebot.h"
 #include "timer.h"
 
-#include "pgsql.h"
 #include "playlist.h"
 
 #include <pthread.h>
@@ -216,7 +216,7 @@ static struct {
 	} jingles;
 } radioplaylist_conf;
 
-MODULE_DEPENDS("commands", "sharedmem", "help", NULL);
+MODULE_DEPENDS("commands", "sharedmem", "pgsql", "help", NULL);
 
 
 MODULE_INIT

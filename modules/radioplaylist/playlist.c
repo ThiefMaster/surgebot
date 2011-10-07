@@ -1,7 +1,7 @@
 #include "global.h"
 #include "playlist.h"
 #include "stringlist.h"
-#include "pgsql.h"
+#include "modules/pgsql/pgsql.h"
 
 #include <libgen.h>
 #include <math.h>

@@ -1,0 +1,2 @@
+LIBS_mod += -lpq
+CFLAGS_mod += -I`pg_config --includedir`

@@ -1,8 +1,22 @@
 #include "global.h"
+#include "module.h"
 #include "stringlist.h"
 #include "pgsql.h"
 
 #include <libpq-fe.h>
+
+MODULE_DEPENDS(NULL);
+
+MODULE_INIT
+{
+
+}
+
+MODULE_FINI
+{
+
+}
+
 
 struct pgsql *pgsql_init(const char *conn_info)
 {

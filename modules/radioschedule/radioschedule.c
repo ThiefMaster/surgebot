@@ -2,13 +2,12 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/help/help.h"
-#include "modules/radioplaylist/pgsql.h"
+#include "modules/pgsql/pgsql.h"
 #include "irc.h"
 #include "conf.h"
 #include "radioschedule.h"
 
-MODULE_DEPENDS("commands", "help", "tools", "radioplaylist", NULL);
-// TODO: remove radioplaylist dependency as soon as pgsql is a module
+MODULE_DEPENDS("commands", "help", "tools", "pgsql", NULL);
 
 COMMAND(schedule_add);
 COMMAND(schedule_extend);

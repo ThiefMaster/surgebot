@@ -3,7 +3,7 @@
 #include "stringlist.h"
 #include "radioschedule.h"
 #include "modules/tools/tools.h"
-#include "modules/radioplaylist/pgsql.h"
+#include "modules/pgsql/pgsql.h"
 
 
 static char *extract_html_arg(const char *str, const char *arg_name)
