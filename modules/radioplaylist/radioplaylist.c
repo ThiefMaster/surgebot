@@ -109,6 +109,7 @@ COMMAND(playlist_off);
 COMMAND(playlist_countdown);
 COMMAND(playlist_next);
 COMMAND(playlist_status);
+COMMAND(playlist_recent);
 COMMAND(playlist_play);
 COMMAND(playlist_blacklist);
 COMMAND(playlist_reload);
@@ -247,6 +248,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "playlist next",		playlist_next,		0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist play",		playlist_play,		1, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist status",		playlist_status,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "playlist recent",		playlist_recent,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "playlist blacklist",	playlist_blacklist,	1, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist reload",		playlist_reload,	0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "playlist add",		playlist_add,		1, CMD_LOG_HOSTMASK, "group(admins)");
@@ -537,6 +539,41 @@ COMMAND(playlist_status)
 			reply("Aktuelles Genre: %s", pgsql_nvalue(res, 0, "genre"));
 		pgsql_free(res);
 	}
+	return 1;
+}
+
+COMMAND(playlist_recent)
+{
+	PGresult *res;
+	uint8_t num = 5;
+	char numbuf[4];
+
+	if(argc > 1)
+		num = atoi(argv[1]);
+
+	if(num < 1 || num > 100)
+	{
+		reply("Ungültige Anzahl (max. 100)");
+		return 0;
+	}
+
+	snprintf(numbuf, sizeof(numbuf), "%"PRIu8, num);
+	res = pgsql_query(pg_conn, "SELECT s.* FROM history h JOIN playlist s ON (s.id = h.song_id) ORDER BY h.ts DESC LIMIT $1", 1, stringlist_build_n(1, numbuf));
+	if(!res)
+	{
+		reply("Datenbankfehler");
+		return 0;
+	}
+	for(int i = 0, n = pgsql_num_rows(res); i < n; i++)
+	{
+		const char *id = pgsql_nvalue(res, i, "id");
+		const char *artist = pgsql_nvalue(res, i, "artist");
+		const char *album = pgsql_nvalue(res, i, "album");
+		const char *title = pgsql_nvalue(res, i, "title");
+		uint16_t duration = atoi(pgsql_nvalue(res, i, "duration"));
+		reply("[%s] %s - %s - %s [%02u:%02u]", id, artist, album, title, duration / 60, duration % 60);
+	}
+	pgsql_free(res);
 	return 1;
 }
 
