@@ -53,6 +53,9 @@ WITH (
 	OIDS=FALSE
 );
 
+CREATE INDEX song_genres_genre_id_idx ON song_genres USING btree (genre_id);
+CREATE INDEX song_genres_song_id_idx ON song_genres USING btree (song_id);
+
 
 
 CREATE TABLE history
@@ -66,3 +69,6 @@ CREATE TABLE history
 WITH (
 	OIDS=FALSE
 );
+
+CREATE INDEX history_song_id_idx ON history USING btree (song_id);
+CREATE INDEX history_ts_idx ON history USING btree (ts);
