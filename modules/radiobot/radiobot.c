@@ -522,7 +522,7 @@ void set_current_title(const char *title)
 	MyFree(current_title);
 	current_title = strdup(title);
 	if(changed)
-		shared_memory_set(this, "song", strdup(current_title), free);
+		shared_memory_set(this, "song", strdup(to_utf8(current_title)), free);
 	show_updated_readonly();
 }
 
