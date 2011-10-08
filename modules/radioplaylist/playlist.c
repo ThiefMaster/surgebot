@@ -46,7 +46,7 @@ struct playlist *playlist_load(struct pgsql *conn, uint8_t genre_id, uint8_t fla
 
 static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint8_t flags)
 {
-	char query[256] = "SELECT * FROM playlist";
+	char query[256] = "SELECT * FROM playlist_songs";
 	int has_where = 0;
 	PGresult *res;
 	int rows;
@@ -54,7 +54,7 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint
 	if((flags & PL_L_RANDOMGENRE))
 	{
 		PGresult *genre_res;
-		genre_res = pgsql_query(playlist->conn, "SELECT id FROM genres WHERE public = true ORDER BY random() LIMIT 1", 1, NULL);
+		genre_res = pgsql_query(playlist->conn, "SELECT id FROM playlist_genres WHERE public = true ORDER BY random() LIMIT 1", 1, NULL);
 		if(!genre_res)
 		{
 			pgsql_free(genre_res);
@@ -74,7 +74,7 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint
 	}
 
 	if(genre_id)
-		strcat(query, " JOIN song_genres s ON (s.song_id = playlist.id)");
+		strcat(query, " JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id)");
 
 	if(!(flags & PL_L_ALL))
 	{
@@ -247,7 +247,7 @@ static int8_t playlist_blacklist(struct playlist *playlist, uint32_t id, struct 
 	}
 
 	snprintf(idbuf, sizeof(idbuf), "%"PRIu32, id);
-	res = pgsql_query(playlist->conn, "UPDATE playlist SET blacklist = true WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+	res = pgsql_query(playlist->conn, "UPDATE playlist_songs SET blacklist = true WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 	if(!res)
 		return -1;
 
@@ -408,7 +408,7 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 		PGresult *res;
 
 		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, id);
-		res = pgsql_query(playlist->conn, "SELECT * FROM playlist WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		res = pgsql_query(playlist->conn, "SELECT * FROM playlist_songs WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 		if(!res || !pgsql_num_rows(res))
 		{
 			pgsql_free(res);
@@ -556,7 +556,7 @@ int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_
 				char errbuf[64], idbuf[16];
 				log_append(LOG_INFO, "file %s is not readable: %s", node->file, strerror_r(errno, errbuf, sizeof(errbuf)));
 				snprintf(idbuf, sizeof(idbuf), "%"PRIu32, node->id);
-				pgsql_query(conn, "DELETE FROM playlist WHERE id = $1", 0, stringlist_build_n(1, idbuf));
+				pgsql_query(conn, "DELETE FROM playlist_songs WHERE id = $1", 0, stringlist_build_n(1, idbuf));
 				count++;
 			}
 		}
@@ -570,7 +570,7 @@ int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_
 	if(mode & PL_S_TRUNCATE)
 	{
 		log_append(LOG_INFO, "truncating playlist");
-		pgsql_query(conn, "DELETE FROM playlist", 0, NULL);
+		pgsql_query(conn, "DELETE FROM playlist_songs", 0, NULL);
 	}
 
 	// If we have no path, exit early. If we didn't truncate the playlist return a failure code.
@@ -746,7 +746,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 		char idbuf[16];
 		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, node->id);
 		res = pgsql_query(conn, "UPDATE \
-						playlist \
+						playlist_songs \
 					 SET \
 						artist = $2, \
 						album = $3, \
@@ -763,7 +763,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	}
 	else
 	{
-		res = pgsql_query_bin(conn, "INSERT INTO playlist \
+		res = pgsql_query_bin(conn, "INSERT INTO playlist_songs \
 						(file, artist, album, title, duration, st_inode, st_size, st_mtime) \
 					     VALUES \
 						($1::bytea, $2, $3, $4, $5, $6, $7, $8)",

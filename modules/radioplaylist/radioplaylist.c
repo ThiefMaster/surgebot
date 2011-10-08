@@ -506,7 +506,7 @@ COMMAND(playlist_status)
 		if(stream_state.playlist && stream_state.playlist->genre_id)
 		{
 			snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
-			res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+			res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 			if(res && pgsql_num_rows(res))
 				reply("Aktuelles Genre: %s", pgsql_nvalue(res, 0, "genre"));
 			pgsql_free(res);
@@ -534,7 +534,7 @@ COMMAND(playlist_status)
 	if(stream_state.playlist->genre_id)
 	{
 		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
-		res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 		if(res && pgsql_num_rows(res))
 			reply("Aktuelles Genre: %s", pgsql_nvalue(res, 0, "genre"));
 		pgsql_free(res);
@@ -558,7 +558,7 @@ COMMAND(playlist_recent)
 	}
 
 	snprintf(numbuf, sizeof(numbuf), "%"PRIu8, num);
-	res = pgsql_query(pg_conn, "SELECT s.* FROM history h JOIN playlist s ON (s.id = h.song_id) ORDER BY h.ts DESC LIMIT $1", 1, stringlist_build_n(1, numbuf));
+	res = pgsql_query(pg_conn, "SELECT s.* FROM playlist_history h JOIN playlist_songs s ON (s.id = h.song_id) ORDER BY h.ts DESC LIMIT $1", 1, stringlist_build_n(1, numbuf));
 	if(!res)
 	{
 		reply("Datenbankfehler");
@@ -712,9 +712,9 @@ COMMAND(playlist_reload)
 	else if(argc > 1)
 	{
 		if(aredigits(argv[1]))
-			res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE id = $1", 1, stringlist_build_n(1, argv[1]));
+			res = pgsql_query(pg_conn, "SELECT * FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, argv[1]));
 		else
-			res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE lower(genre) = lower($1)", 1, stringlist_build_n(1, argv[1]));
+			res = pgsql_query(pg_conn, "SELECT * FROM playlist_genres WHERE lower(genre) = lower($1)", 1, stringlist_build_n(1, argv[1]));
 
 		if(!res || !pgsql_num_rows(res))
 		{
@@ -733,7 +733,7 @@ COMMAND(playlist_reload)
 
 		genre_id = stream_state.playlist->genre_id;
 		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
-		res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 
 		if(res && pgsql_num_rows(res))
 			genre = strdup(pgsql_nvalue(res, 0, "genre"));
@@ -1009,14 +1009,14 @@ COMMAND(playlist_genrevote)
 			char idbuf[8];
 			uint8_t genre_id = stream_state.playlist->genre_id;
 			snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
-			res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+			res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 			if(res && pgsql_num_rows(res))
 				irc_send("PRIVMSG %s :Aktuelles Genre: $b%s$b", radioplaylist_conf.radiochan, pgsql_nvalue(res, 0, "genre"));
 			pgsql_free(res);
 		}
 
 		// build genre list and show it
-		res = pgsql_query(pg_conn, "SELECT * FROM genres WHERE public = true ORDER BY sortorder ASC, genre ASC", 1, NULL);
+		res = pgsql_query(pg_conn, "SELECT * FROM playlist_genres WHERE public = true ORDER BY sortorder ASC, genre ASC", 1, NULL);
 		if(!res || !(genre_vote.num_genres = pgsql_num_rows(res)))
 		{
 			log_append(LOG_WARNING, "Could not load genre list");
@@ -1252,7 +1252,7 @@ COMMAND(playlist_report)
 	if(stream_state.playlist->genre_id)
 	{
 		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
-		res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 		if(res && pgsql_num_rows(res))
 			genre = strdup(pgsql_nvalue(res, 0, "genre"));
 		pgsql_free(res);
@@ -1362,22 +1362,22 @@ static void prepare_new_song()
 		snprintf(specialidbuf, sizeof(specialidbuf), "%"PRIu8, radioplaylist_conf.promo.genre_id);
 		snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
 				SELECT DISTINCT ON (artist) id \
-				FROM playlist \
-				JOIN song_genres s ON (s.song_id = playlist.id) \
+				FROM playlist_songs \
+				JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
 				WHERE blacklist = false AND s.genre_id = $3 AND last_vote < $2 AND NOT EXISTS ( \
 					SELECT h.id \
-					FROM history h \
-					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist.id \
+					FROM playlist_history h \
+					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
+					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist_songs.id \
 				) AND NOT EXISTS ( \
 					SELECT h.id \
-					FROM history h \
-					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist \
+					FROM playlist_history h \
+					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
+					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist_songs.artist \
 				) AND EXISTS ( \
 					SELECT sg2.song_id \
-					FROM song_genres sg2 \
-					WHERE sg2.song_id = playlist.id AND sg2.genre_id = $1 \
+					FROM playlist_song_genres sg2 \
+					WHERE sg2.song_id = playlist_songs.id AND sg2.genre_id = $1 \
 				) \
 				ORDER BY artist, random()) _anon \
 			ORDER BY random()", radioplaylist_conf.promo.block_song_interval, radioplaylist_conf.promo.block_artist_interval);
@@ -1399,13 +1399,13 @@ static void prepare_new_song()
 		snprintf(specialidbuf, sizeof(specialidbuf), "%"PRIu8, radioplaylist_conf.jingles.genre_id);
 		snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
 				SELECT DISTINCT ON (artist) id \
-				FROM playlist \
-				JOIN song_genres s ON (s.song_id = playlist.id) \
+				FROM playlist_songs \
+				JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
 				WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $2 AND NOT EXISTS ( \
 					SELECT h.id \
-					FROM history h \
-					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist.id \
+					FROM playlist_history h \
+					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
+					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist_songs.id \
 				) \
 				ORDER BY artist, random()) _anon \
 			ORDER BY random()", radioplaylist_conf.jingles.block_song_interval);
@@ -1426,13 +1426,13 @@ static void prepare_new_song()
 	{
 		snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
 				SELECT DISTINCT ON (artist) id \
-				FROM playlist \
-				JOIN song_genres s ON (s.song_id = playlist.id) \
+				FROM playlist_songs \
+				JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
 				WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $2 AND NOT EXISTS ( \
 					SELECT h.id \
-					FROM history h \
-					JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist \
+					FROM playlist_history h \
+					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
+					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist_songs.artist \
 				) \
 				ORDER BY artist, random()) _anon \
 			ORDER BY random()", radioplaylist_conf.songvote_block_artist_interval);
@@ -1516,13 +1516,13 @@ static void songvote_stream_song_changed()
 	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
 	snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
 			SELECT DISTINCT ON (artist) id \
-			FROM playlist \
-			JOIN song_genres s ON (s.song_id = playlist.id) \
+			FROM playlist_songs \
+			JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
 			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $3 AND NOT EXISTS ( \
 				SELECT h.id \
-				FROM history h \
-				JOIN playlist h_pl ON (h_pl.id = h.song_id) \
-				WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist.artist \
+				FROM playlist_history h \
+				JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
+				WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist_songs.artist \
 			) \
 			ORDER BY artist, random()) _anon \
 		ORDER BY random() \
@@ -1562,7 +1562,7 @@ static void songvote_stream_song_changed()
 		}
 		irc_send("PRIVMSG %s :$b%u$b: %s", radioplaylist_conf.radiochan, song_vote.songs[song_vote.num_songs].id, song_vote.songs[song_vote.num_songs].name);
 		snprintf(idbuf, sizeof(idbuf), "%"PRIu32, song_id);
-		pgsql_query(pg_conn, "UPDATE playlist SET last_vote = $1 WHERE id = $2", 0, stringlist_build_n(2, tsbuf, idbuf));
+		pgsql_query(pg_conn, "UPDATE playlist_songs SET last_vote = $1 WHERE id = $2", 0, stringlist_build_n(2, tsbuf, idbuf));
 		song_vote.num_songs++;
 	}
 	pgsql_free(res);
@@ -1880,7 +1880,7 @@ static void check_song_changed()
 		{
 			char idbuf[16];
 			snprintf(idbuf, sizeof(idbuf), "%"PRIu32, cur->id);
-			pgsql_query(pg_conn, "INSERT INTO history (song_id) VALUES ($1)", 0, stringlist_build_n(1, idbuf));
+			pgsql_query(pg_conn, "INSERT INTO playlist_history (song_id) VALUES ($1)", 0, stringlist_build_n(1, idbuf));
 		}
 	}
 
@@ -2062,7 +2062,7 @@ static void conf_reload_hook()
 
 					// get genre name and store it in shared memory
 					snprintf(idbuf, sizeof(idbuf), "%"PRIu8, playlist->genre_id);
-					res = pgsql_query(pg_conn, "SELECT genre FROM genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+					res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
 					if(res && pgsql_num_rows(res))
 						genre = pgsql_nvalue(res, 0, "genre");
 					shared_memory_set(this, "genre", genre ? strdup(genre) : NULL, free);
