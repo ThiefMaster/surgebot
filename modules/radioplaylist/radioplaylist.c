@@ -194,7 +194,6 @@ static struct {
 	const char *songvote_block_artist_interval;
 
 	struct {
-		uint8_t genre_id;
 		uint16_t min_delay;
 		uint16_t avg_delay;
 		uint16_t max_delay;
@@ -206,7 +205,6 @@ static struct {
 	} promo;
 
 	struct {
-		uint8_t genre_id;
 		uint16_t min_delay;
 		uint16_t avg_delay;
 		uint16_t max_delay;
@@ -1347,7 +1345,7 @@ static uint8_t should_play_jingle()
 
 static void prepare_new_song()
 {
-	char specialidbuf[16], idbuf[16], tsbuf[16], querybuf[1024];
+	char idbuf[16], tsbuf[16], querybuf[1024];
 	PGresult *res;
 	int num_rows;
 	uint8_t has_promo = 0, has_jingle = 0;
@@ -1357,31 +1355,27 @@ static void prepare_new_song()
 	snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
 	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
 
-	if(radioplaylist_conf.promo.genre_id && should_play_promo())
+	if(should_play_promo())
 	{
-		snprintf(specialidbuf, sizeof(specialidbuf), "%"PRIu8, radioplaylist_conf.promo.genre_id);
-		snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
-				SELECT DISTINCT ON (artist) id \
-				FROM playlist_songs \
-				JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
-				WHERE blacklist = false AND s.genre_id = $3 AND last_vote < $2 AND NOT EXISTS ( \
-					SELECT h.id \
-					FROM playlist_history h \
-					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist_songs.id \
+		snprintf(querybuf, sizeof(querybuf), "\
+			SELECT * FROM ( \
+				SELECT DISTINCT ON (s.artist) s.id \
+				FROM playlist_song_genres sg \
+				JOIN playlist_songs s ON (s.id = sg.song_id) \
+				WHERE s.promo AND not s.blacklist AND s.last_vote < $2 AND sg.genre_id = $1 AND NOT EXISTS ( \
+					SELECT song_id \
+					FROM playlist_history \
+					WHERE ts >= (now() at time zone 'UTC') - interval '%s' AND song_id = s.id \
 				) AND NOT EXISTS ( \
-					SELECT h.id \
+					SELECT h.song_id \
 					FROM playlist_history h \
-					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist_songs.artist \
-				) AND EXISTS ( \
-					SELECT sg2.song_id \
-					FROM playlist_song_genres sg2 \
-					WHERE sg2.song_id = playlist_songs.id AND sg2.genre_id = $1 \
+					JOIN playlist_songs s2 ON (s2.id = h.song_id) \
+					WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.artist = s.artist \
 				) \
-				ORDER BY artist, random()) _anon \
+				ORDER BY s.artist, random() \
+			) _anon \
 			ORDER BY random()", radioplaylist_conf.promo.block_song_interval, radioplaylist_conf.promo.block_artist_interval);
-		res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(3, idbuf, tsbuf, specialidbuf));
+		res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(2, idbuf, tsbuf));
 		if(!res || !(num_rows = pgsql_num_rows(res)))
 		{
 			log_append(LOG_WARNING, "Could not load promo song (res=%p, rows=%d)", res, res ? num_rows : -1);
@@ -1394,22 +1388,18 @@ static void prepare_new_song()
 		}
 	}
 
-	if(!has_promo && radioplaylist_conf.jingles.genre_id && should_play_jingle())
+	if(!has_promo && should_play_jingle())
 	{
-		snprintf(specialidbuf, sizeof(specialidbuf), "%"PRIu8, radioplaylist_conf.jingles.genre_id);
-		snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
-				SELECT DISTINCT ON (artist) id \
-				FROM playlist_songs \
-				JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
-				WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $2 AND NOT EXISTS ( \
-					SELECT h.id \
-					FROM playlist_history h \
-					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.id = playlist_songs.id \
+		snprintf(querybuf, sizeof(querybuf), "\
+				SELECT s.id \
+				FROM playlist_songs s \
+				WHERE s.jingle AND not s.blacklist AND NOT EXISTS ( \
+					SELECT song_id \
+					FROM playlist_history \
+					WHERE ts >= (now() at time zone 'UTC') - interval '%s' AND song_id = s.id \
 				) \
-				ORDER BY artist, random()) _anon \
-			ORDER BY random()", radioplaylist_conf.jingles.block_song_interval);
-		res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(2, specialidbuf, tsbuf));
+				ORDER BY random()", radioplaylist_conf.jingles.block_song_interval);
+		res = pgsql_query(pg_conn, querybuf, 1, NULL);
 		if(!res || !(num_rows = pgsql_num_rows(res)))
 		{
 			log_append(LOG_WARNING, "Could not load jingle song (res=%p, rows=%d)", res, res ? num_rows : -1);
@@ -1424,17 +1414,19 @@ static void prepare_new_song()
 
 	if(!has_promo && !has_jingle)
 	{
-		snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
-				SELECT DISTINCT ON (artist) id \
-				FROM playlist_songs \
-				JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
-				WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $2 AND NOT EXISTS ( \
-					SELECT h.id \
+		snprintf(querybuf, sizeof(querybuf), "\
+			SELECT * FROM ( \
+				SELECT DISTINCT ON (s.artist) s.id \
+				FROM playlist_song_genres sg \
+				JOIN playlist_songs s ON (s.id = sg.song_id) \
+				WHERE not s.blacklist AND sg.genre_id = $1 AND s.last_vote < $2 AND NOT EXISTS ( \
+					SELECT h.song_id \
 					FROM playlist_history h \
-					JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
-					WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist_songs.artist \
+					JOIN playlist_songs s2 ON (s2.id = h.song_id) \
+					WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.artist = s.artist \
 				) \
-				ORDER BY artist, random()) _anon \
+				ORDER BY s.artist, random() \
+			) _anon \
 			ORDER BY random()", radioplaylist_conf.songvote_block_artist_interval);
 		res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(2, idbuf, tsbuf));
 		if(!res || !(num_rows = pgsql_num_rows(res)))
@@ -1514,17 +1506,19 @@ static void songvote_stream_song_changed()
 	snprintf(idbuf, sizeof(idbuf), "%"PRIu8, stream_state.playlist->genre_id);
 	snprintf(limitbuf, sizeof(limitbuf), "%"PRIu8, radioplaylist_conf.songvote_songs);
 	snprintf(tsbuf, sizeof(tsbuf), "%lu", (unsigned long)(now - radioplaylist_conf.songvote_block_duration));
-	snprintf(querybuf, sizeof(querybuf), "SELECT * FROM ( \
-			SELECT DISTINCT ON (artist) id \
-			FROM playlist_songs \
-			JOIN playlist_song_genres s ON (s.song_id = playlist_songs.id) \
-			WHERE blacklist = false AND s.genre_id = $1 AND last_vote < $3 AND NOT EXISTS ( \
-				SELECT h.id \
+	snprintf(querybuf, sizeof(querybuf), "\
+		SELECT * FROM ( \
+			SELECT DISTINCT ON (s.artist) s.id \
+			FROM playlist_songs s \
+			JOIN playlist_song_genres sg ON (s.id = sg.song_id) \
+			WHERE not s.blacklist AND sg.genre_id = $1 AND s.last_vote < $3 AND NOT EXISTS ( \
+				SELECT h.song_id \
 				FROM playlist_history h \
-				JOIN playlist_songs h_pl ON (h_pl.id = h.song_id) \
-				WHERE h.ts >= now() - interval '%s' AND h_pl.artist = playlist_songs.artist \
+				JOIN playlist_songs s2 ON (s2.id = h.song_id) \
+				WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.artist = s.artist \
 			) \
-			ORDER BY artist, random()) _anon \
+			ORDER BY s.artist, random() \
+		) _anon \
 		ORDER BY random() \
 		LIMIT $2", radioplaylist_conf.songvote_block_artist_interval);
 	res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
@@ -1982,9 +1976,6 @@ static void conf_reload_hook()
 	str = conf_get("radioplaylist/songvote_block_artist_interval", DB_STRING);
 	radioplaylist_conf.songvote_block_artist_interval = str ? str : "30 minutes";
 
-	str = conf_get("radioplaylist/promo/genre_id", DB_STRING);
-	radioplaylist_conf.promo.genre_id = str ? atoi(str) : 0;
-
 	str = conf_get("radioplaylist/promo/min_delay", DB_STRING);
 	radioplaylist_conf.promo.min_delay = str ? atoi(str) : 1800;
 
@@ -2008,9 +1999,6 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/promo/block_artist_interval", DB_STRING);
 	radioplaylist_conf.promo.block_artist_interval = str ? str : "1 hour";
-
-	str = conf_get("radioplaylist/jingles/genre_id", DB_STRING);
-	radioplaylist_conf.jingles.genre_id = str ? atoi(str) : 0;
 
 	str = conf_get("radioplaylist/jingles/min_delay", DB_STRING);
 	radioplaylist_conf.jingles.min_delay = str ? atoi(str) : 1800;
