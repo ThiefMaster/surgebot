@@ -22,6 +22,8 @@ WITH (
 
 CREATE INDEX ix_playlist_songs_blacklist ON playlist_songs USING btree (blacklist);
 CREATE INDEX ix_playlist_songs_duration ON playlist_songs USING btree (duration);
+CREATE INDEX ix_playlist_songs_jingle ON playlist_songs USING btree (jingle);
+CREATE INDEX ix_playlist_songs_ok ON playlist_songs USING btree (last_vote) WHERE NOT blacklist;
 CREATE INDEX ix_playlist_songs_promo ON playlist_songs USING btree (promo);
 CREATE INDEX ix_playlist_songs_promook ON playlist_songs USING btree (last_vote) WHERE promo AND NOT blacklist;
 
@@ -41,7 +43,7 @@ WITH (
 	OIDS=FALSE
 );
 
-CREATE UNIQUE INDEX genre_unique_ci ON genres USING btree (lower(genre::text));
+CREATE UNIQUE INDEX playlist_genres_unique_ci ON playlist_genres USING btree (lower(genre::text));
 
 
 
