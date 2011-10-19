@@ -122,6 +122,7 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint
 			node->title = strdup(tmp);
 		node->duration = atoi(pgsql_nvalue(res, i, "duration"));
 		node->blacklist = !strcmp(pgsql_nvalue(res, i, "blacklist"), "t");
+		node->jingle = !strcmp(pgsql_nvalue(res, i, "jingle"), "t");
 		node->inode = strtoul(pgsql_nvalue(res, i, "st_inode"), NULL, 10);
 		node->size = strtol(pgsql_nvalue(res, i, "st_size"), NULL, 10);
 		node->mtime = strtol(pgsql_nvalue(res, i, "st_mtime"), NULL, 10);
@@ -401,6 +402,8 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 		node->artist = existing->artist ? strdup(existing->artist) : NULL;
 		node->album = existing->album ? strdup(existing->album) : NULL;
 		node->title = existing->title ? strdup(existing->title) : NULL;
+		node->blacklist = existing->blacklist;
+		node->jingle = existing->jingle;
 	}
 	else if(playlist->conn)
 	{
@@ -428,6 +431,7 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 			node->title = strdup(tmp);
 		node->duration = atoi(pgsql_nvalue(res, 0, "duration"));
 		node->blacklist = !strcmp(pgsql_nvalue(res, 0, "blacklist"), "t");
+		node->jingle = !strcmp(pgsql_nvalue(res, 0, "jingle"), "t");
 		node->inode = strtoul(pgsql_nvalue(res, 0, "st_inode"), NULL, 10);
 		node->size = strtol(pgsql_nvalue(res, 0, "st_size"), NULL, 10);
 		node->mtime = strtol(pgsql_nvalue(res, 0, "st_mtime"), NULL, 10);

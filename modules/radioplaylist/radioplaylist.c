@@ -2125,6 +2125,7 @@ static void *stream_thread_main(void *arg)
 			char titlebuf[768];
 			char file[PATH_MAX];
 			struct playlist_node *song;
+			uint8_t jingle;
 
 			// Unset skip flag if it is still set for some reason, also set playing flag
 			if(stream_state.skip || !stream_state.playing)
@@ -2154,6 +2155,7 @@ static void *stream_thread_main(void *arg)
 			}
 
 			strlcpy(file, song->file, sizeof(file));
+			jingle = song->jingle;
 
 			if(song->artist && song->title)
 				snprintf(titlebuf, sizeof(titlebuf), "%s - %s", song->artist, song->title);
@@ -2174,14 +2176,21 @@ static void *stream_thread_main(void *arg)
 			log_append(LOG_INFO, "Streaming: %s - %s - %s (%02u:%02u)", song->artist, song->album, song->title, song->duration / 60, song->duration % 60);
 			pthread_mutex_unlock(&playlist_mutex); // unlock playlist
 
-			stream.meta = shout_metadata_new();
-			shout_metadata_add(stream.meta, "song", titlebuf);
-			shout_metadata_add(stream.meta, "url", "http://");
+			stream.meta = NULL;
+			if(!jingle)
+			{
+				stream.meta = shout_metadata_new();
+				shout_metadata_add(stream.meta, "song", titlebuf);
+				shout_metadata_add(stream.meta, "url", "http://");
+			}
 
 			stream_song(&stream, file);
 
-			shout_metadata_free(stream.meta);
-			stream.meta = NULL;
+			if(stream.meta)
+			{
+				shout_metadata_free(stream.meta);
+				stream.meta = NULL;
+			}
 
 			if(shout_get_errno(stream.shout) == SHOUTERR_SOCKET)
 			{
@@ -2351,7 +2360,8 @@ static enum mad_flow output_cb(void *data, struct mad_header const *header, stru
 			lame_set_in_samplerate(ctx->lame, header->samplerate);
 			lame_init_params(ctx->lame);
 		}
-		shout_set_metadata(ctx->shout, ctx->meta);
+		if(ctx->meta)
+			shout_set_metadata(ctx->shout, ctx->meta);
 	}
 
 	assert_return(ctx->samplerate == header->samplerate, MAD_FLOW_BREAK);

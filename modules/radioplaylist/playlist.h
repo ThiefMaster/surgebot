@@ -29,6 +29,7 @@ struct playlist_node
 
 	uint16_t duration;
 	uint8_t blacklist;
+	uint8_t jingle;
 	uint8_t genre_id;
 
 	uint32_t inode;
