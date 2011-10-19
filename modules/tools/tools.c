@@ -531,3 +531,20 @@ unsigned char channel_mode_changes_state(struct irc_channel *channel, const char
 	}
 	return ((flags & flag) != 0) != set;
 }
+
+time_t strtotime(const char *str)
+{
+	int hours, minutes;
+	struct tm *tm;
+
+	if(sscanf(str, "%2d:%2d", &hours, &minutes) != 2)
+		return 0;
+
+	tm = localtime(&now);
+	if(hours < tm->tm_hour || (hours == tm->tm_hour && minutes < tm->tm_min))
+		tm->tm_mday++;
+	tm->tm_hour = hours;
+	tm->tm_min = minutes;
+	tm->tm_sec = 0;
+	return mktime(tm);
+}

@@ -15,6 +15,7 @@ char *html_encode(const char *str);
 int is_utf8(const char *buf);
 void make_utf8(const char *str, char *buf, size_t bufsize);
 unsigned char channel_mode_changes_state(struct irc_channel *channel, const char *mode, const char *arg);
+time_t strtotime(const char *str);
 
 static inline const char *to_utf8(const char *str)
 {

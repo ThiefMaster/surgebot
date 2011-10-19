@@ -4,6 +4,7 @@
 #include "modules/sharedmem/sharedmem.h"
 #include "modules/help/help.h"
 #include "modules/pgsql/pgsql.h"
+#include "modules/tools/tools.h"
 #include "chanuser.h"
 #include "irc.h"
 #include "irc_handler.h"
@@ -80,6 +81,8 @@ struct genre_vote {
 	struct genre_vote_genre *genres;
 	struct stringlist *voted_nicks;
 	struct stringlist *voted_hosts;
+	time_t blocked_until;
+	char *blocked_reason;
 };
 
 struct song_vote_song {
@@ -122,6 +125,8 @@ COMMAND(playlist_songvote);
 COMMAND(playlist_report);
 COMMAND(playlist_cancelvote_song);
 COMMAND(playlist_cancelvote_genre);
+COMMAND(playlist_blockvote_genre);
+static time_t check_genrevote_blocked();
 static uint8_t in_team_channel(struct irc_user *user);
 static uint8_t should_play_promo();
 static uint8_t should_play_jingle();
@@ -215,7 +220,7 @@ static struct {
 	} jingles;
 } radioplaylist_conf;
 
-MODULE_DEPENDS("commands", "sharedmem", "pgsql", "help", NULL);
+MODULE_DEPENDS("commands", "sharedmem", "pgsql", "help", "tools", NULL);
 
 
 MODULE_INIT
@@ -258,6 +263,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "report",			playlist_report,	0, CMD_LOG_HOSTMASK, "true");
 	DEFINE_COMMAND(this, "cancelsongvote",		playlist_cancelvote_song, 0, CMD_LOG_HOSTMASK, "group(admins)");
 	DEFINE_COMMAND(this, "cancelgenrevote",		playlist_cancelvote_genre, 0, CMD_LOG_HOSTMASK, "group(admins)");
+	DEFINE_COMMAND(this, "blockgenrevote",		playlist_blockvote_genre, 0, CMD_LOG_HOSTMASK, "group(admins)");
 }
 
 
@@ -291,6 +297,7 @@ MODULE_FINI
 
 	unreg_conf_reload_func(conf_reload_hook);
 	timer_del_boundname(this, "genrevote_finish");
+	MyFree(genre_vote.blocked_reason);
 	genrevote_free();
 	timer_del_boundname(this, "songvote_finish");
 	songvote_free();
@@ -942,6 +949,17 @@ COMMAND(playlist_genrevote)
 		struct stringbuffer *genre_line;
 		struct stringlist *genre_lines;
 
+		if(check_genrevote_blocked())
+		{
+			char buf[32];
+			strftime(buf, sizeof(buf), "%H:%M", localtime(&genre_vote.blocked_until));
+			if(genre_vote.blocked_reason)
+				reply("Genrevotes sind bis $b%s$b deaktiviert: %s", buf, genre_vote.blocked_reason);
+			else
+				reply("Genrevotes sind bis $b%s$b deaktiviert.", buf);
+			return 0;
+		}
+
 		if(now < (genre_vote.endtime + radioplaylist_conf.genrevote_frequency))
 		{
 			uint16_t wait_time = (genre_vote.endtime + radioplaylist_conf.genrevote_frequency) - now;
@@ -1293,6 +1311,53 @@ COMMAND(playlist_cancelvote_genre)
 	irc_send("PRIVMSG %s :Der aktuelle Genre-Vote wurde von %s abgebrochen.", radioplaylist_conf.radiochan, src->nick);
 	reply("Genre-Vote wurde abgebrochen.");
 	return 1;
+}
+
+COMMAND(playlist_blockvote_genre)
+{
+	char buf[32];
+
+	if(argc < 2)
+	{
+		if(check_genrevote_blocked())
+		{
+			strftime(buf, sizeof(buf), "%H:%M", localtime(&genre_vote.blocked_until));
+			reply("Genrevotes deaktiviert bis: $b%s$b [%s]", buf, genre_vote.blocked_reason ? genre_vote.blocked_reason : "");
+		}
+		else
+			reply("Genrevotes erlaubt");
+		return 0;
+	}
+
+	if(!strcmp(argv[1], "*"))
+	{
+		MyFree(genre_vote.blocked_reason);
+		genre_vote.blocked_until = 0;
+		reply("Genrevotes erlaubt");
+		return 1;
+	}
+
+	MyFree(genre_vote.blocked_reason);
+	genre_vote.blocked_until = strtotime(argv[1]);
+	if(genre_vote.blocked_until == 0)
+	{
+		reply("Syntax: $b%s hh:mm$b", argv[0]);
+		return 0;
+	}
+
+	if(argc > 2)
+		genre_vote.blocked_reason = untokenize(argc - 2, argv + 2, " ");
+
+	strftime(buf, sizeof(buf), "%d.%m.%Y, %H:%M", localtime(&genre_vote.blocked_until));
+	reply("Genrevotes deaktiviert bis: $b%s$b [%s]", buf, genre_vote.blocked_reason ? genre_vote.blocked_reason : "");
+	return 1;
+}
+
+static time_t check_genrevote_blocked()
+{
+	if(now > genre_vote.blocked_until)
+		genre_vote.blocked_until = 0;
+	return genre_vote.blocked_until;
 }
 
 static uint8_t in_team_channel(struct irc_user *user)
