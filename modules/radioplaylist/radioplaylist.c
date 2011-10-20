@@ -1427,7 +1427,7 @@ static void prepare_new_song()
 				SELECT DISTINCT ON (s.artist) s.id \
 				FROM playlist_song_genres sg \
 				JOIN playlist_songs s ON (s.id = sg.song_id) \
-				WHERE s.promo AND not s.blacklist AND s.last_vote < $2 AND sg.genre_id = $1 AND NOT EXISTS ( \
+				WHERE s.promo AND not s.blacklist AND s.last_vote < $2 AND sg.genre_id = $1 AND (not s.nightonly OR is_night()) AND NOT EXISTS ( \
 					SELECT song_id \
 					FROM playlist_history \
 					WHERE ts >= (now() at time zone 'UTC') - interval '%s' AND song_id = s.id \
@@ -1458,7 +1458,7 @@ static void prepare_new_song()
 		snprintf(querybuf, sizeof(querybuf), "\
 				SELECT s.id \
 				FROM playlist_songs s \
-				WHERE s.jingle AND not s.blacklist AND NOT EXISTS ( \
+				WHERE s.jingle AND not s.blacklist AND (not s.nightonly OR is_night()) AND NOT EXISTS ( \
 					SELECT song_id \
 					FROM playlist_history \
 					WHERE ts >= (now() at time zone 'UTC') - interval '%s' AND song_id = s.id \
@@ -1484,7 +1484,7 @@ static void prepare_new_song()
 				SELECT DISTINCT ON (s.artist) s.id \
 				FROM playlist_song_genres sg \
 				JOIN playlist_songs s ON (s.id = sg.song_id) \
-				WHERE not s.blacklist AND sg.genre_id = $1 AND s.last_vote < $2 AND NOT EXISTS ( \
+				WHERE not s.blacklist AND sg.genre_id = $1 AND s.last_vote < $2 AND (not s.nightonly OR is_night()) AND NOT EXISTS ( \
 					SELECT h.song_id \
 					FROM playlist_history h \
 					JOIN playlist_songs s2 ON (s2.id = h.song_id) \
@@ -1576,7 +1576,7 @@ static void songvote_stream_song_changed()
 			SELECT DISTINCT ON (s.artist) s.id \
 			FROM playlist_songs s \
 			JOIN playlist_song_genres sg ON (s.id = sg.song_id) \
-			WHERE not s.blacklist AND sg.genre_id = $1 AND s.last_vote < $3 AND NOT EXISTS ( \
+			WHERE not s.blacklist AND sg.genre_id = $1 AND s.last_vote < $3 AND (not s.nightonly OR is_night()) AND NOT EXISTS ( \
 				SELECT h.song_id \
 				FROM playlist_history h \
 				JOIN playlist_songs s2 ON (s2.id = h.song_id) \
