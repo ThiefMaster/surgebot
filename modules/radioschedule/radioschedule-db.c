@@ -244,7 +244,7 @@ int add_show(struct show_info *show_info, const char *show_title)
 	stringlist_add(params, strdup(buf));
 	snprintf(buf, sizeof(buf), "%lu", show_info->endtime);
 	stringlist_add(params, strdup(buf));
-	stringlist_add(params, strdup(show_title));
+	stringlist_add(params, strdup(to_utf8(show_title)));
 
 	res = pgsql_query(radioschedule_conf.pg_conn, "INSERT INTO shows \
 			(user_id, user_id_2, create_date, start_time, end_time, title) VALUES \
