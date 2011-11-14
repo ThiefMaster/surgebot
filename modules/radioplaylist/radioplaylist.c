@@ -363,6 +363,9 @@ COMMAND(playlist_on)
 		return 0;
 	}
 
+	// ensure we don't get a jingle immediately
+	last_jingle_song = now;
+
 	pthread_mutex_lock(&stream_state_mutex);
 	stream_state.play = 1;
 	pthread_mutex_unlock(&stream_state_mutex);
