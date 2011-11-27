@@ -94,6 +94,7 @@ COMMAND(setplaylist);
 COMMAND(settitle);
 COMMAND(sendsongtitle);
 COMMAND(queuefull);
+COMMAND(blockwishgreet);
 COMMAND(playlist);
 COMMAND(dj);
 COMMAND(stream);
@@ -139,7 +140,9 @@ void set_current_title(const char *title);
 const char *get_streamtitle();
 static void shared_memory_changed(struct module *module, const char *key, void *old, void *new);
 static void memcache_set(const char *key, time_t ttl, const char *format, ...);
+static void memcache_delete(const char *key);
 static time_t check_queue_full();
+static time_t check_wishgreet_blocked();
 static int in_wish_greet_channel(struct irc_user *user);
 static const char *sanitize_nick(const char *raw_nick);
 static unsigned int rrd_exists(const char *name);
@@ -171,6 +174,8 @@ static int last_peak = -1;
 static time_t last_peak_time;
 static char *last_peak_mod = NULL;
 static time_t queue_full = 0;
+static time_t wishgreet_blocked_until = 0;
+static char *wishgreet_blocked_reason = NULL;
 static radiobot_notify_func *notify_func = NULL;
 static int nfqueue_available = 0;
 static memcached_st *mc = NULL;
@@ -247,6 +252,7 @@ MODULE_INIT
 	DEFINE_COMMAND(this, "settitle",	settitle,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "sendsongtitle",	sendsongtitle,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "queuefull",	queuefull,	0, 0, "group(admins)");
+	DEFINE_COMMAND(this, "blockwishgreet",	blockwishgreet,	0, 0, "group(admins)");
 	DEFINE_COMMAND(this, "playlist",	playlist,	0, 0, "true");
 	DEFINE_COMMAND(this, "dj",		dj,		0, 0, "true");
 	DEFINE_COMMAND(this, "stream",		stream,		0, 0, "true");
@@ -319,6 +325,7 @@ MODULE_FINI
 	MyFree(playlist_genre);
 	MyFree(last_peak_mod);
 	MyFree(stream_stats.title);
+	MyFree(wishgreet_blocked_reason);
 
 	xmlCleanupParser();
 }
@@ -573,11 +580,39 @@ static void memcache_set(const char *key, time_t ttl, const char *format, ...)
 		log_append(LOG_WARNING, "memcached_set() failed: %s", memcached_strerror(mc, rc));
 }
 
+static void memcache_delete(const char *key)
+{
+	memcached_return_t rc;
+
+	if(!mc)
+		return;
+
+	rc = memcached_delete(mc, key, strlen(key), 0);
+	if(rc != MEMCACHED_SUCCESS)
+		rc = memcached_delete(mc, key, strlen(key), 0); // retry
+	if(rc != MEMCACHED_SUCCESS)
+		log_append(LOG_WARNING, "memcached_delete() failed: %s", memcached_strerror(mc, rc));
+}
+
 static time_t check_queue_full()
 {
 	if(now > queue_full)
 		queue_full = 0;
 	return queue_full;
+}
+
+static time_t check_wishgreet_blocked()
+{
+	if(now > wishgreet_blocked_until)
+	{
+		wishgreet_blocked_until = 0;
+		memcache_delete("radiobot.wishgreet.disabled");
+	}
+	else
+	{
+		memcache_set("radiobot.wishgreet.disabled", wishgreet_blocked_until, "%s", wishgreet_blocked_reason);
+	}
+	return wishgreet_blocked_until;
 }
 
 static int in_wish_greet_channel(struct irc_user *user)
@@ -1213,6 +1248,52 @@ COMMAND(queuefull)
 	return 1;
 }
 
+COMMAND(blockwishgreet)
+{
+	char buf[32];
+
+	if(argc < 2 || (argc == 2 && strcmp(argv[1], "*")))
+	{
+		if(check_wishgreet_blocked())
+		{
+			strftime(buf, sizeof(buf), "%H:%M", localtime(&wishgreet_blocked_until));
+			reply("Wünsche/Grüße deaktiviert bis: $b%s$b [%s]", buf, wishgreet_blocked_reason);
+		}
+		else
+			reply("Wünsche/Grüße erlaubt");
+		return 0;
+	}
+
+	if(argc > 1 && !strcmp(argv[1], "*"))
+	{
+		MyFree(wishgreet_blocked_reason);
+		wishgreet_blocked_until = 0;
+		check_wishgreet_blocked();
+		reply("Wünsche/Grüße erlaubt");
+		return 1;
+	}
+
+	if(argc > 2)
+	{
+		MyFree(wishgreet_blocked_reason);
+		wishgreet_blocked_until = strtotime(argv[1]);
+		if(wishgreet_blocked_until == 0)
+		{
+			reply("Syntax: $b%s hh:mm Grund$b", argv[0]);
+			return 0;
+		}
+
+		char *tmp = untokenize(argc - 2, argv + 2, " ");
+		wishgreet_blocked_reason = strdup(to_utf8(tmp));
+		free(tmp);
+		check_wishgreet_blocked();
+	}
+
+	strftime(buf, sizeof(buf), "%d.%m.%Y, %H:%M", localtime(&wishgreet_blocked_until));
+	reply("Wünsche/Grüße deaktiviert bis: $b%s$b [%s]", buf, wishgreet_blocked_reason);
+	return 1;
+}
+
 COMMAND(playlist)
 {
 	reply("Aktuelle Playlist: $b%s$b", (current_playlist ? current_playlist : "[Keine]"));
@@ -1375,7 +1456,9 @@ COMMAND(wish)
 	irc_send("PRIVMSG %s :IRC-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod, src->nick, msg);
 	if(current_mod_2)
 		irc_send("PRIVMSG %s :IRC-Wunsch von \0033$b$u%s$u$b\003: \0033$b%s$b\003", current_mod_2, src->nick, msg);
-	if(check_queue_full())
+	if(check_wishgreet_blocked())
+		reply("Dein Wunsch wurde weitergeleitet, allerdings werden derzeit keine Wünsche erfüllt: %s", wishgreet_blocked_reason);
+	else if(check_queue_full())
 	{
 		char buf[32];
 		strftime(buf, sizeof(buf), "%H:%M", localtime(&queue_full));
@@ -1418,7 +1501,10 @@ COMMAND(greet)
 	irc_send("PRIVMSG %s :IRC-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod, src->nick, msg_utf8);
 	if(current_mod_2)
 		irc_send("PRIVMSG %s :IRC-Gruß von \0034$b$u%s$u$b\003: \0034$b%s$b\003", current_mod_2, src->nick, msg_utf8);
-	reply("Dein Gruß wurde weitergeleitet.");
+	if(check_wishgreet_blocked())
+		reply("Dein Gruß wurde weitergeleitet, allerdings werden derzeit keine Grüße ausgerichtet: %s", wishgreet_blocked_reason);
+	else
+		reply("Dein Gruß wurde weitergeleitet.");
 
 	return 1;
 }
