@@ -94,7 +94,7 @@ int chanreg_user_cmp(const void *a, const void *b)
 	struct chanreg_user *u1 = (*(struct ptrlist_node **)a)->ptr;
 	struct chanreg_user *u2 = (*(struct ptrlist_node **)b)->ptr;
 
-	return ircnatcmp(u1->reg->channel, u2->reg->channel);
+	return ircnatcasecmp(u1->reg->channel, u2->reg->channel);
 }
 
 COMMAND(myaccess)
