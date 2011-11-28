@@ -1,6 +1,7 @@
 #ifndef PTRLIST_H
 #define PTRLIST_H
 
+typedef int (ptrlist_cmp_f)(const void *a, const void *b);
 typedef void (ptrlist_free_f)(void *ptr);
 
 struct ptrlist_node
@@ -22,6 +23,7 @@ struct ptrlist *ptrlist_create();
 void ptrlist_free(struct ptrlist *list);
 
 unsigned int ptrlist_add(struct ptrlist *list, int ptr_type, void *ptr);
+void ptrlist_sort(struct ptrlist *list, ptrlist_cmp_f *sort_func);
 int ptrlist_find(struct ptrlist *list, const void *ptr);
 void ptrlist_set_free_func(struct ptrlist *list, ptrlist_free_f *free_func);
 void ptrlist_clear(struct ptrlist *list);

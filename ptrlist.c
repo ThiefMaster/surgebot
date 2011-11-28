@@ -56,6 +56,11 @@ int ptrlist_find(struct ptrlist *list, const void *ptr)
 	return -1;
 }
 
+void ptrlist_sort(struct ptrlist *list, ptrlist_cmp_f *sort_func)
+{
+	qsort(list->data, list->count, sizeof(list->data[0]), sort_func);
+}
+
 void ptrlist_set_free_func(struct ptrlist *list, ptrlist_free_f *free_func)
 {
 	list->free_func = free_func;
