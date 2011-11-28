@@ -127,7 +127,14 @@ COMMAND(myaccess)
 		for(unsigned int i = 0; i < count; ++i) {
 			struct chanreg_user *user = accesslist->data[i]->ptr;
 			stringbuffer_empty(sbuf);
-			stringbuffer_append_printf(sbuf, "$b%ld$b:%s", user->level, user->reg->channel);
+
+			const char *format_string = NULL;
+			if(user->flags & CHANREG_USER_SUSPENDED)
+				format_string = "(%ld):%s";
+			else
+				format_string = "$b%ld$b:%s";
+
+			stringbuffer_append_printf(sbuf, format_string, user->level, user->reg->channel);
 			stringlist_add(slist, strdup(sbuf->string));
 		}
 
