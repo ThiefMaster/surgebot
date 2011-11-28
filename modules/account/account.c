@@ -12,6 +12,7 @@
 #include "dict.h"
 #include "policer.h"
 #include "timer.h"
+#include "strnatcmp.h"
 
 #define OPTION_FUNC(NAME) int NAME(struct irc_source *src, struct user_account *account, int argc, char **argv)
 typedef OPTION_FUNC(option_func);
@@ -88,11 +89,19 @@ MODULE_FINI
 	policer_params_free(auth_policer_params);
 }
 
+int chanreg_user_cmp(const void *a, const void *b)
+{
+	struct chanreg_user *u1 = (*(struct ptrlist_node **)a)->ptr;
+	struct chanreg_user *u2 = (*(struct ptrlist_node **)b)->ptr;
+
+	return ircnatcmp(u1->reg->channel, u2->reg->channel);
+}
+
 COMMAND(myaccess)
 {
+	struct ptrlist *accesslist = ptrlist_create();
 	struct user_account *account = user->account;
 	struct dict *chanregs = chanreg_dict();
-	size_t count_channels = 0;
 
 	dict_iter(node, chanregs)
 	{
@@ -100,19 +109,40 @@ COMMAND(myaccess)
 		struct chanreg_user *user = chanreg_user_find(chanreg, account->name);
 
 		if(user != NULL) {
-			reply("$b%3d$b: %s", user->level, chanreg->channel);
-			count_channels++;
+			ptrlist_add(accesslist, 0, user);
 		}
 	}
 
-	if(count_channels > 0) {
-		char *channel_string = count_channels == 1 ? "channel" : "channels";
-		reply("You have access to $b%d$b %s.", count_channels, channel_string);
+	unsigned int count = accesslist->count;
+	if(accesslist->count == 0) {
+		reply("You don't have access to any channels yet.");
 	}
-	else
-		reply("You don't have access to any channels, yet.");
+	else {
+		struct stringlist *slist = stringlist_create();
+		// iterate over ptrlist and add one string for each item
+		struct stringbuffer *sbuf = stringbuffer_create();
 
-	return 0;
+		ptrlist_sort(accesslist, chanreg_user_cmp);
+
+		for(unsigned int i = 0; i < count; ++i) {
+			struct chanreg_user *user = accesslist->data[i]->ptr;
+			stringbuffer_empty(sbuf);
+			stringbuffer_append_printf(sbuf, "$b%ld$b:%s", user->level, user->reg->channel);
+			stringlist_add(slist, strdup(sbuf->string));
+		}
+
+		struct stringlist *irc_lines = stringlist_to_irclines(user->nick, slist);
+		for(unsigned int i = 0; i < irc_lines->count; ++i) {
+			reply("%s", irc_lines->data[i]);
+		}
+
+		stringlist_free(irc_lines);
+		stringlist_free(slist);
+		stringbuffer_free(sbuf);
+	}
+
+	ptrlist_free(accesslist);
+	return 1;
 }
 
 COMMAND(register)
