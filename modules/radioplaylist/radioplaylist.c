@@ -197,6 +197,7 @@ static struct {
 	uint8_t songvote_songs;
 	uint16_t songvote_block_duration;
 	const char *songvote_block_artist_interval;
+	const char *songvote_block_album_interval;
 
 	struct {
 		uint16_t min_delay;
@@ -1492,10 +1493,15 @@ static void prepare_new_song()
 					FROM playlist_history h \
 					JOIN playlist_songs s2 ON (s2.id = h.song_id) \
 					WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.artist = s.artist \
+				) AND NOT EXISTS ( \
+					SELECT h.song_id \
+					FROM playlist_history h \
+					JOIN playlist_songs s2 ON (s2.id = h.song_id) \
+					WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.album = s.album AND s2.album IS NOT NULL \
 				) \
 				ORDER BY s.artist, random() \
 			) _anon \
-			ORDER BY random()", radioplaylist_conf.songvote_block_artist_interval);
+			ORDER BY random()", radioplaylist_conf.songvote_block_artist_interval, radioplaylist_conf.songvote_block_album_interval);
 		res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(2, idbuf, tsbuf));
 		if(!res || !(num_rows = pgsql_num_rows(res)))
 		{
@@ -1584,11 +1590,16 @@ static void songvote_stream_song_changed()
 				FROM playlist_history h \
 				JOIN playlist_songs s2 ON (s2.id = h.song_id) \
 				WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.artist = s.artist \
+			) AND NOT EXISTS ( \
+				SELECT h.song_id \
+				FROM playlist_history h \
+				JOIN playlist_songs s2 ON (s2.id = h.song_id) \
+				WHERE h.ts >= (now() at time zone 'UTC') - interval '%s' AND s2.album = s.album AND s2.album IS NOT NULL \
 			) \
 			ORDER BY s.artist, random() \
 		) _anon \
 		ORDER BY random() \
-		LIMIT $2", radioplaylist_conf.songvote_block_artist_interval);
+		LIMIT $2", radioplaylist_conf.songvote_block_artist_interval, radioplaylist_conf.songvote_block_album_interval);
 	res = pgsql_query(pg_conn, querybuf, 1, stringlist_build_n(3, idbuf, limitbuf, tsbuf));
 	if(!res || (num_rows = pgsql_num_rows(res)) < 2)
 	{
@@ -2043,6 +2054,9 @@ static void conf_reload_hook()
 
 	str = conf_get("radioplaylist/songvote_block_artist_interval", DB_STRING);
 	radioplaylist_conf.songvote_block_artist_interval = str ? str : "30 minutes";
+
+	str = conf_get("radioplaylist/songvote_block_album_interval", DB_STRING);
+	radioplaylist_conf.songvote_block_album_interval = str ? str : "60 minutes";
 
 	str = conf_get("radioplaylist/promo/min_delay", DB_STRING);
 	radioplaylist_conf.promo.min_delay = str ? atoi(str) : 1800;
