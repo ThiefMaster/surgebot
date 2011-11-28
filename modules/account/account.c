@@ -2,6 +2,7 @@
 #include "module.h"
 #include "modules/commands/commands.h"
 #include "modules/help/help.h"
+#include "modules/chanreg/chanreg.h"
 #include "account.h"
 #include "group.h"
 #include "sha1.h"
@@ -15,7 +16,7 @@
 #define OPTION_FUNC(NAME) int NAME(struct irc_source *src, struct user_account *account, int argc, char **argv)
 typedef OPTION_FUNC(option_func);
 
-MODULE_DEPENDS("commands", "help", NULL);
+MODULE_DEPENDS("commands", "help", "chanreg", NULL);
 
 struct dict *auth_policers;
 struct policer_params *auth_policer_params;
@@ -46,6 +47,7 @@ COMMAND(group_member_add);
 COMMAND(group_member_del);
 COMMAND(rename);
 COMMAND(oset);
+COMMAND(myaccess);
 
 OPTION_FUNC(oset_password);
 OPTION_FUNC(oset_loginmask);
@@ -62,6 +64,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "accountinfo",	accountinfo,		0, CMD_IGNORE_LOGINMASK, "true");
 	DEFINE_COMMAND(self, "loginmask",	loginmask,		0, CMD_REQUIRE_AUTHED, "true");
 	DEFINE_COMMAND(self, "logout",		logout,			0, CMD_REQUIRE_AUTHED | CMD_IGNORE_LOGINMASK, "true");
+	DEFINE_COMMAND(self, "myaccess",	myaccess,		0, CMD_REQUIRE_AUTHED, "true");
 
 	/* Administrative commands */
 	DEFINE_COMMAND(self, "group list",	group_list,		0, 0, "group(admins)");
@@ -83,6 +86,33 @@ MODULE_FINI
 	timer_del_boundname(NULL, "auth_del_policer");
 	dict_free(auth_policers);
 	policer_params_free(auth_policer_params);
+}
+
+COMMAND(myaccess)
+{
+	struct user_account *account = user->account;
+	struct dict *chanregs = chanreg_dict();
+	size_t count_channels = 0;
+
+	dict_iter(node, chanregs)
+	{
+		struct chanreg *chanreg = node->data;
+		struct chanreg_user *user = chanreg_user_find(chanreg, account->name);
+
+		if(user != NULL) {
+			reply("$b%3d$b: %s", user->level, chanreg->channel);
+			count_channels++;
+		}
+	}
+
+	if(count_channels > 0) {
+		char *channel_string = count_channels == 1 ? "channel" : "channels";
+		reply("You have access to $b%d$b %s.", count_channels, channel_string);
+	}
+	else
+		reply("You don't have access to any channels, yet.");
+
+	return 0;
 }
 
 COMMAND(register)
