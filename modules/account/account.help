@@ -52,14 +52,15 @@
 			"If someone is authed, you can use his nick, otherwise you have to use *account."
 		);
 		"see_also" = (
-			"chanreg.access"
+			"chanreg.access",
+			"account.myaccess"
 		);
 	};
 
 	"loginmask" = {
 		"description" = "Sets an ident@host mask for automatical login.";
 		"help" = (
-			"$bUsage:$b /msg $N {HELP_BINDING} loginmask [mask]",
+			"$bUsage:$b /msg $N {HELP_BINDING} [mask]",
 			"Used to set an ident@host mask which will allow you to authenticate to your account automatically without using a password.",
 			"If no mask is provided, your current login mask will be displayed.",
 			"This has to match against *@* while it must not be *@* for security reasons.",
@@ -67,6 +68,18 @@
 		);
 		"see_also" = (
 			"account.auth"
+		);
+	};
+
+	"myaccess" = {
+		"description" = "Displays all channels where you have access.";
+		"help" = (
+			"$bUsage:$b /msg $N {HELP_BINDING}",
+			"Shows you a list of channels where you have access with the respective access level.",
+			"An access level in brackets means you are suspended from the channel."
+		);
+		"see_also" = (
+			"account.accountinfo"
 		);
 	};
 
