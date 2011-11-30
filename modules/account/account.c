@@ -696,7 +696,7 @@ OPTION_FUNC(oset_loginmask)
 			return 0;
 		}
 
-		stringlist_add(account->login_masks, argv[1]);
+		stringlist_add(account->login_masks, strdup(argv[1]));
 		reply("The loginmask $b%s$b has been added to account $b%s$b.", argv[1], account->name);
 	}
 	else

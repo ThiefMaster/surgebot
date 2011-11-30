@@ -56,7 +56,7 @@ static void account_db_read(struct database *db)
 			char *login_mask = database_fetch(obj, "loginmask", DB_STRING);
 			if(login_mask)
 			{
-				stringlist_add(login_masks, login_mask);
+				stringlist_add(login_masks, strdup(login_mask));
 			}
 		}
 		else
