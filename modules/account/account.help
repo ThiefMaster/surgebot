@@ -58,13 +58,12 @@
 	};
 
 	"loginmask" = {
-		"description" = "Sets an ident@host mask for automatical login.";
+		"description" = "Allows you to set ident@host masks for automatical login.";
 		"help" = (
-			"$bUsage:$b /msg $N {HELP_BINDING} [mask]",
-			"Used to set an ident@host mask which will allow you to authenticate to your account automatically without using a password.",
-			"If no mask is provided, your current login mask will be displayed.",
-			"This has to match against *@* while it must not be *@* for security reasons.",
-			"You can use * as mask to delete your current login mask."
+			"$bUsage:$b /msg $N {HELP_BINDING} [<add|del> <mask>]",
+			"Used to set ident@host masks which will allow you to authenticate to your account automatically without using a password.",
+			"If no action is provided, your current login masks will be displayed.",
+			"Any mask you set has to match against *@* while it must not be *@* for security reasons."
 		);
 		"see_also" = (
 			"account.auth"
