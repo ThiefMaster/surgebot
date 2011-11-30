@@ -526,7 +526,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 				if(!match(acc->login_masks->data[i], user_mask))
 				{
 					account_user_add(acc, user);
-					reply("You have been logged into account $b%s$b, because its loginmask matches your current host.", acc->name);
+					reply("You have been logged into account $b%s$b, because your host matches the loginmask $b%s$b.", acc->name, acc->login_masks->data[i]);
 					if(command_conf.log_channel)
 						irc_send("PRIVMSG %s :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", command_conf.log_channel, src->nick, user_mask, acc->name, acc->login_masks->data[i]);
 					break;
