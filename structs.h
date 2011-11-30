@@ -60,7 +60,7 @@ struct user_account
 {
 	char	*name;
 	char	pass[41]; // sha1 hash + \0
-	char	*login_mask;
+	struct stringlist	*login_masks;
 	time_t	registered;
 
 	struct dict	*users;

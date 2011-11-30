@@ -11,7 +11,7 @@ IMPLEMENT_HOOKABLE(account_del);
 static struct dict *account_list;
 static struct database *account_db;
 
-static struct user_account *account_add(const char *name, const char *pass, time_t regtime);
+static struct user_account *account_add(const char *name, const char *pass, time_t regtime, struct stringlist *login_masks);
 static void account_db_read(struct database *db);
 static int account_db_write(struct database *db);
 
@@ -44,11 +44,27 @@ static void account_db_read(struct database *db)
 		char *name = rec->key;
 		char *pass = database_fetch(obj, "password", DB_STRING);
 		char *registered = database_fetch(obj, "registered", DB_STRING);
-		char *loginmask = database_fetch(obj, "loginmask", DB_STRING);
 
-		struct user_account *account = account_add(name, pass, registered ? atoi(registered) : 0);
-		if(loginmask)
-			account->login_mask = strdup(loginmask);
+		struct stringlist *login_masks;
+		// try to fetch a stringlist of loginmasks
+		login_masks = database_fetch(obj, "loginmasks", DB_STRINGLIST);
+		// if there is no such node, the config may still have the old format where a single loginmask was stored as a string
+		if(!login_masks)
+		{
+			login_masks = stringlist_create();
+
+			char *login_mask = database_fetch(obj, "loginmask", DB_STRING);
+			if(login_mask)
+			{
+				stringlist_add(login_masks, login_mask);
+			}
+		}
+		else
+		{
+			login_masks = stringlist_copy(login_masks);
+		}
+
+		struct user_account *account = account_add(name, pass, registered ? atoi(registered) : 0, login_masks);
 	}
 }
 
@@ -61,8 +77,7 @@ static int account_db_write(struct database *db)
 		database_begin_object(db, account->name);
 			database_write_string(db, "password", account->pass);
 			database_write_long(db, "registered", account->registered);
-			if(account->login_mask)
-				database_write_string(db, "loginmask", account->login_mask);
+			database_write_stringlist(db, "loginmasks", account->login_masks);
 		database_end_object(db);
 	}
 	return 0;
@@ -79,7 +94,7 @@ struct user_account *account_register(const char *name, const char *pass)
 	struct user_account *account;
 	struct access_group *group;
 
-	account = account_add(name, sha1(pass), now);
+	account = account_add(name, sha1(pass), now, stringlist_create());
 
 	if(dict_size(account_list) == 1)
 	{
@@ -91,7 +106,7 @@ struct user_account *account_register(const char *name, const char *pass)
 	return account;
 }
 
-static struct user_account *account_add(const char *name, const char *pass, time_t regtime)
+static struct user_account *account_add(const char *name, const char *pass, time_t regtime, struct stringlist *login_masks)
 {
 	struct user_account *account = malloc(sizeof(struct user_account));
 	memset(account, 0, sizeof(struct user_account));
@@ -101,6 +116,7 @@ static struct user_account *account_add(const char *name, const char *pass, time
 	account->registered = regtime;
 	account->users = dict_create();
 	account->groups = dict_create();
+	account->login_masks = login_masks;
 
 	dict_insert(account_list, account->name, account);
 	return account;
@@ -137,8 +153,7 @@ void account_del(struct user_account *account)
 	dict_free(account->users);
 	dict_free(account->groups);
 	free(account->name);
-	if(account->login_mask)
-		free(account->login_mask);
+	stringlist_free(account->login_masks);
 	free(account);
 }
 

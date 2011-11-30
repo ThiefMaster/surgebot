@@ -520,13 +520,17 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 		dict_iter(node, accounts)
 		{
 			struct user_account *acc = node->data;
-			if(acc->login_mask && !match(acc->login_mask, user_mask))
+			// see if any of the login masks match
+			for(size_t i = 0; i < acc->login_masks->count; ++i)
 			{
-				account_user_add(acc, user);
-				reply("You have been logged into account $b%s$b, because its loginmask matches your current host.", acc->name);
-				if(command_conf.log_channel)
-					irc_send("PRIVMSG %s :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", command_conf.log_channel, src->nick, user_mask, acc->name, acc->login_mask);
-				break;
+				if(!match(acc->login_masks->data[i], user_mask))
+				{
+					account_user_add(acc, user);
+					reply("You have been logged into account $b%s$b, because its loginmask matches your current host.", acc->name);
+					if(command_conf.log_channel)
+						irc_send("PRIVMSG %s :User $b%s$b (%s) has automatically been authed to account $b%s$b, matching loginmask (%s)", command_conf.log_channel, src->nick, user_mask, acc->name, acc->login_masks->data[i]);
+					break;
+				}
 			}
 		}
 		free(user_mask);

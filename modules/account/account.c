@@ -89,7 +89,7 @@ MODULE_FINI
 	policer_params_free(auth_policer_params);
 }
 
-int chanreg_user_cmp(const void *a, const void *b)
+static int chanreg_user_cmp(const void *a, const void *b)
 {
 	struct chanreg_user *u1 = (*(struct ptrlist_node **)a)->ptr;
 	struct chanreg_user *u2 = (*(struct ptrlist_node **)b)->ptr;
@@ -331,7 +331,7 @@ COMMAND(accountinfo)
 		stringlist_free(lines);
 	}
 
-	if(account->login_mask
+	if(account->login_masks->count > 0
 		// Getting here without argument means the user is authed and infoing himself, no more checks
 		&& (
 				(argc < 2)
@@ -339,7 +339,9 @@ COMMAND(accountinfo)
 		)
 	)
 	{
-		reply("  $bLoginmask:      $b %s", account->login_mask);
+		for(size_t i = 0; i < account->login_masks->count; ++i) {
+			reply("  $bLoginmask:      $b %s", account->login_masks->data[i]);
+		}
 	}
 
 	if(dict_size(account->users))
@@ -366,10 +368,16 @@ COMMAND(accountinfo)
 COMMAND(loginmask)
 {
 	if(argc > 1)
-		return  oset_loginmask(src, user->account, argc - 1, argv + 1);
+		return oset_loginmask(src, user->account, argc - 1, argv + 1);
 
-	if(user->account->login_mask)
-		reply("Your loginmask is $b%s$b.", user->account->login_mask);
+	struct stringlist *login_masks = user->account->login_masks;
+	if(login_masks->count > 0) {
+		const char *loginmask_string = login_masks->count == 1 ? "loginmask" : "loginmasks";
+		reply("You have $b%u$b %s", login_masks->count, loginmask_string);
+		for(size_t i = 0; i < login_masks->count; ++i) {
+			reply("  %s", login_masks->data[i]);
+		}
+	}
 	else
 		reply("You have no loginmask set.");
 
@@ -603,7 +611,7 @@ OPTION_FUNC(oset_password)
 	{
 		if(!strcmp(argv[0], "*"))
 		{
-			if(!account->login_mask)
+			if(account->login_masks->count == 0)
 			{
 				reply("The password can only be deleted if there is a loginmask.");
 				return 0;
@@ -628,51 +636,73 @@ OPTION_FUNC(oset_loginmask)
 {
 	if(!argc)
 	{
-		if(account->login_mask)
-			reply("$bLoginmask:$b %s", account->login_mask);
+		if(account->login_masks->count > 0)
+		{
+			for(size_t i = 0; i < account->login_masks->count; ++i)
+			{
+				reply("$bLoginmask:$b %s", account->login_masks->data[i]);
+			}
+		}
 		else
 			reply("$b%s$b has no loginmask set.", account->name);
 
 		return 0;
 	}
 
-	if(!strcmp("*", argv[0]))
+	// need at least two arguments (add/del + the actual loginmask)
+	if(argc < 2)
 	{
-		if(!strcmp(account->pass, "*"))
+		reply("Please provide an action (add/del) as well as a loginmask.");
+		return 0;
+	}
+
+	if(!strcasecmp("del", argv[0]))
+	{
+		// get supplied loginmask
+		int loginmask_pos = stringlist_find(account->login_masks, argv[1]);
+		if(loginmask_pos == -1)
 		{
-			reply("This account has no password set. You may not delete its loginmask.");
+			reply("The loginmask $b%s$b has not been set for account $b%s$b.", argv[1], account->name);
 			return 0;
 		}
 
-		if(account->login_mask)
+		if(!strcmp(account->pass, "*") && account->login_masks->count == 1)
 		{
-			free(account->login_mask);
-			account->login_mask = NULL;
+			reply("This account has no password set. You may not delete its only loginmask.");
+			return 0;
 		}
 
-		reply("$bLoginmask:$b None");
+		stringlist_del(account->login_masks, loginmask_pos);
+		reply("The loginmask $b%s$b has been deleted from account $b%s$b.", argv[1], account->name);
 		return 1;
 	}
-	if(!strcmp("*@*", argv[0]))
+	else if(!strcasecmp("add", argv[0]))
 	{
-		reply("The loginmask MUST NOT be *@* for security reasons, please choose another one.");
-		return 0;
-	}
-	if(match("?*@?*", argv[0]))
-	{
-		reply("The provided hostmask does not match *@*, please choose another one.");
-		return 0;
-	}
+		if(!strcmp("*@*", argv[1]))
+		{
+			reply("The loginmask MUST NOT be *@* for security reasons, please choose another one.");
+			return 0;
+		}
+		if(match("?*@?*", argv[1]))
+		{
+			reply("The provided hostmask does not match *@*, please choose another one.");
+			return 0;
+		}
 
-	if(account->login_mask && strcasecmp(account->login_mask, argv[0]))
-	{
-		reply("$bLoginmask:$b %s -> $b%s$b.", account->login_mask, argv[0]);
-		free(account->login_mask);
+		int loginmask_pos = stringlist_find(account->login_masks, argv[1]);
+		if(loginmask_pos != -1)
+		{
+			reply("$b%s$b already added the loginmask $b%s$b.", account->name, argv[1]);
+			return 0;
+		}
+
+		stringlist_add(account->login_masks, argv[1]);
+		reply("The loginmask $b%s$b has been added to account $b%s$b.", argv[1], account->name);
 	}
 	else
-		reply("$bLoginmask:$b %s", argv[0]);
-
-	account->login_mask = strdup(argv[0]);
+	{
+		reply("$b%s$b is an unsupported action. Try $badd$b or $bdel$b.", argv[0]);
+	}
 	return 1;
 }
 
