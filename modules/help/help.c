@@ -157,14 +157,17 @@ static void help_load_entry(struct module *module, const char *name, struct dict
 		return;
 	}
 
+	char *description_str = database_fetch(data, "description", DB_STRING);
+	struct stringlist *see_also_slist = database_fetch(data, "see_also", DB_STRINGLIST);
+
 	struct help_entry *entry = malloc(sizeof(struct help_entry));
 	memset(entry, 0, sizeof(struct help_entry));
 	entry->name = strdup(name);
 	entry->parent = category;
 	entry->module = module;
-	entry->description = (str = database_fetch(data, "description", DB_STRING)) ? strdup(str) : strdup("");
+	entry->description = description_str ? strdup(str) : strdup("");
 	entry->text = stringlist_copy(text);
-	entry->see_also = (slist = database_fetch(data, "see_also", DB_STRINGLIST)) ? stringlist_copy(slist) : NULL;
+	entry->see_also = see_also_slist ? stringlist_copy(slist) : NULL;
 	dict_insert(category->entries, entry->name, entry);
 	ptrlist_add(help_entries, 0, entry);
 }

@@ -174,6 +174,8 @@ static int strnatcmp0(nat_char const *a, nat_char const *b, int fold_case, int c
 
 	  ++ai; ++bi;
      }
+     // or else eclipse whines
+     return 0;
 }
 
 
