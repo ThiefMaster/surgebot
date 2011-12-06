@@ -515,6 +515,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 	if(user && !user->account && !(binding->cmd->flags & CMD_IGNORE_LOGINMASK))
 	{
 		struct dict *accounts = account_dict();
+		unsigned char matched = 0;
 		user_mask = malloc(strlen(src->ident) + strlen(src->host) + 2);
 		sprintf(user_mask, "%s@%s", src->ident, src->host);
 		dict_iter(node, accounts)
@@ -525,6 +526,7 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 			{
 				if(!match(acc->login_masks->data[i], user_mask))
 				{
+					matched = 1;
 					account_user_add(acc, user);
 					reply("You have been logged into account $b%s$b, because your host matches the loginmask $b%s$b.", acc->name, acc->login_masks->data[i]);
 					if(command_conf.log_channel)
@@ -532,6 +534,9 @@ static int binding_check_access(struct irc_source *src, struct irc_user *user, s
 					break;
 				}
 			}
+
+			if(matched != 0)
+				break;
 		}
 		free(user_mask);
 	}
