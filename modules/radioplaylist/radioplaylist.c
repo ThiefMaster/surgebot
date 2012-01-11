@@ -76,6 +76,7 @@ struct genre_vote_genre {
 
 struct genre_vote {
 	uint8_t active;
+	uint8_t scheduled;
 	time_t endtime;
 	uint8_t num_genres;
 	struct genre_vote_genre *genres;
@@ -138,6 +139,8 @@ static void songvote_finish(void *bound, void *data);
 static void genrevote_free();
 static void genrevote_reset();
 static void genrevote_finish(void *bound, void *data);
+static uint8_t start_genrevote(uint8_t scheduled, struct irc_source *src, struct irc_user *user, uint8_t sched_genre_id, const char *sched_genre, uint8_t sched_weight);
+static void genrevote_scheduler(void *bound, void *data);
 static void check_countdown();
 static void check_song_changed();
 static void check_scan_result();
@@ -188,6 +191,7 @@ static struct {
 	const char *radiochan;
 
 	struct stringlist *genrevote_files;
+	struct stringlist *scheduled_genrevote_files;
 	uint16_t genrevote_duration;
 	uint16_t genrevote_frequency;
 	uint8_t genrevote_genres_per_line;
@@ -243,6 +247,8 @@ MODULE_INIT
 	reg_irc_handler("JOIN", join);
 	reg_loop_func(check_song_changed);
 
+	timer_add(this, "genrevote_scheduler", now + 5, genrevote_scheduler, NULL, 0, 0);
+
 	debug("starting stream thread");
 	pthread_create(&stream_thread, NULL, stream_thread_main, NULL);
 
@@ -297,6 +303,7 @@ MODULE_FINI
 	unreg_irc_handler("NICK", nick);
 
 	unreg_conf_reload_func(conf_reload_hook);
+	timer_del_boundname(this, "genrevote_scheduler");
 	timer_del_boundname(this, "genrevote_finish");
 	MyFree(genre_vote.blocked_reason);
 	genrevote_free();
@@ -934,7 +941,6 @@ COMMAND(playlist_genrevote)
 {
 	uint8_t genre_list_shown = 0;
 	uint8_t rc = 0;
-	PGresult *res;
 	struct genre_vote_genre *vote_genre = NULL;
 	uint8_t id;
 
@@ -946,139 +952,8 @@ COMMAND(playlist_genrevote)
 
 	if(!genre_vote.active)
 	{
-		int16_t song_time_remaining = 0;
-		uint16_t vote_duration = 0;
-		struct playlist_node *node;
-		uint8_t song_vote_cancelled = 0;
-		struct stringbuffer *genre_line;
-		struct stringlist *genre_lines;
-
-		if(check_genrevote_blocked())
-		{
-			char buf[32];
-			strftime(buf, sizeof(buf), "%H:%M", localtime(&genre_vote.blocked_until));
-			if(genre_vote.blocked_reason)
-				reply("Genrevotes sind bis $b%s$b deaktiviert: %s", buf, genre_vote.blocked_reason);
-			else
-				reply("Genrevotes sind bis $b%s$b deaktiviert.", buf);
+		if(!(genre_list_shown = start_genrevote(0, src, user, 0, NULL, 0)))
 			return 0;
-		}
-
-		if(now < (genre_vote.endtime + radioplaylist_conf.genrevote_frequency))
-		{
-			uint16_t wait_time = (genre_vote.endtime + radioplaylist_conf.genrevote_frequency) - now;
-			reply("Der nächste Genre-Vote kann erst in $b%02u:%02u$b gestartet werden.", wait_time / 60, wait_time % 60);
-			return 0;
-		}
-
-		if(stream_state.play == 2)
-		{
-			reply("Es läuft gerade ein Countdown. Daher kann kein Genre-Vote gestartet werden.");
-			return 0;
-		}
-
-		if(!stream_state.playing && !in_team_channel(user))
-		{
-			reply("Du kannst keinen Genre-Vote starten solange die Playlist nicht aktiv ist.");
-			return 0;
-		}
-
-		if(stream_state.playing && radioplaylist_conf.genrevote_files && radioplaylist_conf.genrevote_files->count)
-		{
-			// Create node and store it (will be enqueued later)
-			if((node = stream_state.playlist->make_node(stream_state.playlist, radioplaylist_conf.genrevote_files->data[mt_rand(0, radioplaylist_conf.genrevote_files->count - 1)])))
-			{
-				song_time_remaining = stream_state.endtime - now;
-				// Don't announce vote if the next song might be starting while we try to enqueue the vote announcement
-				if(song_time_remaining > 1)
-				{
-					pthread_mutex_lock(&stream_state_mutex);
-					stream_state.announce_vote = node;
-					pthread_mutex_unlock(&stream_state_mutex);
-				}
-				else
-				{
-					song_time_remaining = 0;
-				}
-			}
-		}
-
-		genre_vote.active = 1;
-		vote_duration = radioplaylist_conf.genrevote_duration + song_time_remaining;
-		genre_vote.endtime = now + vote_duration;
-
-		if(song_vote.active && genre_vote.endtime < (song_vote.endtime + 30))
-		{
-			song_vote_cancelled = 1;
-			songvote_reset();
-		}
-
-		timer_del_boundname(this, "genrevote_finish"); // just to be sure
-		timer_add(this, "genrevote_finish", genre_vote.endtime, genrevote_finish, NULL, 0, 0);
-		debug("genre vote started; duration: %u, by: %s", vote_duration, src->nick);
-
-		if(song_vote_cancelled)
-			irc_send("PRIVMSG %s :Der laufende Song-Vote wurde abgebrochen, da $b%s$b einen Genre-Vote gestartet hat.", radioplaylist_conf.radiochan, src->nick);
-		else
-			irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet.", radioplaylist_conf.radiochan, src->nick);
-		irc_send("PRIVMSG %s :Benutze $b*genrevote <genre>$b um abzustimmen. Verbleibende Zeit: $b%02u:%02u$b", radioplaylist_conf.radiochan, vote_duration / 60, vote_duration % 60);
-
-		// Show current genre if applicable
-		if(stream_state.playlist)
-		{
-			char idbuf[8];
-			uint8_t genre_id = stream_state.playlist->genre_id;
-			snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
-			res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
-			if(res && pgsql_num_rows(res))
-				irc_send("PRIVMSG %s :Aktuelles Genre: $b%s$b", radioplaylist_conf.radiochan, pgsql_nvalue(res, 0, "genre"));
-			pgsql_free(res);
-		}
-
-		// build genre list and show it
-		res = pgsql_query(pg_conn, "SELECT * FROM playlist_genres WHERE public = true ORDER BY sortorder ASC, genre ASC", 1, NULL);
-		if(!res || !(genre_vote.num_genres = pgsql_num_rows(res)))
-		{
-			log_append(LOG_WARNING, "Could not load genre list");
-			irc_send("PRIVMSG %s :Fehler - Genre-Vote abgebrochen!", radioplaylist_conf.radiochan);
-			reply("Beim Starten des Genre-Votes ist ein Fehler aufgetreten.");
-			genrevote_reset();
-			pgsql_free(res);
-			return 0;
-		}
-
-		genre_vote.genres = calloc(genre_vote.num_genres, sizeof(struct genre_vote_genre));
-		genre_lines = stringlist_create();
-		genre_line = stringbuffer_create();
-		for(int i = 0; i < genre_vote.num_genres; i++)
-		{
-			const char *str;
-			genre_vote.genres[i].id = i + 1;
-			genre_vote.genres[i].db_id = atoi(pgsql_nvalue(res, i, "id"));
-			genre_vote.genres[i].min_votes = atoi(pgsql_nvalue(res, i, "min_votes"));
-			genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
-			genre_vote.genres[i].desc = (str = pgsql_nvalue(res, i, "description")) ? strdup(str) : NULL;
-			if(genre_line->len)
-				stringbuffer_append_char(genre_line, ' ');
-			stringbuffer_append_printf(genre_line, "[$b%u$b: %s]", genre_vote.genres[i].id, genre_vote.genres[i].name);
-			if((i > 0 && ((i + 1) % radioplaylist_conf.genrevote_genres_per_line) == 0) || (i == (genre_vote.num_genres - 1)))
-			{
-				stringlist_add(genre_lines, strdup(genre_line->string));
-				stringbuffer_flush(genre_line);
-			}
-		}
-		stringbuffer_free(genre_line);
-		pgsql_free(res);
-
-		for(unsigned int i = 0; i < genre_lines->count; i++)
-			irc_send("PRIVMSG %s :%s", radioplaylist_conf.radiochan, genre_lines->data[i]);
-
-		stringlist_free(genre_lines);
-
-		genre_vote.voted_nicks = stringlist_create();
-		genre_vote.voted_hosts = stringlist_create();
-		reply("Genre-Vote wurde gestartet.");
-		genre_list_shown = 1;
 		rc = 1;
 	}
 
@@ -1874,6 +1749,241 @@ static void genrevote_finish(void *bound, void *data)
 		songvote_stream_song_changed();
 }
 
+static uint8_t start_genrevote(uint8_t scheduled, struct irc_source *src, struct irc_user *user, uint8_t sched_genre_id, const char *sched_genre, uint8_t sched_weight)
+{
+	PGresult *res;
+	int16_t song_time_remaining = 0;
+	uint16_t vote_duration = 0;
+	struct playlist_node *node;
+	uint8_t song_vote_cancelled = 0;
+	struct stringbuffer *genre_line;
+	struct stringlist *genre_lines;
+	struct stringlist *genrevote_jingles;
+
+	if(!scheduled)
+	{
+		assert_return(src, 0);
+		assert_return(user, 0);
+		if(check_genrevote_blocked())
+		{
+			char buf[32];
+			strftime(buf, sizeof(buf), "%H:%M", localtime(&genre_vote.blocked_until));
+			if(genre_vote.blocked_reason)
+				reply("Genrevotes sind bis $b%s$b deaktiviert: %s", buf, genre_vote.blocked_reason);
+			else
+				reply("Genrevotes sind bis $b%s$b deaktiviert.", buf);
+			return 0;
+		}
+
+		if(now < (genre_vote.endtime + radioplaylist_conf.genrevote_frequency))
+		{
+			uint16_t wait_time = (genre_vote.endtime + radioplaylist_conf.genrevote_frequency) - now;
+			reply("Der nächste Genre-Vote kann erst in $b%02u:%02u$b gestartet werden.", wait_time / 60, wait_time % 60);
+			return 0;
+		}
+
+		if(!stream_state.playing && !in_team_channel(user))
+		{
+			reply("Du kannst keinen Genre-Vote starten solange die Playlist nicht aktiv ist.");
+			return 0;
+		}
+	}
+
+	if(stream_state.play == 2)
+	{
+		if(src)
+			reply("Es läuft gerade ein Countdown. Daher kann kein Genre-Vote gestartet werden.");
+		return 0;
+	}
+
+	if(scheduled && radioplaylist_conf.scheduled_genrevote_files && radioplaylist_conf.scheduled_genrevote_files->count)
+		genrevote_jingles = radioplaylist_conf.scheduled_genrevote_files;
+	else
+		genrevote_jingles = radioplaylist_conf.genrevote_files;
+
+	if(stream_state.playing && genrevote_jingles && genrevote_jingles->count)
+	{
+		// Create node and store it (will be enqueued later)
+		if((node = stream_state.playlist->make_node(stream_state.playlist, genrevote_jingles->data[mt_rand(0, genrevote_jingles->count - 1)])))
+		{
+			song_time_remaining = stream_state.endtime - now;
+			// Don't announce vote if the next song might be starting while we try to enqueue the vote announcement
+			if(song_time_remaining > 1)
+			{
+				pthread_mutex_lock(&stream_state_mutex);
+				stream_state.announce_vote = node;
+				pthread_mutex_unlock(&stream_state_mutex);
+			}
+			else
+			{
+				song_time_remaining = 0;
+			}
+		}
+	}
+
+	genre_vote.active = 1;
+	vote_duration = radioplaylist_conf.genrevote_duration + song_time_remaining;
+	genre_vote.endtime = now + vote_duration;
+
+	if(song_vote.active && genre_vote.endtime < (song_vote.endtime + 30))
+	{
+		song_vote_cancelled = 1;
+		songvote_reset();
+	}
+
+	timer_del_boundname(this, "genrevote_finish"); // just to be sure
+	timer_add(this, "genrevote_finish", genre_vote.endtime, genrevote_finish, NULL, 0, 0);
+	debug("genre vote started; duration: %u, by: %s", vote_duration, src ? src->nick : "[scheduler]");
+
+	if(song_vote_cancelled)
+	{
+		if(src)
+			irc_send("PRIVMSG %s :Der laufende Song-Vote wurde abgebrochen, da $b%s$b einen Genre-Vote gestartet hat.", radioplaylist_conf.radiochan, src->nick);
+		else
+			irc_send("PRIVMSG %s :Der laufende Song-Vote wurde abgebrochen, da ein Genre-Vote gestartet wurde.", radioplaylist_conf.radiochan);
+	}
+	else
+	{
+		if(src)
+			irc_send("PRIVMSG %s :$b%s$b hat einen Genre-Vote gestartet.", radioplaylist_conf.radiochan, src->nick);
+		else
+			irc_send("PRIVMSG %s :Es wurde ein Genre-Vote gestartet.", radioplaylist_conf.radiochan);
+	}
+	if(scheduled)
+		irc_send("PRIVMSG %s :Sofern kein anderes Genre min. $b%u$b Votes erhält, wird $b%s$b gespielt.", radioplaylist_conf.radiochan, sched_weight, sched_genre);
+	irc_send("PRIVMSG %s :Benutze $b*genrevote <genre>$b um abzustimmen. Verbleibende Zeit: $b%02u:%02u$b", radioplaylist_conf.radiochan, vote_duration / 60, vote_duration % 60);
+
+	// Show current genre if applicable
+	if(stream_state.playlist)
+	{
+		char idbuf[8];
+		uint8_t genre_id = stream_state.playlist->genre_id;
+		snprintf(idbuf, sizeof(idbuf), "%"PRIu8, genre_id);
+		res = pgsql_query(pg_conn, "SELECT genre FROM playlist_genres WHERE id = $1", 1, stringlist_build_n(1, idbuf));
+		if(res && pgsql_num_rows(res))
+			irc_send("PRIVMSG %s :Aktuelles Genre: $b%s$b", radioplaylist_conf.radiochan, pgsql_nvalue(res, 0, "genre"));
+		pgsql_free(res);
+	}
+
+	// build genre list and show it
+	res = pgsql_query(pg_conn, "SELECT * FROM playlist_genres WHERE public = true ORDER BY sortorder ASC, genre ASC", 1, NULL);
+	if(!res || !(genre_vote.num_genres = pgsql_num_rows(res)))
+	{
+		log_append(LOG_WARNING, "Could not load genre list");
+		irc_send("PRIVMSG %s :Fehler - Genre-Vote abgebrochen!", radioplaylist_conf.radiochan);
+		if(src)
+			reply("Beim Starten des Genre-Votes ist ein Fehler aufgetreten.");
+		genrevote_reset();
+		pgsql_free(res);
+		return 0;
+	}
+
+	genre_vote.genres = calloc(genre_vote.num_genres, sizeof(struct genre_vote_genre));
+	genre_lines = stringlist_create();
+	genre_line = stringbuffer_create();
+	for(int i = 0; i < genre_vote.num_genres; i++)
+	{
+		const char *str;
+		genre_vote.genres[i].id = i + 1;
+		genre_vote.genres[i].db_id = atoi(pgsql_nvalue(res, i, "id"));
+		genre_vote.genres[i].min_votes = atoi(pgsql_nvalue(res, i, "min_votes"));
+		genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
+		genre_vote.genres[i].desc = (str = pgsql_nvalue(res, i, "description")) ? strdup(str) : NULL;
+		if(genre_vote.genres[i].db_id == sched_genre_id)
+			genre_vote.genres[i].votes = sched_weight;
+		if(genre_line->len)
+			stringbuffer_append_char(genre_line, ' ');
+		stringbuffer_append_printf(genre_line, "[$b%u$b: %s]", genre_vote.genres[i].id, genre_vote.genres[i].name);
+		if((i > 0 && ((i + 1) % radioplaylist_conf.genrevote_genres_per_line) == 0) || (i == (genre_vote.num_genres - 1)))
+		{
+			stringlist_add(genre_lines, strdup(genre_line->string));
+			stringbuffer_flush(genre_line);
+		}
+	}
+	stringbuffer_free(genre_line);
+	pgsql_free(res);
+
+	for(unsigned int i = 0; i < genre_lines->count; i++)
+		irc_send("PRIVMSG %s :%s", radioplaylist_conf.radiochan, genre_lines->data[i]);
+
+	stringlist_free(genre_lines);
+
+	genre_vote.voted_nicks = stringlist_create();
+	genre_vote.voted_hosts = stringlist_create();
+	if(src)
+		reply("Genre-Vote wurde gestartet.");
+	return 1;
+}
+
+static void genrevote_scheduler(void *bound, void *data)
+{
+	PGresult *res;
+	uint8_t weight, regular, forced, genre_id;
+	const char *id, *genre;
+
+	timer_add(this, "genrevote_scheduler", now + 60, genrevote_scheduler, NULL, 0, 0);
+
+	if(!pg_conn)
+		return;
+	if(genre_vote.active)
+		return;
+
+	res = pgsql_query(pg_conn, "SELECT gs.*, g.genre \
+				    FROM genre_schedule gs \
+				    JOIN playlist_genres g ON (g.id = gs.genre_id) \
+				    WHERE date_trunc('minutes', ts) = date_trunc('minutes', now() at time zone 'UTC')", 1, NULL);
+	if(!res)
+		return;
+	else if(!pgsql_num_rows(res))
+	{
+		pgsql_free(res);
+		return;
+	}
+
+	id = pgsql_nvalue(res, 0, "id");
+	genre = pgsql_nvalue(res, 0, "genre");
+	genre_id = atoi(pgsql_nvalue(res, 0, "genre_id"));
+	regular = !strcasecmp(pgsql_nvalue(res, 0, "regular"), "t");
+	forced = !strcasecmp(pgsql_nvalue(res, 0, "forced"), "t");
+	weight = atoi(pgsql_nvalue(res, 0, "weight"));
+
+	log_append(LOG_INFO, "Genrevote scheduled: %s with %d initial votes (forced: %d)", genre, weight, forced);
+	if(check_genrevote_blocked() || forced || !stream_state.playing)
+	{
+		struct playlist *playlist;
+		debug("Loading new genre without vote");
+		if(!(playlist = playlist_load(pg_conn, genre_id, PL_L_RANDOMIZE)))
+		{
+			debug("Could not load new playlist");
+			pgsql_free(res);
+			return;
+		}
+		log_append(LOG_INFO, "playlist contains %"PRIu32" tracks", playlist->count);
+		if(!playlist->count)
+		{
+			debug("New playlist is empty");
+			pgsql_free(res);
+			return;
+		}
+		shared_memory_set(this, "genre", strdup(genre), free);
+		pthread_mutex_lock(&playlist_mutex);
+		if(stream_state.playlist)
+			stream_state.playlist->free(stream_state.playlist);
+		stream_state.playlist = playlist;
+		pthread_mutex_unlock(&playlist_mutex);
+		irc_send("PRIVMSG %s :Neues Playlist-Genre geladen: %s", radioplaylist_conf.teamchan, genre);
+	}
+	else if(stream_state.playing)
+	{
+		debug("Starting genrevote");
+		start_genrevote(1, NULL, NULL, genre_id, genre, weight);
+	}
+
+	if(regular)
+		pgsql_query(pg_conn, "UPDATE genre_schedule SET ts = ts + interval '1 week' WHERE id = $1", 0, stringlist_build_n(1, id));
+	pgsql_free(res);
+}
+
 
 static void check_countdown()
 {
@@ -2030,6 +2140,9 @@ static void conf_reload_hook()
 
 	slist = conf_get("radioplaylist/genrevote_files", DB_STRINGLIST);
 	radioplaylist_conf.genrevote_files = slist;
+
+	slist = conf_get("radioplaylist/scheduled_genrevote_files", DB_STRINGLIST);
+	radioplaylist_conf.scheduled_genrevote_files = slist;
 
 	str = conf_get("radioplaylist/genrevote_duration", DB_STRING);
 	radioplaylist_conf.genrevote_duration = str ? atoi(str) : 300;
