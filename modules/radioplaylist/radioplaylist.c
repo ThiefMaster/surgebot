@@ -1951,6 +1951,13 @@ static void genrevote_scheduler(void *bound, void *data)
 	forced = !strcasecmp(pgsql_nvalue(res, 0, "forced"), "t");
 	weight = atoi(pgsql_nvalue(res, 0, "weight"));
 
+	if(stream_state.playlist && stream_state.playlist->genre_id == genre_id)
+	{
+		debug("Scheduled genre is already active");
+		pgsql_free(res);
+		return;
+	}
+
 	log_append(LOG_INFO, "Genrevote scheduled: %s with %d initial votes (forced: %d)", genre, weight, forced);
 	if(check_genrevote_blocked() || forced || !stream_state.playing)
 	{
