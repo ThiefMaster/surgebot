@@ -1890,7 +1890,11 @@ static uint8_t start_genrevote(uint8_t scheduled, struct irc_source *src, struct
 		genre_vote.genres[i].name = strdup(pgsql_nvalue(res, i, "genre"));
 		genre_vote.genres[i].desc = (str = pgsql_nvalue(res, i, "description")) ? strdup(str) : NULL;
 		if(genre_vote.genres[i].db_id == sched_genre_id)
+		{
 			genre_vote.genres[i].votes = sched_weight;
+			if(sched_weight < genre_vote.genres[i].min_votes)
+				genre_vote.genres[i].min_votes = sched_weight;
+		}
 		if(genre_line->len)
 			stringbuffer_append_char(genre_line, ' ');
 		stringbuffer_append_printf(genre_line, "[$b%u$b: %s]", genre_vote.genres[i].id, genre_vote.genres[i].name);
