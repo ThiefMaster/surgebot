@@ -1983,6 +1983,7 @@ static void genrevote_scheduler(void *bound, void *data)
 		stream_state.playlist = playlist;
 		pthread_mutex_unlock(&playlist_mutex);
 		irc_send("PRIVMSG %s :Neues Playlist-Genre geladen: %s", radioplaylist_conf.teamchan, genre);
+		genre_vote.endtime = now; // put the manual genrevote on cooldown
 	}
 	else if(stream_state.playing)
 	{
