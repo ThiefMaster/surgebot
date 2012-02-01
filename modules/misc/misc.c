@@ -39,6 +39,7 @@ COMMAND(sex);
 COMMAND(horse);
 COMMAND(banana);
 COMMAND(grammar_police);
+COMMAND(ping);
 
 MODULE_INIT
 {
@@ -72,6 +73,7 @@ MODULE_INIT
 	DEFINE_COMMAND(self, "horse",	horse,		0, CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "banana",	banana,		0, CMD_ACCEPT_CHANNEL, "group(admins)");
 	DEFINE_COMMAND(self, "grammarpolice", grammar_police, 0, CMD_LAZY_ACCEPT_CHANNEL | CMD_REQUIRE_CHANNEL, "group(admins)");
+	DEFINE_COMMAND(self, "ping",    ping,       0, 0, "true");
 }
 
 MODULE_FINI
@@ -195,7 +197,7 @@ IRC_HANDLER(privmsg)
 				return;
 			}
 		}
-		
+
 		if(IsChannelName(dst) && strcasecmp(dst, "#help") != 0 && strcasecmp(dst, "#gamesurge") != 0) {
 			size_t len = strlen(msg);
 			const time_t min_duration = 60;
@@ -637,5 +639,11 @@ COMMAND(spain)
 	}
 
 	return 1;
+}
+
+COMMAND(ping)
+{
+	reply("Pong!");
+	return 0;
 }
 
