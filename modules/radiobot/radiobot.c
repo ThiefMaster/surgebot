@@ -1183,7 +1183,11 @@ COMMAND(settitle)
 	if(!strcmp(current_streamtitle, "*"))
 	{
 		MyFree(current_streamtitle);
-		current_streamtitle = strdup(current_show);
+		current_streamtitle = NULL;
+		if(is_utf8(current_show))
+			current_streamtitle = iconv_str("UTF-8", "ISO_8859-15//TRANSLIT//IGNORE", current_show);
+		if(!current_streamtitle) // wasn't utf8 or conversion failed
+			current_streamtitle = strdup(current_show);
 	}
 
 	irc_send("PRIVMSG %s :Streamsongtitel geändert auf $b%s$b.", radiobot_conf.teamchan, (current_streamtitle ? to_utf8(current_streamtitle) : "n/a"));
