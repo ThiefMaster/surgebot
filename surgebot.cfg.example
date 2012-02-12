@@ -23,6 +23,10 @@
 	"modules" = ();
 };
 
+"locale" = {
+	"lc_ctype" = "C";
+};
+
 "commands" = {
 	// Stealth mode prevents the command module from sending any replies to users that are not authenticated.
 	// Additionally, the auth command will not reply unless you authenticated successful.
