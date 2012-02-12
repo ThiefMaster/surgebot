@@ -6,6 +6,8 @@
 // Module header
 #include "tools.h"
 
+#include <iconv.h>
+
 const struct
 {
 	char *entity;
@@ -451,6 +453,87 @@ void make_utf8(const char *str, char *buf, size_t bufsize)
 	}
 
 	buf[i] = '\0';
+}
+
+char *iconv_str(const char *from_charset, const char *to_charset, const char *input)
+{
+	size_t inleft, outleft, converted = 0;
+	char *output, *outbuf, *tmp;
+	const char *inbuf;
+	size_t outlen;
+	iconv_t cd;
+
+	if((cd = iconv_open(to_charset, from_charset)) == (iconv_t) -1)
+		return NULL;
+
+	inleft = strlen(input);
+	inbuf = input;
+
+	/* we'll start off allocating an output buffer which is the same size
+	 * as our input buffer. */
+	outlen = inleft;
+
+	/* we allocate 4 bytes more than what we need for nul-termination... */
+	if(!(output = malloc(outlen + 4))) {
+		iconv_close(cd);
+		return NULL;
+	}
+
+	while(1) {
+		errno = 0;
+		outbuf = output + converted;
+		outleft = outlen - converted;
+
+		converted = iconv(cd, (char **) &inbuf, &inleft, &outbuf, &outleft);
+		if(converted != (size_t)-1 || errno == EINVAL) {
+			/*
+			 * EINVAL: An incomplete multibyte sequence has been encountered in the input.
+			 * We'll just truncate it and ignore it.
+			 */
+			break;
+		}
+
+		if(errno != E2BIG) {
+			printf("errno %d: %s\n", errno, strerror(errno));
+			/*
+			 * EILSEQ An invalid multibyte sequence has been encountered in the input.
+			 * Bad input, we can't really recover from this.
+			 */
+			iconv_close(cd);
+			free(output);
+			return NULL;
+		}
+
+		/*
+		 * E2BIG: There is not sufficient room at *outbuf.
+		 * We just need to grow our outbuffer and try again.
+		 */
+		converted = outbuf - output;
+		outlen += (inleft * 2) + 8;
+
+		if(!(tmp = realloc(output, outlen + 4))) {
+			iconv_close(cd);
+			free(output);
+			return NULL;
+		}
+
+		output = tmp;
+		outbuf = output + converted;
+	};
+
+	/* flush the iconv conversion */
+	iconv(cd, NULL, NULL, &outbuf, &outleft);
+	iconv_close(cd);
+
+	/* Note: not all charsets can be nul-terminated with a single
+	 * nul byte. UCS2, for example, needs 2 nul bytes and UCS4
+	 * needs 4. I hope that 4 nul bytes is enough to terminate all
+	 * multibyte charsets? */
+
+	/* nul-terminate the string */
+	memset(outbuf, 0, 4);
+
+	return output;
 }
 
 unsigned char channel_mode_changes_state(struct irc_channel *channel, const char *mode, const char *arg)

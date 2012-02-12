@@ -1102,7 +1102,11 @@ COMMAND(setmod)
 
 	current_show = showtitle;
 	MyFree(current_streamtitle);
-	current_streamtitle = strdup(showtitle);
+	current_streamtitle = NULL;
+	if(is_utf8(showtitle))
+		current_streamtitle = iconv_str("UTF-8", "ISO_8859-15//TRANSLIT//IGNORE", showtitle);
+	if(!current_streamtitle) // wasn't utf8 or conversion failed
+		current_streamtitle = strdup(showtitle);
 	queue_full = 0;
 
 	if(current_mod) {
