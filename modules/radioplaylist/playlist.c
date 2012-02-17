@@ -118,6 +118,8 @@ static int8_t playlist_load_db(struct playlist *playlist, uint8_t genre_id, uint
 			node->artist = strdup(tmp);
 		if((tmp = pgsql_nvalue(res, i, "album")))
 			node->album = strdup(tmp);
+		if((tmp = pgsql_nvalue(res, i, "track")))
+			node->track = atoi(tmp);
 		if((tmp = pgsql_nvalue(res, i, "title")))
 			node->title = strdup(tmp);
 		node->duration = atoi(pgsql_nvalue(res, i, "duration"));
@@ -354,6 +356,7 @@ static struct playlist_node *playlist_make_node(struct playlist *playlist, const
 		node->artist = existing->artist ? strdup(existing->artist) : NULL;
 		node->album = existing->album ? strdup(existing->album) : NULL;
 		node->title = existing->title ? strdup(existing->title) : NULL;
+		node->track = existing->track;
 	}
 	else
 	{
@@ -371,9 +374,11 @@ static struct playlist_node *playlist_make_node(struct playlist *playlist, const
 		if((i3f = id3_file_open(file, ID3_FILE_MODE_READONLY)))
 		{
 			const struct id3_tag *tag = id3_file_tag(i3f);
+			const char *tmp;
 			node->artist = get_id3_entry(tag, ID3_FRAME_ARTIST);
 			node->title = get_id3_entry(tag, ID3_FRAME_TITLE);
 			node->album = get_id3_entry(tag, ID3_FRAME_ALBUM);
+			node->track = (tmp = get_id3_entry(tag, ID3_FRAME_TRACK)) ? atoi(tmp) : 0;
 			id3_file_close(i3f);
 		}
 	}
@@ -402,6 +407,7 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 		node->artist = existing->artist ? strdup(existing->artist) : NULL;
 		node->album = existing->album ? strdup(existing->album) : NULL;
 		node->title = existing->title ? strdup(existing->title) : NULL;
+		node->track = existing->track;
 		node->blacklist = existing->blacklist;
 		node->jingle = existing->jingle;
 	}
@@ -427,6 +433,8 @@ static struct playlist_node *playlist_get_node(struct playlist *playlist, uint32
 			node->artist = strdup(tmp);
 		if((tmp = pgsql_nvalue(res, 0, "album")))
 			node->album = strdup(tmp);
+		if((tmp = pgsql_nvalue(res, 0, "track")))
+			node->track = atoi(tmp);
 		if((tmp = pgsql_nvalue(res, 0, "title")))
 			node->title = strdup(tmp);
 		node->duration = atoi(pgsql_nvalue(res, 0, "duration"));
@@ -672,9 +680,10 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 {
 	struct id3_file *i3f;
 	char *artist, *title, *album;
+	uint8_t track;
 	const mad_timer_t *duration;
 	uint16_t duration_secs;
-	char durationbuf[8], inodebuf[16], sizebuf[16], mtimebuf[16];
+	char trackbuf[4], durationbuf[8], inodebuf[16], sizebuf[16], mtimebuf[16];
 	PGresult *res;
 	struct playlist_node *node = NULL;
 	int8_t rc;
@@ -709,12 +718,15 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	}
 
 	artist = title = album = NULL;
+	track = 0;
 	if((i3f = id3_file_open(file, ID3_FILE_MODE_READONLY)))
 	{
 		const struct id3_tag *tag = id3_file_tag(i3f);
+		const char *tmp;
 		artist = get_id3_entry(tag, ID3_FRAME_ARTIST);
 		title = get_id3_entry(tag, ID3_FRAME_TITLE);
 		album = get_id3_entry(tag, ID3_FRAME_ALBUM);
+		track = (tmp = get_id3_entry(tag, ID3_FRAME_TRACK)) ? atoi(tmp) : 0;
 		id3_file_close(i3f);
 	}
 
@@ -738,8 +750,9 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 		return 0;
 	}
 
-	debug("new song: %s - %s - %s [%02u:%02u]", artist, album, title, duration_secs / 60, duration_secs % 60);
+	debug("new song: %s - %s - %02d - %s [%02u:%02u]", artist, album, track, title, duration_secs / 60, duration_secs % 60);
 
+	snprintf(trackbuf, sizeof(trackbuf), "%"PRIu8, track);
 	snprintf(durationbuf, sizeof(durationbuf), "%u", duration_secs);
 	snprintf(inodebuf, sizeof(inodebuf), "%lu", sb->st_ino);
 	snprintf(sizebuf, sizeof(sizebuf), "%ld", sb->st_size);
@@ -754,24 +767,25 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 					 SET \
 						artist = $2, \
 						album = $3, \
-						title = $4, \
-						duration = $5, \
-						st_inode = $6, \
-						st_size = $7, \
-						st_mtime = $8 \
+						track = $4, \
+						title = $5, \
+						duration = $6, \
+						st_inode = $7, \
+						st_size = $8, \
+						st_mtime = $9 \
 					 WHERE \
 						id = $1",
-				  1, stringlist_build_n(8, idbuf, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf));
+				  1, stringlist_build_n(9, idbuf, artist, album, trackbuf, title, durationbuf, inodebuf, sizebuf, mtimebuf));
 		if(updated_count)
 			(*updated_count)++;
 	}
 	else
 	{
 		res = pgsql_query_bin(conn, "INSERT INTO playlist_songs \
-						(file, artist, album, title, duration, st_inode, st_size, st_mtime) \
+						(file, artist, album, track, title, duration, st_inode, st_size, st_mtime) \
 					     VALUES \
-						($1::bytea, $2, $3, $4, $5, $6, $7, $8)",
-				  1, stringlist_build_n(8, file, artist, album, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
+						($1::bytea, $2, $3, $4, $5, $6, $7, $8, $9)",
+				  1, stringlist_build_n(9, file, artist, album, trackbuf, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
 		if(new_count)
 			(*new_count)++;
 	}

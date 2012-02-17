@@ -25,6 +25,7 @@ struct playlist_node
 
 	char *artist;
 	char *album;
+	uint8_t track;
 	char *title;
 
 	uint16_t duration;

@@ -4,6 +4,7 @@ CREATE TABLE playlist_songs
 	file bytea NOT NULL,
 	artist character varying,
 	album character varying,
+	track smallint,
 	title character varying,
 	duration smallint NOT NULL,
 	blacklist boolean NOT NULL DEFAULT false,
