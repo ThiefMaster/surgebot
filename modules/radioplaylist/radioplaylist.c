@@ -58,6 +58,7 @@ struct scan_state {
 		SCAN_FINISHED	= 2 // scan thread not running or terminating, results waiting
 	} state;
 
+	uint8_t mode;
 	char *path;
 	char *nick;
 	int8_t rc;
@@ -833,6 +834,7 @@ COMMAND(playlist_scan)
 	char *path;
 	struct stat sb;
 	pthread_attr_t attr;
+	uint8_t mode, offset;
 
 	if(scan_state.state != SCAN_IDLE)
 	{
@@ -840,7 +842,14 @@ COMMAND(playlist_scan)
 		return 0;
 	}
 
-	path = untokenize(argc - 1, argv + 1, " ");
+	mode = 0;
+	offset = 1;
+	if(!strcmp(argv[1], "--rescan-all"))
+	{
+		mode = PL_S_PARSE_ALL;
+		offset = 2;
+	}
+	path = untokenize(argc - offset, argv + offset, " ");
 
 	if(stat(path, &sb) == -1)
 	{
@@ -858,6 +867,7 @@ COMMAND(playlist_scan)
 
 	memset(&scan_state, 0, sizeof(scan_state));
 	scan_state.state = SCAN_ACTIVE;
+	scan_state.mode = mode;
 	scan_state.path = path;
 	scan_state.nick = strdup(src->nick);
 
@@ -2282,7 +2292,7 @@ static void *scan_thread_main(void *arg)
 	else
 	{
 		pgsql_begin(conn);
-		scan_state.rc = playlist_scan(scan_state.path, conn, 0, &scan_state.new_count, &scan_state.updated_count);
+		scan_state.rc = playlist_scan(scan_state.path, conn, scan_state.mode, &scan_state.new_count, &scan_state.updated_count);
 		if(scan_state.rc != 0)
 		{
 			debug("scan failed");

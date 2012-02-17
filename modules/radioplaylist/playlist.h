@@ -55,6 +55,7 @@ struct playlist
 	uint32_t count;
 
 	uint8_t load_flags;
+	uint8_t scan_flags;
 	uint8_t genre_id;
 
 	void (*free)(struct playlist *playlist);

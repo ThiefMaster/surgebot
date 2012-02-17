@@ -589,9 +589,12 @@ int8_t playlist_scan(const char *path, struct pgsql *conn, uint8_t mode, uint32_
 	if(!path || !*path)
 		return (mode & PL_S_TRUNCATE) ? 0 : -1;
 
-	// If we didn't truncate and unmodified files shouldn't be parsed again, load the current playlist
-	if(!(mode & (PL_S_TRUNCATE | PL_S_PARSE_ALL)))
+	// If we didn't truncate, load the current playlist
+	if(!(mode & PL_S_TRUNCATE))
+	{
 		playlist = playlist_load(conn, 0, PL_L_ALL);
+		playlist->scan_flags = mode;
+	}
 
 	rc = playlist_scan_dir(make_absolute_path(path), conn, playlist, 0, new_count, updated_count);
 
@@ -713,7 +716,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 			debug("mtime differs: %"PRIu32" -> %ld", node->mtime, sb->st_mtime);
 		}
 
-		if(!modified)
+		if(!modified && !(playlist->scan_flags & PL_S_PARSE_ALL))
 			return 0;
 	}
 
