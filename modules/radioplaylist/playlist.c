@@ -687,6 +687,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 	const mad_timer_t *duration;
 	uint16_t duration_secs;
 	char trackbuf[4], durationbuf[8], inodebuf[16], sizebuf[16], mtimebuf[16];
+	const char *trackptr;
 	PGresult *res;
 	struct playlist_node *node = NULL;
 	int8_t rc;
@@ -755,7 +756,15 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 
 	debug("new song: %s - %s - %02d - %s [%02u:%02u]", artist, album, track, title, duration_secs / 60, duration_secs % 60);
 
-	snprintf(trackbuf, sizeof(trackbuf), "%"PRIu8, track);
+	if(track)
+	{
+		snprintf(trackbuf, sizeof(trackbuf), "%"PRIu8, track);
+		trackptr = trackbuf;
+	}
+	else
+	{
+		trackptr = NULL;
+	}
 	snprintf(durationbuf, sizeof(durationbuf), "%u", duration_secs);
 	snprintf(inodebuf, sizeof(inodebuf), "%lu", sb->st_ino);
 	snprintf(sizebuf, sizeof(sizebuf), "%ld", sb->st_size);
@@ -778,7 +787,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 						st_mtime = $9 \
 					 WHERE \
 						id = $1",
-				  1, stringlist_build_n(9, idbuf, artist, album, trackbuf, title, durationbuf, inodebuf, sizebuf, mtimebuf));
+				  1, stringlist_build_n(9, idbuf, artist, album, trackptr, title, durationbuf, inodebuf, sizebuf, mtimebuf));
 		if(updated_count)
 			(*updated_count)++;
 	}
@@ -788,7 +797,7 @@ static int8_t playlist_scan_file(struct pgsql *conn, const char *file, struct st
 						(file, artist, album, track, title, duration, st_inode, st_size, st_mtime) \
 					     VALUES \
 						($1::bytea, $2, $3, $4, $5, $6, $7, $8, $9)",
-				  1, stringlist_build_n(9, file, artist, album, trackbuf, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
+				  1, stringlist_build_n(9, file, artist, album, trackptr, title, durationbuf, inodebuf, sizebuf, mtimebuf), 1);
 		if(new_count)
 			(*new_count)++;
 	}
