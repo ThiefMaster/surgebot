@@ -1136,7 +1136,7 @@ COMMAND(setmod)
 	if(radiobot_conf.api.setmod && mod_changed)
 	{
 		struct json_object *payload = json_object_new_object();
-		json_object_object_add(payload, "mod", current_mod ? json_object_new_string(current_mod) : NULL);
+		json_object_object_add(payload, "mod", current_mod ? json_object_new_string(sanitize_nick(current_mod)) : NULL);
 		json_object_object_add(payload, "show", json_object_new_string(to_utf8(showtitle)));
 		call_api(radiobot_conf.api.setmod, json_object_to_json_string(payload));
 		json_object_put(payload);
