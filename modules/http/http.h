@@ -18,7 +18,9 @@ typedef void (http_event_f)(struct HTTPRequest *, enum HTTPRequest_event);
 struct HTTPHost
 {
 	char *host;
+	unsigned int port;
 	char *path;
+	unsigned char ssl;
 };
 
 struct HTTPRequest
@@ -26,7 +28,6 @@ struct HTTPRequest
 	char *id;
 
 	struct HTTPHost *host;
-	unsigned int port;
 	struct sock *sock;
 	int status;
 
@@ -48,6 +49,10 @@ struct HTTPRequest
 	unsigned char forward_request_foreign;
 	// Pass the HTTP response line by line to the read function
 	unsigned char read_linewise;
+	// request method/body
+	const char *method; // GET, POST, ...
+	const char *payload_type; // content type (application/json, application/x-www-form-urlencoded)
+	char *payload; // POST body; free'd after request has been sent
 };
 
 enum HTTPRequest_event

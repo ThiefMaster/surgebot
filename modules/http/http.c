@@ -21,7 +21,7 @@ static struct HTTPRequest *http_find_sock(struct sock *);
 static struct HTTPHost *parse_host(const char *);
 static void HTTPRequest_set_host(struct HTTPRequest *, const char *);
 
-static unsigned int next_id = 0;
+static unsigned long next_id = 0;
 
 MODULE_INIT
 {
@@ -37,10 +37,10 @@ MODULE_FINI
 struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_func, http_read_f *read_func)
 {
 	struct HTTPRequest *http;
-	char tmp[MAXLEN];
+	char tmp[32];
 
-	debug("Creating new HTTP request to host \"%s\" with ID %d", host, next_id);
-	sprintf(tmp, "%u", next_id++);
+	debug("Creating new HTTP request to host \"%s\" with ID %lu", host, next_id);
+	snprintf(tmp, sizeof(tmp), "%lu", next_id++);
 
 	http = malloc(sizeof(struct HTTPRequest));
 	memset(http, 0, sizeof(struct HTTPRequest));
@@ -54,20 +54,21 @@ struct HTTPRequest *HTTPRequest_create(const char *host, http_event_f *event_fun
 
 	http->buf = stringbuffer_create();
 
-	http->port = 80;
 	HTTPRequest_set_host(http, host);
 
 	http->in_headers = 1;
 	http->forward_request = 1;
 	http->forward_request_foreign = 1;
 	http->id = strdup(tmp);
+	http->method = "GET";
 
 	// Set appropriate struct settings
 	dict_set_free_funcs(http->request_headers, free, free);
 	dict_set_free_funcs(http->response_headers, free, free);
 
 	// Fill struct with given values
-	ptrlist_add(http->read_funcs, 0, read_func);
+	if(read_func)
+		ptrlist_add(http->read_funcs, 0, read_func);
 
 	if(event_func)
 		ptrlist_add(http->event_funcs, 0, event_func);
@@ -99,6 +100,7 @@ void HTTPRequest_free(struct HTTPRequest *http)
 		if(http->host->path)
 			free(http->host->path);
 		free(http->host);
+		MyFree(http->payload);
 		free(http);
 	}
 }
@@ -133,10 +135,16 @@ void HTTPRequest_del_header(struct HTTPRequest *http, const char *name)
 void HTTPRequest_connect(struct HTTPRequest *http)
 {
 	assert(!http->sock);
+	unsigned short sockflags = sock_resolve_64(http->host->host);
+	if(!sockflags)
+		sockflags = SOCK_IPV4; // so we get an error later. i know it's ugly!
+	sockflags |= SOCK_QUIET;
+	if(http->host->ssl)
+		sockflags |= SOCK_SSL;
 
-	http->sock = sock_create(SOCK_IPV4 | SOCK_QUIET, http_sock_event, http_sock_read);
+	http->sock = sock_create(sockflags, http_sock_event, http_sock_read);
 	debug("Connecting HTTP Request %s", http->id);
-	sock_connect(http->sock, http->host->host, http->port);
+	sock_connect(http->sock, http->host->host, http->host->port);
 }
 
 void HTTPRequest_disconnect(struct HTTPRequest *http)
@@ -161,9 +169,7 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 			/* Socket was closed by remote side = reached end of http content
 			 * -> Dump (remaining) read buffer to socket-read-functions
 			 */
-			unsigned int i;
-
-			for(i = 0; i < http->read_funcs->count; i++)
+			for(unsigned int i = 0; i < http->read_funcs->count; i++)
 				((http_read_f*)http->read_funcs->data[i]->ptr)(http, http->buf->string, (unsigned int)http->buf->len);
 
 			stringbuffer_free(http->buf);
@@ -181,13 +187,22 @@ static void http_sock_event(struct sock *sock, enum sock_event event, int err)
 
 		case EV_CONNECT:
 		{
-			sock_write_fmt(sock, "GET /%s HTTP/1.0\r\n", (http->host->path ? http->host->path : ""));
+			sock_write_fmt(sock, "%s /%s HTTP/1.0\r\n", http->method, (http->host->path ? http->host->path : ""));
 			dict_iter(node, http->request_headers)
 			{
 				sock_write_fmt(sock, "%s: %s\r\n", node->key, (char*)node->data);
 			}
+			if(http->payload)
+			{
+				sock_write_fmt(sock, "Content-length: %lu\r\n", strlen(http->payload));
+				sock_write_fmt(sock, "Content-type: %s\r\n", http->payload_type);
+			}
 			// Empty line to signalise end of headers
 			sock_write(sock, "\r\n", 2);
+			if(http->payload)
+			{
+				sock_write(sock, http->payload, strlen(http->payload));
+			}
 			break;
 		}
 		default:
@@ -300,13 +315,21 @@ static struct HTTPRequest *http_find_sock(struct sock *sock)
 static struct HTTPHost *parse_host(const char *host)
 {
 	struct HTTPHost *hhost = malloc(sizeof(struct HTTPHost));
+	memset(hhost, 0, sizeof(struct HTTPHost));
 	char *tmp;
 
 	// Remove http part
 	if(!strncasecmp(host, "https://", 8))
+	{
 		host += 8;
+		hhost->port = 443;
+		hhost->ssl = 1;
+	}
 	else if(!strncasecmp(host, "http://", 7))
+	{
 		host += 7;
+		hhost->port = 80;
+	}
 
 	// Is there a slash introducing a possible path?
 	if((tmp = strstr(host, "/")))
@@ -318,6 +341,13 @@ static struct HTTPHost *parse_host(const char *host)
 	{
 		hhost->host = strdup(host);
 		hhost->path = NULL;
+	}
+
+	// Is there a colon instroducing a non-standard port number?
+	if((tmp = strchr(hhost->host, ':')) && isdigit(*(tmp + 1)))
+	{
+		*tmp = '\0';
+		hhost->port = atoi(tmp + 1);
 	}
 
 	return hhost;

@@ -45,6 +45,17 @@ void sock_fini()
 #endif
 }
 
+unsigned short sock_resolve_64(const char *host)
+{
+	// Try resolving via v6 and v4 and see which one succeeds
+	if(gethostbyname2(host, AF_INET6))
+		return SOCK_IPV6;
+	else if(gethostbyname2(host, AF_INET))
+		return SOCK_IPV4;
+	return 0;
+}
+
+
 struct sock* sock_create(unsigned short type, sock_event_f *event_func, sock_read_f *read_func)
 {
 	struct sock *sock;
