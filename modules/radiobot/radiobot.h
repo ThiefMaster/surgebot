@@ -34,6 +34,7 @@ struct radiobot_conf
 	struct {
 		const char *key;
 		const char *setmod;
+		const char *nickchange;
 	} api;
 };
 

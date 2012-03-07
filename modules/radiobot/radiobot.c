@@ -435,6 +435,8 @@ static void radiobot_conf_reload()
 
 	str = conf_get("radiobot/api/setmod", DB_STRING);
 	radiobot_conf.api.setmod = (str && *str) ? str : NULL;
+	str = conf_get("radiobot/api/nickchange", DB_STRING);
+	radiobot_conf.api.nickchange = (str && *str) ? str : NULL;
 
 	// special config-related actions
 	if(cmd_sock)
@@ -957,6 +959,16 @@ IRC_HANDLER(nick)
 		current_mod = strdup(argv[1]);
 		shared_memory_set(this, "mod", strdup(sanitize_nick(current_mod)), free);
 		database_write(radiobot_db);
+
+		if(radiobot_conf.api.nickchange)
+		{
+			struct json_object *payload = json_object_new_object();
+			json_object_object_add(payload, "oldnick", json_object_new_string(src->nick));
+			json_object_object_add(payload, "newnick", json_object_new_string(argv[1]));
+			json_object_object_add(payload, "mod", json_object_new_string(sanitize_nick(argv[1])));
+			call_api(radiobot_conf.api.nickchange, json_object_to_json_string(payload));
+			json_object_put(payload);
+		}
 	}
 
 	if(current_mod_2 && !strcmp(current_mod_2, src->nick))
@@ -1136,6 +1148,7 @@ COMMAND(setmod)
 	if(radiobot_conf.api.setmod && mod_changed)
 	{
 		struct json_object *payload = json_object_new_object();
+		json_object_object_add(payload, "modnick", current_mod ? json_object_new_string(current_mod) : NULL);
 		json_object_object_add(payload, "mod", current_mod ? json_object_new_string(sanitize_nick(current_mod)) : NULL);
 		json_object_object_add(payload, "show", json_object_new_string(to_utf8(showtitle)));
 		call_api(radiobot_conf.api.setmod, json_object_to_json_string(payload));
