@@ -8,6 +8,7 @@
 #include "modules/http/http.h"
 #include "modules/sharedmem/sharedmem.h"
 #include "modules/tools/tools.h"
+#include "modules/radioapi/radioapi.h"
 #include "chanuser.h"
 #include "irc.h"
 #include "irc_handler.h"
@@ -40,7 +41,7 @@
 // duration after which a polling ajax request is finished
 #define HTTP_POLL_DURATION 1800
 
-MODULE_DEPENDS("commands", "help", "http", "httpd", "sharedmem", "tools", NULL);
+MODULE_DEPENDS("commands", "help", "http", "httpd", "sharedmem", "tools", "radioapi", NULL);
 
 static struct
 {
@@ -142,8 +143,6 @@ const char *get_streamtitle();
 static void shared_memory_changed(struct module *module, const char *key, void *old, void *new);
 static void memcache_set(const char *key, time_t ttl, const char *format, ...);
 static void memcache_delete(const char *key);
-static void call_api(const char *api, const char *payload);
-static void api_read_func(struct HTTPRequest *http, const char *buf, unsigned int len);
 static time_t check_queue_full();
 static time_t check_wishgreet_blocked();
 static int in_wish_greet_channel(struct irc_user *user);
@@ -429,15 +428,6 @@ static void radiobot_conf_reload()
 	str = conf_get("radiobot/memcached_config", DB_STRING);
 	radiobot_conf.memcached_config = (str && *str) ? str : NULL;
 
-	// api
-	str = conf_get("radiobot/api/key", DB_STRING);
-	radiobot_conf.api.key = (str && *str) ? str : NULL;
-
-	str = conf_get("radiobot/api/setmod", DB_STRING);
-	radiobot_conf.api.setmod = (str && *str) ? str : NULL;
-	str = conf_get("radiobot/api/nickchange", DB_STRING);
-	radiobot_conf.api.nickchange = (str && *str) ? str : NULL;
-
 	// special config-related actions
 	if(cmd_sock)
 	{
@@ -604,29 +594,6 @@ static void memcache_delete(const char *key)
 		rc = memcached_delete(mc, key, strlen(key), 0); // retry
 	if(rc != MEMCACHED_SUCCESS)
 		log_append(LOG_WARNING, "memcached_delete() failed: %s", memcached_strerror(mc, rc));
-}
-
-static void call_api(const char *api, const char *payload)
-{
-	if(!api)
-		return;
-
-	struct HTTPRequest *req;
-	req = HTTPRequest_create(api, NULL, api_read_func);
-	req->method = "POST";
-	req->payload_type = "application/json";
-	req->payload = strdup(payload);
-	HTTPRequest_add_header(req, "X-API-Key", radiobot_conf.api.key);
-	HTTPRequest_connect(req);
-	debug("API call sent to %s: %s", api, payload);
-}
-
-static void api_read_func(struct HTTPRequest *http, const char *buf, unsigned int len)
-{
-	enum log_level lvl = LOG_DEBUG;
-	if(http->status != 200)
-		lvl = LOG_WARNING;
-	log_append(lvl, "API call finished (%u): %s", http->status, buf);
 }
 
 static time_t check_queue_full()
@@ -960,15 +927,12 @@ IRC_HANDLER(nick)
 		shared_memory_set(this, "mod", strdup(sanitize_nick(current_mod)), free);
 		database_write(radiobot_db);
 
-		if(radiobot_conf.api.nickchange)
-		{
-			struct json_object *payload = json_object_new_object();
-			json_object_object_add(payload, "oldnick", json_object_new_string(src->nick));
-			json_object_object_add(payload, "newnick", json_object_new_string(argv[1]));
-			json_object_object_add(payload, "mod", json_object_new_string(sanitize_nick(argv[1])));
-			call_api(radiobot_conf.api.nickchange, json_object_to_json_string(payload));
-			json_object_put(payload);
-		}
+		struct json_object *payload = json_object_new_object();
+		json_object_object_add(payload, "oldnick", json_object_new_string(src->nick));
+		json_object_object_add(payload, "newnick", json_object_new_string(argv[1]));
+		json_object_object_add(payload, "mod", json_object_new_string(sanitize_nick(argv[1])));
+		radioapi_call("nickchange", json_object_to_json_string(payload));
+		json_object_put(payload);
 	}
 
 	if(current_mod_2 && !strcmp(current_mod_2, src->nick))
@@ -1145,13 +1109,13 @@ COMMAND(setmod)
 			notify_func(&radiobot_conf, "setmod", current_mod, showtitle);
 	}
 
-	if(radiobot_conf.api.setmod && mod_changed)
+	if(mod_changed)
 	{
 		struct json_object *payload = json_object_new_object();
 		json_object_object_add(payload, "modnick", current_mod ? json_object_new_string(current_mod) : NULL);
 		json_object_object_add(payload, "mod", current_mod ? json_object_new_string(sanitize_nick(current_mod)) : NULL);
 		json_object_object_add(payload, "show", json_object_new_string(to_utf8(showtitle)));
-		call_api(radiobot_conf.api.setmod, json_object_to_json_string(payload));
+		radioapi_call("setmod", json_object_to_json_string(payload));
 		json_object_put(payload);
 	}
 

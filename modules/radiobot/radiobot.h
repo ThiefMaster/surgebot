@@ -31,11 +31,6 @@ struct radiobot_conf
 	const char *gadget_update_url;
 	const char *gadget_current_version;
 	const char *memcached_config;
-	struct {
-		const char *key;
-		const char *setmod;
-		const char *nickchange;
-	} api;
 };
 
 typedef void (radiobot_notify_func)(struct radiobot_conf *conf, const char *action, ...);
