@@ -3,11 +3,13 @@
 #include "modules/commands/commands.h"
 #include "modules/help/help.h"
 #include "modules/pgsql/pgsql.h"
+#include "modules/radioapi/radioapi.h"
 #include "irc.h"
 #include "conf.h"
 #include "radioschedule.h"
+#include <json/json.h>
 
-MODULE_DEPENDS("commands", "help", "tools", "pgsql", NULL);
+MODULE_DEPENDS("commands", "help", "tools", "pgsql", "radioapi", NULL);
 
 COMMAND(schedule_add);
 COMMAND(schedule_extend);
@@ -200,7 +202,15 @@ COMMAND(schedule_add)
 
 	show_title = argline + (argv[3 + arg_offset] - argv[0]);
 	if((rc = add_show(&show_info, show_title)) == 0)
+	{
 		reply("Die Sendung wurde erfolgreich eingetragen.");
+
+		struct json_object *payload = json_object_new_object();
+		json_object_object_add(payload, "nick", json_object_new_string(src->nick));
+		json_object_object_add(payload, "show", json_object_new_int(show_info.entryid));
+		radioapi_call("addshow", json_object_to_json_string(payload));
+		json_object_put(payload);
+	}
 
 	return (rc == 0);
 }
@@ -294,6 +304,12 @@ COMMAND(schedule_extend)
 		char buf[8];
 		strftime(buf, sizeof(buf), "%H:%M", localtime(&show_info.endtime));
 		reply("Die Sendung wurde bis $b%s$b verlängert.", buf);
+
+		struct json_object *payload = json_object_new_object();
+		json_object_object_add(payload, "nick", json_object_new_string(src->nick));
+		json_object_object_add(payload, "show", json_object_new_int(show_info.entryid));
+		radioapi_call("extendshow", json_object_to_json_string(payload));
+		json_object_put(payload);
 	}
 
 	return (rc == 0);

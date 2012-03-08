@@ -248,13 +248,14 @@ int add_show(struct show_info *show_info, const char *show_title)
 
 	res = pgsql_query(radioschedule_conf.pg_conn, "INSERT INTO shows \
 			(user_id, user_id_2, create_date, start_time, end_time, title) VALUES \
-			($1, $2, now()::date, (to_timestamp($3) at time zone 'UTC'), (to_timestamp($4) at time zone 'UTC'), $5)", 1, params);
+			($1, $2, now()::date, (to_timestamp($3) at time zone 'UTC'), (to_timestamp($4) at time zone 'UTC'), $5) RETURNING id", 1, params);
 	if(!res || !pgsql_num_affected(res)) {
 		if(res) {
 			pgsql_free(res);
 		}
 		return -1;
 	}
+	show_info->entryid = strtoul(pgsql_nvalue(res, 0, "id"), NULL, 10);
 	pgsql_free(res);
 	return 0;
 }
