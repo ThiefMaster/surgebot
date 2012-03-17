@@ -1,6 +1,8 @@
 #ifndef TOOLS_MODULE_H
 #define TOOLS_MODULE_H
 
+#include <json/json.h>
+
 char *html_decode(char *str);
 int remdir(const char *path, unsigned char exists);
 char *str_replace(const char *str, unsigned char case_sensitive, ...) NULL_SENTINEL;
@@ -17,6 +19,7 @@ void make_utf8(const char *str, char *buf, size_t bufsize);
 char *iconv_str(const char *from_charset, const char *to_charset, const char *input);
 unsigned char channel_mode_changes_state(struct irc_channel *channel, const char *mode, const char *arg);
 time_t strtotime(const char *str);
+void *json_get_path(json_object *obj, const char *node_path, json_type type);
 
 static inline const char *to_utf8(const char *str)
 {

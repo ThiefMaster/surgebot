@@ -631,3 +631,75 @@ time_t strtotime(const char *str)
 	tm->tm_sec = 0;
 	return mktime(tm);
 }
+
+// Helper function to access a subelement of a json object
+void *json_get_path(json_object *obj, const char *node_path, json_type type)
+{
+	char *path = strdup(node_path);
+	char *orig_path = path;
+	struct stringbuffer *buf = stringbuffer_create();
+
+	// Various types so we can always return a pointer
+	static int v_int;
+	static double v_double;
+
+	if(*path == '.') // leading dot -> get rid of it
+		path++;
+
+	if(strlen(path) && path[strlen(path) - 1] == '.') // trailing dot -> get rid of it
+		path[strlen(path) - 1] = '\0';
+
+	if(!strlen(path))
+		return NULL;
+
+	while(strchr(path, '.'))
+	{
+		if(*path == '.') // next path element starting -> update record with previous path element
+		{
+			obj = json_object_object_get(obj, buf->string);
+			if(obj == NULL || !json_object_is_type(obj, json_type_object)) // not found or not an object
+			{
+				stringbuffer_free(buf);
+				free(orig_path);
+				return NULL;
+			}
+
+			stringbuffer_flush(buf);
+			path++;
+		}
+		else // path not yet complete
+		{
+			stringbuffer_append_char(buf, *path);
+			path++;
+		}
+	}
+
+	obj = json_object_object_get(obj, path); // find node in last path path
+	stringbuffer_free(buf);
+	free(orig_path);
+	if(!obj || !json_object_is_type(obj, type))
+		return NULL;
+
+	switch(json_object_get_type(obj))
+	{
+		case json_type_null:
+			return NULL;
+		case json_type_boolean:
+			v_int = json_object_get_boolean(obj);
+			return &v_int;
+		case json_type_double:
+			v_double = json_object_get_double(obj);
+			return &v_double;
+		case json_type_int:
+			v_int = json_object_get_int(obj);
+			return &v_int;
+		case json_type_object:
+			return obj;
+		case json_type_array:
+			return json_object_get_array(obj);
+		case json_type_string:
+			return (void *)json_object_get_string(obj);
+	}
+
+	return NULL;
+}
