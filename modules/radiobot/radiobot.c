@@ -147,6 +147,7 @@ static time_t check_queue_full();
 static time_t check_wishgreet_blocked();
 static int in_wish_greet_channel(struct irc_user *user);
 static const char *sanitize_nick(const char *raw_nick);
+static void radiobot_radioapi_cb(const char *api, json_object *payload);
 static unsigned int rrd_exists(const char *name);
 static void rrd_update();
 static void rrd_graph();
@@ -166,6 +167,8 @@ static struct stringbuffer *stats_data;
 static char *current_mod = NULL;
 static char *current_mod_2 = NULL;
 static char *current_playlist = NULL;
+static char *current_playlist_user = NULL;
+static char *current_playlist_name = NULL;
 static char *current_streamtitle = NULL;
 static char *current_title = NULL;
 static char *current_show = NULL;
@@ -319,6 +322,8 @@ MODULE_FINI
 	MyFree(current_mod);
 	MyFree(current_mod_2);
 	MyFree(current_playlist);
+	MyFree(current_playlist_user);
+	MyFree(current_playlist_name);
 	MyFree(current_title);
 	MyFree(current_streamtitle);
 	MyFree(current_show);
@@ -482,6 +487,10 @@ static void radiobot_db_read(struct database *db)
 		current_mod_2 = strdup(str);
 	if((str = database_fetch(db->nodes, "showinfo/playlist", DB_STRING)))
 		current_playlist = strdup(str);
+	if((str = database_fetch(db->nodes, "showinfo/playlist_user", DB_STRING)))
+		current_playlist_user = strdup(str);
+	if((str = database_fetch(db->nodes, "showinfo/playlist_name", DB_STRING)))
+		current_playlist_name = strdup(str);
 	if((str = database_fetch(db->nodes, "showinfo/streamtitle", DB_STRING)))
 		current_streamtitle = strdup(str);
 	if((str = database_fetch(db->nodes, "showinfo/show", DB_STRING)))
@@ -508,6 +517,10 @@ static int radiobot_db_write(struct database *db)
 			database_write_string(db, "mod2", current_mod_2);
 		if(current_playlist)
 			database_write_string(db, "playlist", current_playlist);
+		if(current_playlist_user)
+			database_write_string(db, "playlist_user", current_playlist_user);
+		if(current_playlist_name)
+			database_write_string(db, "playlist_name", current_playlist_name);
 		if(current_streamtitle)
 			database_write_string(db, "streamtitle", current_streamtitle);
 		if(current_show)
@@ -1099,6 +1112,8 @@ COMMAND(setmod)
 		else
 			showtitle = strdup("Playlist");
 		MyFree(current_playlist);
+		MyFree(current_playlist_user);
+		MyFree(current_playlist_name);
 		shared_memory_set(this, "mod", NULL, NULL);
 	}
 	else
@@ -1120,7 +1135,11 @@ COMMAND(setmod)
 	}
 
 	if(!same_mod)
+	{
 		MyFree(current_playlist);
+		MyFree(current_playlist_user);
+		MyFree(current_playlist_name);
+	}
 
 	current_show = showtitle;
 	MyFree(current_streamtitle);
@@ -1171,6 +1190,8 @@ COMMAND(setsecmod)
 
 COMMAND(setplaylist)
 {
+	char *str;
+
 	if(argc < 2)
 	{
 		reply("Aktuelle Playlist: $b%s$b", (current_playlist ? current_playlist : "[keine]"));
@@ -1178,18 +1199,70 @@ COMMAND(setplaylist)
 	}
 
 	MyFree(current_playlist);
-	current_playlist = untokenize(argc - 1, argv + 1, " ");
-	if(!strcmp(current_playlist, "*"))
-		MyFree(current_playlist);
-
+	MyFree(current_playlist_user);
+	MyFree(current_playlist_name);
+	str = untokenize(argc - 1, argv + 1, " ");
 	if(current_playlist && (!strcasecmp(current_playlist, "on") || !strcasecmp(current_playlist, "playlist")))
-		irc_send("PRIVMSG %s :%s, bist du sicher, dass du die $bPlaylist-URL$b auf $b%s$b setzen wolltest, statt die Playlist einzuschalten?!", radiobot_conf.teamchan, src->nick, current_playlist);
+	{
+		irc_send("PRIVMSG %s :%s, du wolltest die $bPlaylist-URL$b ganz gewiss NICHT auf $b%s$b setzen!", radiobot_conf.teamchan, src->nick, current_playlist);
+		free(str);
+		return 0;
+	}
 
-	irc_send("PRIVMSG %s :Playlist geändert auf $b%s$b.", radiobot_conf.teamchan, (current_playlist ? current_playlist : "[Keine]"));
-	reply("Aktuelle Playlist: $b%s$b", (current_playlist ? current_playlist : "[Keine]"));
-	database_write(radiobot_db);
-	show_updated();
+
+	if(!strcmp(str, "*"))
+	{
+		free(str);
+		irc_send("PRIVMSG %s :Playlist geändert auf $b[Keine]$b.", radiobot_conf.teamchan);
+		reply("Aktuelle Playlist: $b[Keine]$b");
+		database_write(radiobot_db);
+		show_updated();
+		show_updated_readonly();
+		return 1;
+	}
+
+	// api call to get the playlist url
+	struct json_object *payload = json_object_new_object();
+	json_object_object_add(payload, "nick", json_object_new_string(src->nick));
+	json_object_object_add(payload, "arg", json_object_new_string(str));
+	radioapi_call_cb("setplaylist", json_object_to_json_string(payload), radiobot_radioapi_cb);
+	json_object_put(payload);
 	return 1;
+}
+
+static void radiobot_radioapi_cb(const char *api, json_object *payload)
+{
+	if(!strcmp(api, "setplaylist"))
+	{
+		int *tmp = json_get_path(payload, "success", json_type_boolean);
+		assert(tmp);
+		int success = *tmp;
+		const char *nick = json_get_path(payload, "nick", json_type_string);
+		const char *url = json_get_path(payload, "url", json_type_string);
+		const char *user = json_get_path(payload, "user", json_type_string);
+		const char *name = json_get_path(payload, "name", json_type_string);
+		MyFree(current_playlist);
+		MyFree(current_playlist_user);
+		MyFree(current_playlist_name);
+		assert(nick);
+		if(!success)
+		{
+			irc_send_msg(nick, "NOTICE", "Playlist konnte nicht gesetzt werden!");
+		}
+		else
+		{
+			assert(url);
+			assert(user);
+			current_playlist = strdup(url);
+			current_playlist_user = strdup(user);
+			current_playlist_name = name ? strdup(name) : NULL;
+			irc_send("PRIVMSG %s :Playlist geändert auf $b%s$b.", radiobot_conf.teamchan, current_playlist);
+			irc_send_msg(nick, "NOTICE", "Aktuelle Playlist: $b%s$b", current_playlist);
+			database_write(radiobot_db);
+			show_updated();
+			show_updated_readonly();
+		}
+	}
 }
 
 COMMAND(settitle)
@@ -1815,6 +1888,8 @@ static void show_updated_readonly()
 	memcache_set("radiobot.show", 0, "%s", (current_show ? to_utf8(current_show) : "Playlist"));
 	memcache_set("radiobot.song", 0, "%s", (current_title ? to_utf8(current_title) : ""));
 	memcache_set("radiobot.listeners", 0, "%u", stream_stats.listeners_current);
+	memcache_set("radiobot.playlist.user", 0, current_playlist_user ? to_utf8(current_playlist_user) : "");
+	memcache_set("radiobot.playlist.name", 0, current_playlist_name ? to_utf8(current_playlist_name) : "");
 }
 
 static void cmdsock_drop_client_tmr(void *bound, struct sock *sock)
