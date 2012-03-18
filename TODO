@@ -10,4 +10,8 @@ Description                                                     | Assigned to
    - Bot output (see logging modul)                             |
  Disallow registration of invalid accounts through the website  |
  Vote module                                                    |
-
+ resetpass command
+ seen module, implementing *later and *seen
+ rewrite command rule parser, allow not yet loaded functions
+ check chanserv owner during *request if channel already exists
+ use postgre as database
