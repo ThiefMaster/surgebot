@@ -39,6 +39,9 @@ struct HTTPRequest
 	struct ptrlist *read_funcs;
 	struct ptrlist *event_funcs;
 
+	char *extra_str; // free'd together with this struct
+	void *extra; // not free'd
+
 	/*
 	 * Options that can be set by the caller
 	 */

@@ -101,6 +101,8 @@ void HTTPRequest_free(struct HTTPRequest *http)
 			free(http->host->path);
 		free(http->host);
 		MyFree(http->payload);
+		if(http->extra_str)
+			free(http->extra_str);
 		free(http);
 	}
 }
