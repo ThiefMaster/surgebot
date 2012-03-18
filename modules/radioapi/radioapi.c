@@ -2,6 +2,7 @@
 #include "module.h"
 #include "conf.h"
 #include "modules/http/http.h"
+#include "radioapi.h"
 
 static void radioapi_conf_reload();
 static void radioapi_read_func(struct HTTPRequest *http, const char *buf, unsigned int len);
@@ -36,7 +37,7 @@ static void radioapi_conf_reload()
 	radioapi_conf.urls = conf_get("radioapi/urls", DB_OBJECT);
 }
 
-void radioapi_call(const char *api, const char *payload)
+void radioapi_call_cb(const char *api, const char *payload, radioapi_func *cb)
 {
 	const char *url;
 
@@ -55,6 +56,8 @@ void radioapi_call(const char *api, const char *payload)
 	req->method = "POST";
 	req->payload_type = "application/json";
 	req->payload = strdup(payload);
+	req->extra_str = strdup(api);
+	req->extra = cb;
 	HTTPRequest_add_header(req, "X-API-Key", radioapi_conf.key);
 	HTTPRequest_connect(req);
 	debug("API call sent to %s: %s", api, payload);
@@ -66,4 +69,17 @@ static void radioapi_read_func(struct HTTPRequest *http, const char *buf, unsign
 	if(http->status != 200)
 		lvl = LOG_WARNING;
 	log_append(lvl, "API call finished (%u): %s", http->status, buf);
+	if(http->extra_str && http->extra)
+	{
+		json_object *payload;
+		if(!(payload = json_tokener_parse(buf)) || is_error(payload))
+		{
+			log_append(LOG_WARNING, "Got invalid json payload from radio api: %s", buf);
+		}
+		else
+		{
+			((radioapi_func*)http->extra)(http->extra_str, payload);
+			json_object_put(payload);
+		}
+	}
 }
