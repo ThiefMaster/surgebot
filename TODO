@@ -13,4 +13,3 @@ Description                                                     | Assigned to
  resetpass command
  seen module, implementing *later and *seen
  rewrite command rule parser, allow not yet loaded functions
- check chanserv owner during *request if channel already exists

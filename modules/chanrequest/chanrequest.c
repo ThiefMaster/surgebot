@@ -28,6 +28,7 @@ static struct {
 	unsigned int blockTime;
 	unsigned int cleanInterval;
 	int minAccess;
+	int minTakeoverAccess;
 	const char *logChannel;
 } chanrequest_conf;
 
@@ -88,6 +89,7 @@ static void chanrequest_conf_reload(void)
 	chanrequest_conf.cleanInterval = ((str = conf_get("chanrequest/clean_interval", DB_STRING)) ? atoi(str) : 15*60);
 	chanrequest_conf.blockTime = ((str = conf_get("chanrequest/block_time", DB_STRING)) ? atoi(str) : 5*60);
 	chanrequest_conf.minAccess = ((str = conf_get("chanrequest/min_access", DB_STRING)) ? atoi(str) : 400);
+	chanrequest_conf.minTakeoverAccess = ((str = conf_get("chanrequest/min_takeover_access", DB_STRING)) ? atoi(str) : 500);
 	chanrequest_conf.logChannel = (((str = conf_get("chanrequest/log_channel", DB_STRING)) && *str) ? str : NULL);
 }
 
@@ -127,8 +129,24 @@ COMMAND(request)
 
 	if((reg = chanreg_find(channel_name)))
 	{
-		reply("$b%s$b is already registered.", reg->channel);
-		return 0;
+		struct irc_channel *chan;
+		struct irc_user *chanserv_user;
+		struct chanreg_user *creg_user;
+		if((creg_user = chanreg_user_find(reg, user->account->name)) && creg_user->level == UL_OWNER)
+		{
+			reply("$b%s$b is already registered to you.", reg->channel);
+			return 0;
+		}
+		else
+		{
+			reply("$b%s$b is already registered to someone else.", reg->channel);
+			if(!chanrequest_conf.minTakeoverAccess || !(chan = channel_find(reg->channel)) ||
+			   !(chan->modes & MODE_REGISTERED) || !(chanserv_user = user_find("ChanServ")) ||
+			   !(channel_user_find(chan, chanserv_user)))
+				return 0;
+			chanserv_get_access_callback(reg->channel, src->nick, chanrequest_chanserv_get_access_callback, "takeover");
+			return 1;
+		}
 	}
 
 	time_t *blockedUntil = dict_find(blockedChannels, channel_name);
@@ -244,6 +262,46 @@ static void chanrequest_cleanup_blockedChannel_tmr(struct module *self, void *ct
 
 static void chanrequest_chanserv_get_access_callback(const char *channel, const char *nick, int access, void *ctx)
 {
+	// takeover
+	if(ctx && !strcmp(ctx, "takeover"))
+	{
+		struct chanreg *reg;
+
+		if(access >= 0 && access < chanrequest_conf.minTakeoverAccess)
+		{
+			reply_nick(nick, "You have $b%u$b ChanServ access in $b%s$b; to take over the channel you need $b%u$b access.", access, channel, chanrequest_conf.minTakeoverAccess);
+			return;
+		}
+		else if(access < 0)
+		{
+			reply_nick(nick, "It was not possible to get your ChanServ access in $b%s$b.", channel);
+			reply_nick(nick, "Please retry or contact bot staff.");
+			return;
+		}
+		if((reg = chanreg_find(channel)))
+		{
+			struct chanreg_user *victim;
+			struct irc_user *user = user_find(nick);
+			if(!user || !user->account) // user probably signed off
+				return;
+			reply_nick(nick, "You are now the $bowner$b of $b%s$b since you are the ChanServ owner of the channel.", channel);
+			for(unsigned int i = 0; i < reg->users->count; i++)
+			{
+				struct chanreg_user *c_user = reg->users->data[i];
+				if(c_user->level == UL_OWNER)
+				{
+					c_user->level = UL_OWNER - 1;
+					reply_nick(nick, "The access of the previous owner $b%s$b has been lowered to $b499$b.", c_user->account->name);
+				}
+			}
+			if(!(victim = chanreg_user_find(reg, user->account->name)))
+				victim = chanreg_user_add(reg, user->account->name, UL_OWNER);
+			victim->level = UL_OWNER;
+		}
+		return;
+	}
+
+	// registration
 	if(access >= chanrequest_conf.minAccess)
 	{
 		registerChannelToNick(channel, nick);
