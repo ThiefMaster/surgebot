@@ -1,11 +1,13 @@
 #include "global.h"
 #include "module.h"
+#include "ptrlist.h"
 #include "scripting.h"
 
 MODULE_DEPENDS(NULL);
 
 static void module_unloaded(struct module *module);
 static void free_function(struct scripting_func *func);
+static void free_arg(struct scripting_arg *arg);
 
 static struct module *this;
 static struct dict *scripting_funcs;
@@ -58,15 +60,14 @@ struct scripting_func *scripting_find_function(const char *name)
 	return dict_find(scripting_funcs, name);
 }
 
-void scripting_call_function(struct scripting_func *func)
+void scripting_call_function(struct scripting_func *func, struct dict *args)
 {
-	func->caller(func);
+	func->caller(func->extra, args);
 }
 
 static void module_unloaded(struct module *module)
 {
-	dict_iter(node, scripting_funcs)
-	{
+	dict_iter(node, scripting_funcs) {
 		struct scripting_func *func = node->data;
 		if(func->module == module) {
 			dict_delete_node(scripting_funcs, node);
@@ -77,6 +78,44 @@ static void module_unloaded(struct module *module)
 static void free_function(struct scripting_func *func)
 {
 	debug("Unregistered function: %s.%s", func->module->name, func->name);
-	func->freeer(func);
+	func->freeer(func->extra);
 	free(func->name);
+}
+
+// arguments
+struct dict *scripting_args_create_dict()
+{
+	struct dict *args = dict_create();
+	dict_set_free_funcs(args, free, (dict_free_f*)free_arg);
+	return args;
+}
+
+struct ptrlist *scripting_args_create_list()
+{
+	struct ptrlist *list = ptrlist_create();
+	ptrlist_set_free_func(list, (ptrlist_free_f*)free_arg);
+	return list;
+}
+
+static void free_arg(struct scripting_arg *arg)
+{
+	switch(arg->type) {
+		case SCRIPTING_ARG_TYPE_NULL:
+			break;
+		case SCRIPTING_ARG_TYPE_BOOL:
+		case SCRIPTING_ARG_TYPE_INT:
+		case SCRIPTING_ARG_TYPE_DOUBLE:
+		case SCRIPTING_ARG_TYPE_STRING:
+			free(arg->data.ptr);
+			break;
+		case SCRIPTING_ARG_TYPE_LIST:
+			ptrlist_free(arg->data.list);
+			break;
+		case SCRIPTING_ARG_TYPE_DICT:
+			dict_free(arg->data.dict);
+			break;
+		case SCRIPTING_ARG_TYPE_CALLABLE:
+			arg->callable_freeer(arg->callable);
+			break;
+	}
 }
