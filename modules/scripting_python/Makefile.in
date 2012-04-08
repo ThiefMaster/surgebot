@@ -1,0 +1,2 @@
+LIBS_mod += `python-config --libs`
+CFLAGS_mod += `python-config --includes`
