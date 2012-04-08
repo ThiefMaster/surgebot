@@ -4,80 +4,79 @@
 
 MODULE_DEPENDS(NULL);
 
-DECLARE_LIST(scripting_func_list, struct scripting_func *)
-IMPLEMENT_LIST(scripting_func_list, struct scripting_func *)
-
-uint8_t func_matches(struct scripting_func *func, const char *module, const char *name);
+static void module_unloaded(struct module *module);
+static void free_function(struct scripting_func *func);
 
 static struct module *this;
-static struct scripting_func_list *scripting_funcs;
+static struct dict *scripting_funcs;
 
 MODULE_INIT
 {
 	this = self;
-	scripting_funcs = scripting_func_list_create();
+	scripting_funcs = dict_create();
+	dict_set_free_funcs(scripting_funcs, NULL, (dict_free_f*)free_function);
+	reg_module_load_func(NULL, module_unloaded);
 }
 
 MODULE_FINI
 {
-	scripting_func_list_free(scripting_funcs);
+	dict_free(scripting_funcs);
+	unreg_module_load_func(NULL, module_unloaded);
 }
 
-uint8_t scripting_register_function(const char *module, const char *name, uint8_t num_args)
+struct scripting_func *scripting_register_function(struct module *module, const char *name)
 {
-	if(scripting_find_function(module, name)) {
-		log_append(LOG_WARNING, "Function %s.%s is already defined", module ? module : "<core>", name);
+	struct scripting_func *func;
+	if((func = scripting_find_function(name))) {
+		log_append(LOG_WARNING, "Function %s is already defined in module %s", func->name, func->module->name);
+		return NULL;
+	}
+	func = malloc(sizeof(struct scripting_func));
+	memset(func, 0, sizeof(struct scripting_func));
+	func->module = module;
+	func->name = strdup(name);
+	dict_insert(scripting_funcs, func->name, func);
+	debug("Registered function: %s.%s", module->name, func->name);
+	return func;
+}
+
+uint8_t scripting_unregister_function(struct module *module, const char *name)
+{
+	struct scripting_func *func = scripting_find_function(name);
+	if(!func) {
+		return 0;
+	}
+	if(func->module != module) {
 		return 1;
 	}
-	struct scripting_func *func = malloc(sizeof(struct scripting_func));
-	memset(func, 0, sizeof(struct scripting_func));
-	func->module = module ? strdup(module) : NULL;
-	func->name = strdup(name);
-	func->num_args = num_args;
+	dict_delete(scripting_funcs, name);
 	return 0;
 }
 
-void scripting_unregister_function(const char *module, const char *name)
+struct scripting_func *scripting_find_function(const char *name)
 {
-	struct scripting_func *func = scripting_find_function(module, name);
-	if(!func) {
-		return;
-	}
-	scripting_func_list_del(scripting_funcs, func);
-	MyFree(func->module);
-	MyFree(func->name);
-	// TODO: free args
+	return dict_find(scripting_funcs, name);
 }
 
-void scripting_register_argument(struct scripting_func *func, const char *name, enum scripting_arg_type type, uint8_t required, struct scripting_arg_value *default_value)
+void scripting_call_function(struct scripting_func *func)
 {
-	assert(func->cur_args < func->num_args);
-	struct scripting_func_arg *arg = malloc(sizeof(struct scripting_func_arg));
-	memset(arg, 0, sizeof(struct scripting_func_arg));
-	arg->name = strdup(name);
-	arg->type = type;
-	arg->required = required;
-	arg->default_value = default_value;
-	func->args[func->cur_args++] = arg;
+	func->caller(func);
 }
 
-struct scripting_func *scripting_find_function(const char *module, const char *name)
+static void module_unloaded(struct module *module)
 {
-	for(unsigned int i = 0; i < scripting_funcs->count; i++) {
-		struct scripting_func *func = scripting_funcs->data[i];
-		if(func_matches(func, module, name)) {
-			return func;
+	dict_iter(node, scripting_funcs)
+	{
+		struct scripting_func *func = node->data;
+		if(func->module == module) {
+			dict_delete_node(scripting_funcs, node);
 		}
 	}
-	return NULL;
 }
 
-uint8_t func_matches(struct scripting_func *func, const char *module, const char *name) {
-	if((!module && func->module) || (module && !func->module)) {
-		return 0;
-	}
-	if(module && func->module && strcmp(module, func->module)) {
-		return 0;
-	}
-	return !!strcmp(name, func->name);
+static void free_function(struct scripting_func *func)
+{
+	debug("Unregistered function: %s.%s", func->module->name, func->name);
+	func->freeer(func);
+	free(func->name);
 }
