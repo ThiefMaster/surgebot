@@ -10,7 +10,7 @@ PyMODINIT_FUNC create_module();
 static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject* scripting_python_register(PyObject *self, PyObject *args);
 static PyObject* scripting_python_unregister(PyObject *self, PyObject *args);
-static void python_caller(PyObject *pyfunc, struct dict *args);
+static struct dict *python_caller(PyObject *pyfunc, struct dict *args);
 static void python_freeer(PyObject *pyfunc);
 static struct dict *args_from_python(PyObject *pyargs);
 static struct scripting_arg *arg_from_python(PyObject *value);
@@ -35,10 +35,12 @@ MODULE_INIT
 	PyRun_SimpleString("import surgebot\n\
 def cb(**args):\n\
 	print 'cb called: %r' % args\n\
-def test(**args):\n\
+	return 1337\n\
+def test(callable, **args):\n\
 	print 'test func called: %r' % args\n\
+	return callable(), 1*2*3, 4*5*6, 'xyz', {'foo': 'bar'}\n\
 surgebot.register('test', test)\n\
-surgebot.call('test', foo='bar', num=1337, abc=['x',1,2,3], xxx=dict(a='b', c='d'), callable=cb)");
+print surgebot.call('test', foo='bar', num=1337, abc=['x',1,2,3], xxx=dict(a='b', c='d'), callable=cb)");
 }
 
 MODULE_FINI
@@ -67,8 +69,11 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 	if(!funcargs) {
 		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
 	}
-	scripting_call_function(func, funcargs);
-	Py_RETURN_NONE;
+	struct dict *ret = scripting_call_function(func, funcargs);
+	if(!ret) {
+		Py_RETURN_NONE;
+	}
+	return args_to_python(ret);
 }
 
 static PyObject* scripting_python_register(PyObject *self, PyObject *args)
@@ -109,18 +114,31 @@ static PyObject* scripting_python_unregister(PyObject *self, PyObject *args)
 	Py_RETURN_NONE;
 }
 
-static void python_caller(PyObject *pyfunc, struct dict *args)
+static struct dict *python_caller(PyObject *pyfunc, struct dict *args)
 {
+	PyObject *ret = NULL;
 	if(!args) {
-		PyObject_CallObject(pyfunc, NULL);
+		ret = PyObject_CallObject(pyfunc, NULL);
 	}
 	else {
 		PyObject *posargs = PyTuple_New(0);
 		PyObject *kwargs = args_to_python(args);
-		PyObject_Call(pyfunc, posargs, kwargs);
+		ret = PyObject_Call(pyfunc, posargs, kwargs);
 		Py_DECREF(posargs);
 		Py_DECREF(kwargs);
 	}
+	if(!ret) {
+		return NULL;
+	}
+
+	// Our top-level struct is always a dict, so we wrap return values in a dict
+	struct scripting_arg *retarg = arg_from_python(ret);
+	if(!retarg) {
+		return NULL;
+	}
+	struct dict *dict = scripting_args_create_dict();
+	dict_insert(dict, strdup("result"), retarg);
+	return dict;
 }
 
 static void python_freeer(PyObject *pyfunc)
@@ -171,11 +189,11 @@ static struct scripting_arg *arg_from_python(PyObject *value)
 		arg->type = SCRIPTING_ARG_TYPE_STRING;
 		arg->data.string = strdup(PyString_AsString(value));
 	}
-	else if(PyList_Check(value)) {
+	else if(PyList_Check(value) || PyTuple_Check(value)) {
 		arg->type = SCRIPTING_ARG_TYPE_LIST;
 		arg->data.list = scripting_args_create_list();
-		for(Py_ssize_t i = 0; i < PyList_GET_SIZE(value); i++) {
-			struct scripting_arg *subarg = arg_from_python(PyList_GET_ITEM(value, i));
+		for(Py_ssize_t i = 0; i < PySequence_Size(value); i++) {
+			struct scripting_arg *subarg = arg_from_python(PySequence_Fast_GET_ITEM(value, i));
 			if(!subarg) {
 				scripting_arg_free(arg);
 				return NULL;

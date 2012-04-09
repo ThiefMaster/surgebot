@@ -4,7 +4,7 @@
 struct scripting_func;
 struct ptrlist;
 
-typedef void (scripting_func_caller)(void *func, struct dict *args);
+typedef struct dict *(scripting_func_caller)(void *func, struct dict *args);
 typedef void (scripting_func_freeer)(void *func);
 
 struct scripting_func {
@@ -18,7 +18,7 @@ struct scripting_func {
 struct scripting_func *scripting_register_function(struct module *module, const char *name);
 uint8_t scripting_unregister_function(struct module *module, const char *name);
 struct scripting_func *scripting_find_function(const char *name);
-void scripting_call_function(struct scripting_func *func, struct dict *args);
+struct dict *scripting_call_function(struct scripting_func *func, struct dict *args);
 
 // argument objects
 enum scripting_arg_type {

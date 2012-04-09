@@ -59,9 +59,9 @@ struct scripting_func *scripting_find_function(const char *name)
 	return dict_find(scripting_funcs, name);
 }
 
-void scripting_call_function(struct scripting_func *func, struct dict *args)
+struct dict *scripting_call_function(struct scripting_func *func, struct dict *args)
 {
-	func->caller(func->extra, args);
+	return func->caller(func->extra, args);
 }
 
 static void module_unloaded(struct module *module)
