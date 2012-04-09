@@ -48,4 +48,5 @@ struct scripting_arg {
 
 struct dict *scripting_args_create_dict();
 struct ptrlist *scripting_args_create_list();
+void scripting_arg_free(struct scripting_arg *arg);
 #endif

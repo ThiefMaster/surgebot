@@ -38,7 +38,7 @@ def cb(**args):\n\
 def test(**args):\n\
 	print 'test func called: %r' % args\n\
 surgebot.register('test', test)\n\
-surgebot.call('test', foo='bar', num=1337, abc=['x',1,2,3], xxx=dict(a='b', c='d'), callable=cb, callable2=cb)");
+surgebot.call('test', foo='bar', num=1337, abc=['x',1,2,3], xxx=dict(a='b', c='d'), callable=cb)");
 }
 
 MODULE_FINI
@@ -60,10 +60,13 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 
 	struct scripting_func *func = scripting_find_function(funcname);
 	if(!func) {
-		return PyErr_Format(PyExc_NotImplementedError, "Function %s is not registered", funcname);
+		return PyErr_Format(PyExc_NotImplementedError, "Function is not registered");
 	}
 
 	struct dict *funcargs = args_from_python(kwargs);
+	if(!funcargs) {
+		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
+	}
 	scripting_call_function(func, funcargs);
 	Py_RETURN_NONE;
 }
@@ -132,7 +135,12 @@ static struct dict *args_from_python(PyObject *pyargs)
 	Py_ssize_t pos = 0;
 
 	while(PyDict_Next(pyargs, &pos, &key, &value)) {
-		dict_insert(args, strdup(PyString_AsString(key)), arg_from_python(value));
+		struct scripting_arg *arg = arg_from_python(value);
+		if(!arg) {
+			dict_free(args);
+			return NULL;
+		}
+		dict_insert(args, strdup(PyString_AsString(key)), arg);
 	}
 	return args;
 }
@@ -167,7 +175,12 @@ static struct scripting_arg *arg_from_python(PyObject *value)
 		arg->type = SCRIPTING_ARG_TYPE_LIST;
 		arg->data.list = scripting_args_create_list();
 		for(Py_ssize_t i = 0; i < PyList_GET_SIZE(value); i++) {
-			ptrlist_add(arg->data.list, 0, arg_from_python(PyList_GET_ITEM(value, i)));
+			struct scripting_arg *subarg = arg_from_python(PyList_GET_ITEM(value, i));
+			if(!subarg) {
+				scripting_arg_free(arg);
+				return NULL;
+			}
+			ptrlist_add(arg->data.list, 0, subarg);
 		}
 	}
 	else if(PyDict_Check(value)) {
@@ -179,6 +192,10 @@ static struct scripting_arg *arg_from_python(PyObject *value)
 		Py_INCREF(value);
 		arg->callable = value;
 		arg->callable_freeer = (scripting_func_freeer*)python_freeer;
+	}
+	else {
+		scripting_arg_free(arg);
+		return NULL;
 	}
 	return arg;
 }

@@ -7,7 +7,6 @@ MODULE_DEPENDS(NULL);
 
 static void module_unloaded(struct module *module);
 static void free_function(struct scripting_func *func);
-static void free_arg(struct scripting_arg *arg);
 
 static struct module *this;
 static struct dict *scripting_funcs;
@@ -86,18 +85,18 @@ static void free_function(struct scripting_func *func)
 struct dict *scripting_args_create_dict()
 {
 	struct dict *args = dict_create();
-	dict_set_free_funcs(args, free, (dict_free_f*)free_arg);
+	dict_set_free_funcs(args, free, (dict_free_f*)scripting_arg_free);
 	return args;
 }
 
 struct ptrlist *scripting_args_create_list()
 {
 	struct ptrlist *list = ptrlist_create();
-	ptrlist_set_free_func(list, (ptrlist_free_f*)free_arg);
+	ptrlist_set_free_func(list, (ptrlist_free_f*)scripting_arg_free);
 	return list;
 }
 
-static void free_arg(struct scripting_arg *arg)
+void scripting_arg_free(struct scripting_arg *arg)
 {
 	switch(arg->type) {
 		case SCRIPTING_ARG_TYPE_NULL:
