@@ -77,7 +77,9 @@ static void module_unloaded(struct module *module)
 static void free_function(struct scripting_func *func)
 {
 	debug("Unregistered function: %s.%s", func->module->name, func->name);
-	func->freeer(func->extra);
+	if(func->freeer) {
+		func->freeer(func->extra);
+	}
 	free(func->name);
 }
 
