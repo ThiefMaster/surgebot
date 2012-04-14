@@ -12,6 +12,7 @@ static PyObject* scripting_python_register(PyObject *self, PyObject *args);
 static PyObject* scripting_python_unregister(PyObject *self, PyObject *args);
 static struct dict *python_caller(PyObject *pyfunc, struct dict *args);
 static void python_freeer(PyObject *pyfunc);
+static PyObject *python_taker(PyObject *pyfunc);
 static struct dict *args_from_python(PyObject *pyargs);
 static struct scripting_arg *arg_from_python(PyObject *value);
 static PyObject *args_to_python(struct dict *args);
@@ -70,6 +71,10 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
 	}
 	struct dict *ret = scripting_call_function(func, funcargs);
+	if(scripting_get_error()) {
+		assert_return(!ret, NULL);
+		return PyErr_Format(PyExc_RuntimeError, "%s", scripting_get_error());
+	}
 	if(!ret) {
 		Py_RETURN_NONE;
 	}
@@ -146,6 +151,12 @@ static void python_freeer(PyObject *pyfunc)
 	Py_DECREF(pyfunc);
 }
 
+static PyObject *python_taker(PyObject *pyfunc)
+{
+	Py_INCREF(pyfunc);
+	return pyfunc;
+}
+
 static struct dict *args_from_python(PyObject *pyargs)
 {
 	struct dict *args = scripting_args_create_dict();
@@ -210,6 +221,7 @@ static struct scripting_arg *arg_from_python(PyObject *value)
 		Py_INCREF(value);
 		arg->callable = value;
 		arg->callable_freeer = (scripting_func_freeer*)python_freeer;
+		arg->callable_taker = (scripting_func_taker*)python_taker;
 	}
 	else {
 		scripting_arg_free(arg);
