@@ -63,7 +63,7 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 
 	struct scripting_func *func = scripting_find_function(funcname);
 	if(!func) {
-		return PyErr_Format(PyExc_NotImplementedError, "Function is not registered");
+		return PyErr_Format(PyExc_NotImplementedError, "Function %s is not registered", funcname);
 	}
 
 	struct dict *funcargs = args_from_python(kwargs);
@@ -132,12 +132,18 @@ static struct dict *python_caller(PyObject *pyfunc, struct dict *args)
 		Py_DECREF(posargs);
 		Py_DECREF(kwargs);
 	}
+	if(PyErr_Occurred()) {
+		PyErr_Print();
+		Py_XDECREF(ret);
+		return NULL;
+	}
 	if(!ret) {
 		return NULL;
 	}
 
 	// Our top-level struct is always a dict, so we wrap return values in a dict
 	struct scripting_arg *retarg = arg_from_python(ret);
+	Py_DECREF(ret);
 	if(!retarg) {
 		return NULL;
 	}
