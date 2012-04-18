@@ -222,6 +222,7 @@ static struct scripting_arg *arg_from_python(PyObject *value)
 		arg->callable = value;
 		arg->callable_freeer = (scripting_func_freeer*)python_freeer;
 		arg->callable_taker = (scripting_func_taker*)python_taker;
+		arg->callable_caller = (scripting_func_caller*)python_caller;
 	}
 	else {
 		scripting_arg_free(arg);

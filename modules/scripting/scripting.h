@@ -48,6 +48,7 @@ struct scripting_arg {
 	void *callable;
 	scripting_func_freeer *callable_freeer;
 	scripting_func_taker *callable_taker;
+	scripting_func_caller *callable_caller;
 };
 
 struct scripting_arg *scripting_arg_create(enum scripting_arg_type type);
