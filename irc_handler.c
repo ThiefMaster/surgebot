@@ -4,7 +4,7 @@
 #include "chanuser.h"
 #include "chanuser_irc.h"
 
-IMPLEMENT_LIST(irc_handler_list, irc_handler_f *)
+IMPLEMENT_LIST(irc_handler_list, struct irc_handler *)
 IMPLEMENT_LIST(connected_func_list, connected_f *)
 
 static struct dict *irc_handlers;
@@ -24,30 +24,48 @@ void irc_handler_init()
 void irc_handler_fini()
 {
 	connected_func_list_free(connected_funcs);
+	dict_iter(node, irc_handlers)
+	{
+		struct irc_handler_list *list = node->data;
+		for(unsigned int i = 0; i < list->count; i++)
+			free(list->data[i]);
+	}
 	dict_free(irc_handlers);
 }
 
-void _reg_irc_handler(const char *cmd, irc_handler_f *func)
+void _reg_irc_handler(const char *cmd, irc_handler_f *func, void *extra, irc_handler_extra_cmp_f* extra_cmp_func)
 {
 	struct irc_handler_list *list;
-	debug("Adding irc handler for %s: %p", cmd, func);
+	struct irc_handler *handler = malloc(sizeof(struct irc_handler));
+	memset(handler, 0, sizeof(struct irc_handler));
+	debug("Adding irc handler for %s: %p %p", cmd, func, extra);
 	if((list = dict_find(irc_handlers, cmd)) == NULL) // no handler list -> create one
 	{
 		list = irc_handler_list_create();
 		dict_insert(irc_handlers, strdup(cmd), list);
 	}
 
-	irc_handler_list_add(list, func);
+	handler->func = func;
+	handler->extra = extra;
+	handler->extra_cmp_func = extra_cmp_func;
+	irc_handler_list_add(list, handler);
 }
 
-void _unreg_irc_handler(const char *cmd, irc_handler_f *func)
+void _unreg_irc_handler(const char *cmd, irc_handler_f *func, void *extra)
 {
 	struct irc_handler_list *list;
-	debug("Removing irc handler for %s: %p", cmd, func);
+	debug("Removing irc handler for %s: %p %p", cmd, func, extra);
 	if((list = dict_find(irc_handlers, cmd)) == NULL) // no handler list -> nothing to delete
 		return;
 
-	irc_handler_list_del(list, func);
+	for(int i = 0; i < (int)list->count; i++) {
+		struct irc_handler *handler = list->data[i];
+		if(handler->func == func && (handler->extra_cmp_func ? handler->extra_cmp_func(handler->extra, extra) : (handler->extra == extra))) {
+			irc_handler_list_del(list, handler);
+			free(handler);
+			i--;
+		}
+	}
 }
 
 void reg_connected_func(connected_f *func)
@@ -63,7 +81,7 @@ void unreg_connected_func(connected_f *func)
 void irc_handle_msg(int argc, char **argv, struct irc_source *src, const char *raw_line)
 {
 	struct irc_handler_list *list;
-	irc_handler_f *func;
+	struct irc_handler *handler;
 	unsigned int i;
 
 #ifdef IRC_HANDLER_DEBUG
@@ -82,8 +100,8 @@ void irc_handle_msg(int argc, char **argv, struct irc_source *src, const char *r
 	{
 		for(i = 0; i < list->count; i++)
 		{
-			func = list->data[i];
-			func(argc, argv, src);
+			handler = list->data[i];
+			handler->func(argc, argv, src, handler->extra);
 		}
 	}
 }
