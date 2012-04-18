@@ -46,6 +46,7 @@ struct scripting_arg {
 		struct ptrlist *list;
 	} data;
 	void *callable;
+	struct module *callable_module;
 	scripting_func_freeer *callable_freeer;
 	scripting_func_taker *callable_taker;
 	scripting_func_caller *callable_caller;
