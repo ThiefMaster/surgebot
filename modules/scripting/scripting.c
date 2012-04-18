@@ -99,6 +99,14 @@ static void free_function(struct scripting_func *func)
 }
 
 // arguments
+struct scripting_arg *scripting_arg_create(enum scripting_arg_type type)
+{
+	struct scripting_arg *arg = malloc(sizeof(struct scripting_arg));
+	memset(arg, 0, sizeof(struct scripting_arg));
+	arg->type = type;
+	return arg;
+}
+
 struct dict *scripting_args_create_dict()
 {
 	struct dict *args = dict_create();
