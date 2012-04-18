@@ -105,11 +105,9 @@ static void _irc_handler(int argc, char **argv, struct irc_source *src, struct s
 	struct dict *args = scripting_args_create_dict();
 	struct scripting_arg *arg;
 	// args: list of the handler args
-	arg = scripting_arg_create(SCRIPTING_ARG_TYPE_LIST);
-	arg->data.list = scripting_args_create_list();
+	arg = scripting_arg_create(SCRIPTING_ARG_TYPE_LIST, NULL);
 	for(int i = 0; i < argc; i++) {
-		struct scripting_arg *val = scripting_arg_create(SCRIPTING_ARG_TYPE_STRING);
-		val->data.string = strdup(argv[i]);
+		struct scripting_arg *val = scripting_arg_create(SCRIPTING_ARG_TYPE_STRING, strdup(argv[i]));
 		ptrlist_add(arg->data.list, 0, val);
 	}
 	dict_insert(args, strdup("args"), arg);
@@ -130,29 +128,10 @@ static struct scripting_arg *_irc_source_to_arg(struct irc_source *src)
 	if(!src) {
 		return scripting_arg_create(SCRIPTING_ARG_TYPE_NULL);
 	}
-	arg = scripting_arg_create(SCRIPTING_ARG_TYPE_DICT);
-	arg->data.dict = scripting_args_create_dict();
-	// nick
-	val = scripting_arg_create(SCRIPTING_ARG_TYPE_STRING);
-	val->data.string = strdup(src->nick);
-	dict_insert(arg->data.dict, strdup("nick"), val);
-	// ident
-	if(src->ident) {
-		val = scripting_arg_create(SCRIPTING_ARG_TYPE_STRING);
-		val->data.string = strdup(src->ident);
-		dict_insert(arg->data.dict, strdup("ident"), val);
-	}
-	else {
-		dict_insert(arg->data.dict, strdup("ident"), scripting_arg_create(SCRIPTING_ARG_TYPE_NULL));
-	}
-	// host
-	if(src->host) {
-		val = scripting_arg_create(SCRIPTING_ARG_TYPE_STRING);
-		val->data.string = strdup(src->host);
-		dict_insert(arg->data.dict, strdup("host"), val);
-	}
-	else {
-		dict_insert(arg->data.dict, strdup("host"), scripting_arg_create(SCRIPTING_ARG_TYPE_NULL));
-	}
+	arg = scripting_arg_create(SCRIPTING_ARG_TYPE_DICT,
+			"nick", scripting_arg_create(SCRIPTING_ARG_TYPE_STRING, strdup(src->nick)),
+			"ident", src->ident ? scripting_arg_create(SCRIPTING_ARG_TYPE_STRING, strdup(src->ident)) : NULL,
+			"host", src->host ? scripting_arg_create(SCRIPTING_ARG_TYPE_STRING, strdup(src->host)) : NULL,
+			NULL);
 	return arg;
 }

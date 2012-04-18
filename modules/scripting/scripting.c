@@ -99,11 +99,54 @@ static void free_function(struct scripting_func *func)
 }
 
 // arguments
-struct scripting_arg *scripting_arg_create(enum scripting_arg_type type)
+struct scripting_arg *scripting_arg_create(enum scripting_arg_type type, ...)
 {
-	struct scripting_arg *arg = malloc(sizeof(struct scripting_arg));
+	va_list args;
+	char *key;
+	void *value;
+	struct scripting_arg *arg;
+	va_start(args, type);
+
+	arg = malloc(sizeof(struct scripting_arg));
 	memset(arg, 0, sizeof(struct scripting_arg));
 	arg->type = type;
+
+	switch(type) {
+		case SCRIPTING_ARG_TYPE_NULL:
+			break;
+		case SCRIPTING_ARG_TYPE_BOOL:
+			arg->data.integer = malloc(sizeof(long));
+			*arg->data.integer = !!va_arg(args, int);
+			break;
+		case SCRIPTING_ARG_TYPE_INT:
+			arg->data.integer = malloc(sizeof(long));
+			*arg->data.integer = va_arg(args, long);
+			break;
+		case SCRIPTING_ARG_TYPE_DOUBLE:
+			arg->data.dbl = malloc(sizeof(double));
+			*arg->data.dbl = va_arg(args, double);
+			break;
+		case SCRIPTING_ARG_TYPE_STRING:
+			arg->data.string = va_arg(args, char *);
+			break;
+		case SCRIPTING_ARG_TYPE_LIST:
+			arg->data.list = scripting_args_create_list();
+			while((value = va_arg(args, struct scripting_arg *))) {
+				ptrlist_add(arg->data.list, 0, value);
+			}
+			break;
+		case SCRIPTING_ARG_TYPE_DICT:
+			arg->data.dict = scripting_args_create_dict();
+			while((key = va_arg(args, char *))) {
+				value = va_arg(args, struct scripting_arg *);
+				dict_insert(arg->data.dict, strdup(key), value ? value : scripting_arg_create(SCRIPTING_ARG_TYPE_NULL));
+			}
+			break;
+		case SCRIPTING_ARG_TYPE_CALLABLE:
+			break;
+	}
+
+	va_end(args);
 	return arg;
 }
 

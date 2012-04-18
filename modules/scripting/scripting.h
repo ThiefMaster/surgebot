@@ -52,7 +52,7 @@ struct scripting_arg {
 	scripting_func_caller *callable_caller;
 };
 
-struct scripting_arg *scripting_arg_create(enum scripting_arg_type type);
+struct scripting_arg *scripting_arg_create(enum scripting_arg_type type, ...);
 struct dict *scripting_args_create_dict();
 struct ptrlist *scripting_args_create_list();
 void scripting_arg_free(struct scripting_arg *arg);
