@@ -31,7 +31,7 @@ static PyMethodDef SurgebotMethods[] = {
 MODULE_INIT
 {
 	this = self;
-	Py_Initialize();
+	Py_InitializeEx(0);
 	create_module();
 	PyRun_SimpleString("import surgebot\n\
 def cb(**args):\n\
