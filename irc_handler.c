@@ -33,6 +33,11 @@ void irc_handler_fini()
 	dict_free(irc_handlers);
 }
 
+struct dict *irc_handlers_dict()
+{
+	return irc_handlers;
+}
+
 void _reg_irc_handler(const char *cmd, irc_handler_f *func, void *extra, irc_handler_extra_cmp_f* extra_cmp_func)
 {
 	struct irc_handler_list *list;

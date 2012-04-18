@@ -17,6 +17,7 @@ struct irc_handler {
 
 void irc_handler_init();
 void irc_handler_fini();
+struct dict *irc_handlers_dict();
 
 void _reg_irc_handler(const char *cmd, irc_handler_f *func, void *extra, irc_handler_extra_cmp_f* extra_cmp_func);
 void _unreg_irc_handler(const char *cmd, irc_handler_f *func, void *extra);
