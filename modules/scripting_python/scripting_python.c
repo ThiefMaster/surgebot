@@ -1,6 +1,7 @@
 #include <Python.h>
 #include "global.h"
 #include "module.h"
+#include "conf.h"
 #include "ptrlist.h"
 #include "modules/scripting/scripting.h"
 
@@ -33,28 +34,18 @@ MODULE_INIT
 	this = self;
 	Py_InitializeEx(0);
 	create_module();
-/*
-	PyRun_SimpleString("import surgebot\n\
-def cb(**args):\n\
-	print 'cb called: %r' % args\n\
-	return 1337\n\
-def test(callable, **args):\n\
-	print 'test func called: %r' % args\n\
-	return callable(), 1*2*3, 4*5*6, 'xyz', {'foo': 'bar'}\n\
-surgebot.register('test', test)\n\
-print surgebot.call('test', foo='bar', num=1337, abc=['x',1,2,3], xxx=dict(a='b', c='d'), callable=cb)");
-*/
-	PyRun_SimpleString("import surgebot\n\
-cnt = 0\n\
-def notice(src, args):\n\
-	global cnt\n\
-	print 'notice: %r' % args\n\
-	cnt += 1\n\
-	if src:\n\
-		surgebot.call('irc_send', msg='PRIVMSG #ircops :hello [%s]' % args[-1], raw=True)\n\
-	if cnt == 10:\n\
-		surgebot.call('unreg_irc_handler', cmd='NOTICE', func=notice)\n\
-surgebot.call('reg_irc_handler', cmd='NOTICE', func=notice)");
+
+	struct stringlist *scripts = conf_get("scripting/python/scripts", DB_STRINGLIST);
+	if(scripts) {
+		for(unsigned int i = 0; i < scripts->count; i++) {
+			char *path = strdup(scripts->data[i]);
+			FILE *fp = fopen(path, "r");
+			if(fp) {
+				PyRun_SimpleFileEx(fp, basename(path), 1);
+			}
+			free(path);
+		}
+	}
 }
 
 MODULE_FINI
