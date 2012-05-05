@@ -278,8 +278,16 @@ static PyObject *arg_to_python(struct scripting_arg *arg)
 		case SCRIPTING_ARG_TYPE_DICT:
 			return args_to_python(arg->data.dict);
 		case SCRIPTING_ARG_TYPE_CALLABLE:
-			Py_INCREF(arg->callable);
-			return arg->callable;
+			if(arg->callable_module == this) {
+				Py_INCREF(arg->callable);
+				return arg->callable;
+			}
+			else {
+				// XXX: support cross-language callbacks
+				debug("Python cannot call a callback from %s (yet).", arg->callable_module->name);
+				Py_INCREF(Py_None);
+				return Py_None;
+			}
 	}
 
 	assert_return(0 && "shouldn't happen at all", NULL);

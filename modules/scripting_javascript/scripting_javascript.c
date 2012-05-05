@@ -401,7 +401,14 @@ static jsval arg_to_js(struct scripting_arg *arg)
 		case SCRIPTING_ARG_TYPE_DICT:
 			return args_to_js(arg->data.dict);
 		case SCRIPTING_ARG_TYPE_CALLABLE:
-			return OBJECT_TO_JSVAL(arg->callable);
+			if(arg->callable_module == this) {
+				return OBJECT_TO_JSVAL(arg->callable);
+			}
+			else {
+				// XXX: support cross-language callbacks
+				debug("JavaScript cannot call a callback from %s (yet).", arg->callable_module->name);
+				return JSVAL_VOID;
+			}
 	}
 
 	assert_return(0 && "shouldn't happen at all", JSVAL_VOID);
