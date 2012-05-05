@@ -8,7 +8,7 @@ MODULES += misc paste php quote serverstats sharedmem spelling timers tinyurl to
 MODULES += urbandict webinterface youtube
 MODULES += pushmode massmode
 # Less common modules:
-#MODULES += scripting scripting_python scripting_api_core
+#MODULES += scripting scripting_python scripting_javascript scripting_lua scripting_api_core
 #MODULES += klostervote
 #MODULES += maxfrag
 #MODULES += cap pgsql radiobot radiobotremote radionotify radioplaylist radioschedule radioapi
