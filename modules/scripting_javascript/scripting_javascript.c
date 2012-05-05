@@ -240,19 +240,16 @@ static struct dict *js_caller(JSObject *jsfunc, struct dict *args)
 		success = JS_CallFunctionValue(cx, NULL, OBJECT_TO_JSVAL(jsfunc), 1, argv, &rval);
 	}
 	if(!success) {
-		debug("js_caller !success");
 		JS_ReportPendingException(cx);
 		return NULL;
 	}
 
 	struct scripting_arg *retarg = arg_from_js(&rval);
 	if(!retarg) {
-		debug("js_caller !retarg");
 		return NULL;
 	}
 	struct dict *dict = scripting_args_create_dict();
 	dict_insert(dict, strdup("result"), retarg);
-	debug("js_caller return");
 	return dict;
 }
 
