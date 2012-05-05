@@ -93,7 +93,7 @@ static void free_function(struct scripting_func *func)
 {
 	debug("Unregistered function: %s.%s", func->module->name, func->name);
 	if(func->freeer) {
-		func->freeer(func->extra);
+		func->freeer(func->extra, &func->extra);
 	}
 	free(func->name);
 }
@@ -182,7 +182,7 @@ void scripting_arg_free(struct scripting_arg *arg)
 			dict_free(arg->data.dict);
 			break;
 		case SCRIPTING_ARG_TYPE_CALLABLE:
-			arg->callable_freeer(arg->callable);
+			arg->callable_freeer(arg->callable, &arg->callable);
 			break;
 	}
 
@@ -194,7 +194,7 @@ static struct scripting_arg *scripting_arg_callable_copy(struct scripting_arg *a
 	assert_return(arg->type == SCRIPTING_ARG_TYPE_CALLABLE, NULL);
 	struct scripting_arg *copy = malloc(sizeof(struct scripting_arg));
 	memcpy(copy, arg, sizeof(struct scripting_arg));
-	copy->callable_taker(copy->callable);
+	copy->callable_taker(copy->callable, &copy->callable);
 	return copy;
 }
 

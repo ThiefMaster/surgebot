@@ -12,8 +12,8 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 static PyObject* scripting_python_register(PyObject *self, PyObject *args);
 static PyObject* scripting_python_unregister(PyObject *self, PyObject *args);
 static struct dict *python_caller(PyObject *pyfunc, struct dict *args);
-static void python_freeer(PyObject *pyfunc);
-static PyObject *python_taker(PyObject *pyfunc);
+static void python_freeer(PyObject *pyfunc, PyObject **funcp);
+static PyObject *python_taker(PyObject *pyfunc, PyObject **funcp);
 static struct dict *args_from_python(PyObject *pyargs);
 static struct scripting_arg *arg_from_python(PyObject *value);
 static PyObject *args_to_python(struct dict *args);
@@ -156,12 +156,12 @@ static struct dict *python_caller(PyObject *pyfunc, struct dict *args)
 	return dict;
 }
 
-static void python_freeer(PyObject *pyfunc)
+static void python_freeer(PyObject *pyfunc, PyObject **funcp)
 {
 	Py_DECREF(pyfunc);
 }
 
-static PyObject *python_taker(PyObject *pyfunc)
+static PyObject *python_taker(PyObject *pyfunc, PyObject **funcp)
 {
 	Py_INCREF(pyfunc);
 	return pyfunc;

@@ -4,6 +4,12 @@
 #include "ptrlist.h"
 #include "modules/scripting/scripting.h"
 
+#define USE_GC_ZEAL
+#ifdef USE_GC_ZEAL
+	#define DEBUG
+	#define JS_NO_JSVAL_JSID_STRUCT_TYPES
+#endif
+
 #define XP_UNIX
 #include <js/jsapi.h>
 
@@ -15,12 +21,15 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp);
 static JSBool scripting_js_register(JSContext *cx, uintN argc, jsval *vp);
 static JSBool scripting_js_unregister(JSContext *cx, uintN argc, jsval *vp);
 static struct dict *js_caller(JSObject *jsfunc, struct dict *args);
+static void js_freeer(JSObject *jsfunc, JSObject **funcp);
+static JSObject *js_taker(JSObject *jsfunc, JSObject **funcp);
 static struct dict *args_from_js(JSObject *jsargs);
 static struct scripting_arg *arg_from_js(jsval *value);
 static jsval args_to_js(struct dict *args);
 static jsval arg_to_js(struct scripting_arg *arg);
 
 static struct module *this;
+static struct ptrlist *script_roots;
 static JSRuntime *rt;
 static JSContext *cx;
 static JSObject *global, *js_surgebot;
@@ -46,6 +55,10 @@ MODULE_INIT
 	JS_SetOptions(cx, JSOPTION_STRICT | JSOPTION_VAROBJFIX);
 	JS_SetVersion(cx, JSVERSION_LATEST);
 	JS_SetErrorReporter(cx, scripting_js_error);
+	#ifdef USE_GC_ZEAL
+		JS_SetGCZeal(cx, 2);
+	#endif
+	JS_BeginRequest(cx);
 
 	global = JS_NewCompartmentAndGlobalObject(cx, &global_class, NULL);
 	JS_InitStandardClasses(cx, global);
@@ -57,12 +70,17 @@ MODULE_INIT
 
 
 	struct stringlist *scripts = conf_get("scripting/javascript/scripts", DB_STRINGLIST);
+	script_roots = ptrlist_create();
 	if(scripts) {
 		for(unsigned int i = 0; i < scripts->count; i++) {
 			JSObject *script = JS_CompileFile(cx, global, scripts->data[i]);
 			if(!script) {
 				continue;
 			}
+			JSObject **scriptp = malloc(sizeof(JSObject *));
+			*scriptp = script;
+			JS_AddObjectRoot(cx, scriptp);
+			ptrlist_add(script_roots, 0, scriptp);
 			JS_ExecuteScript(cx, global, script, NULL);
 		}
 		JS_MaybeGC(cx);
@@ -71,6 +89,11 @@ MODULE_INIT
 
 MODULE_FINI
 {
+	for(unsigned int i = 0; i < script_roots->count; i++) {
+		JS_RemoveObjectRoot(cx, script_roots->data[i]->ptr);
+	}
+	ptrlist_free(script_roots);
+	JS_EndRequest(cx);
 	JS_DestroyContext(cx);
 	JS_DestroyRuntime(rt);
 	JS_ShutDown();
@@ -113,6 +136,8 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp)
 	char *funcname;
 	JSObject *args = NULL;
 
+	JS_EnterLocalRootScope(cx);
+
 	if(!JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "S/o", &funcname_js, &args)){
 		return JS_FALSE;
 	}
@@ -134,6 +159,7 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp)
 	}
 
 	struct dict *ret = scripting_call_function(func, funcargs);
+
 	if(scripting_get_error()) {
 		assert_return(!ret, JS_FALSE);
 		JS_ReportError(cx, "%s", scripting_get_error());
@@ -143,6 +169,7 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp)
 
 	JS_free(cx, funcname);
 	JS_SET_RVAL(cx, vp, ret ? args_to_js(ret) : JSVAL_VOID);
+	JS_LeaveLocalRootScope(cx);
 	return JS_TRUE;
 }
 
@@ -169,7 +196,9 @@ static JSBool scripting_js_register(JSContext *cx, uintN argc, jsval *vp)
 		return JS_FALSE;
 	}
 	func->caller = (scripting_func_caller*)js_caller;
+	func->freeer = (scripting_func_freeer*)js_freeer;
 	func->extra = jsfunc;
+	JS_AddObjectRoot(cx, (JSObject **)&func->extra);
 	JS_free(cx, funcname);
 	JS_SET_RVAL(cx, vp, JSVAL_VOID);
 	return JS_TRUE;
@@ -206,20 +235,36 @@ static struct dict *js_caller(JSObject *jsfunc, struct dict *args)
 		success = JS_CallFunctionValue(cx, NULL, OBJECT_TO_JSVAL(jsfunc), 0, NULL, &rval);
 	}
 	else {
-		jsval jsargs = args_to_js(args);
-		success = JS_CallFunctionValue(cx, NULL, OBJECT_TO_JSVAL(jsfunc), 1, &jsargs, &rval);
+		jsval argv[1];
+		argv[0] = args_to_js(args);
+		success = JS_CallFunctionValue(cx, NULL, OBJECT_TO_JSVAL(jsfunc), 1, argv, &rval);
 	}
 	if(!success) {
+		debug("js_caller !success");
+		JS_ReportPendingException(cx);
 		return NULL;
 	}
 
 	struct scripting_arg *retarg = arg_from_js(&rval);
 	if(!retarg) {
+		debug("js_caller !retarg");
 		return NULL;
 	}
 	struct dict *dict = scripting_args_create_dict();
 	dict_insert(dict, strdup("result"), retarg);
+	debug("js_caller return");
 	return dict;
+}
+
+static void js_freeer(JSObject *jsfunc, JSObject **funcp)
+{
+	JS_RemoveObjectRoot(cx, funcp);
+}
+
+static JSObject *js_taker(JSObject *jsfunc, JSObject **funcp)
+{
+	JS_AddObjectRoot(cx, funcp);
+	return jsfunc;
 }
 
 static struct dict *args_from_js(JSObject *jsargs)
@@ -309,6 +354,8 @@ static struct scripting_arg *arg_from_js(jsval *valuep)
 		arg->callable = JSVAL_TO_OBJECT(value);
 		arg->callable_module = this;
 		arg->callable_caller = (scripting_func_caller*)js_caller;
+		arg->callable_freeer = (scripting_func_freeer*)js_freeer;
+		arg->callable_taker = (scripting_func_taker*)js_taker;
 	}
 	else if(JSVAL_IS_OBJECT(value)) {
 		arg->type = SCRIPTING_ARG_TYPE_DICT;

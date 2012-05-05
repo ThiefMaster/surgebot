@@ -5,8 +5,8 @@ struct scripting_func;
 struct ptrlist;
 
 typedef struct dict *(scripting_func_caller)(void *func, struct dict *args);
-typedef void (scripting_func_freeer)(void *func);
-typedef void *(scripting_func_taker)(void *func);
+typedef void (scripting_func_freeer)(void *func, void *funcp);
+typedef void *(scripting_func_taker)(void *func, void *funcp);
 
 struct scripting_func {
 	struct module *module;
