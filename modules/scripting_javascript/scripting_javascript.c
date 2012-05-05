@@ -126,8 +126,8 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp)
 		JS_free(cx, funcname);
 		return JS_FALSE;
 	}
-	struct dict *funcargs = args_from_js(args);
-	if(!funcargs) {
+	struct dict *funcargs = args ? args_from_js(args) : NULL;
+	if(args && !funcargs) {
 		JS_ReportError(cx, "Unsupported argument type");
 		JS_free(cx, funcname);
 		return JS_FALSE;
