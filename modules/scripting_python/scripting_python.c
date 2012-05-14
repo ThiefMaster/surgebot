@@ -18,6 +18,8 @@ static struct dict *args_from_python(PyObject *pyargs);
 static struct scripting_arg *arg_from_python(PyObject *value);
 static PyObject *args_to_python(struct dict *args);
 static PyObject *arg_to_python(struct scripting_arg *arg);
+static PyObject *callable_arg_to_python(struct scripting_arg *arg);
+static PyObject *scripting_python_call_callable(PyObject *self, PyObject *args, PyObject *kwargs);
 
 static struct module *this;
 
@@ -283,12 +285,34 @@ static PyObject *arg_to_python(struct scripting_arg *arg)
 				return arg->callable;
 			}
 			else {
-				// XXX: support cross-language callbacks
-				debug("Python cannot call a callback from %s (yet).", arg->callable_module->name);
-				Py_INCREF(Py_None);
-				return Py_None;
+				return callable_arg_to_python(arg);
 			}
 	}
 
 	assert_return(0 && "shouldn't happen at all", NULL);
+}
+
+static PyObject *scripting_python_call_callable(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+	struct dict *funcargs = kwargs ? args_from_python(kwargs) : scripting_args_create_dict();
+	if(!funcargs) {
+		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
+	}
+	struct scripting_arg *arg = PyCapsule_GetPointer(self, NULL);
+	struct dict *ret = arg->callable_caller(arg->callable, funcargs);
+	if(scripting_get_error()) {
+		assert_return(!ret, NULL);
+		return PyErr_Format(PyExc_RuntimeError, "%s", scripting_get_error());
+	}
+	if(!ret) {
+		Py_RETURN_NONE;
+	}
+	return args_to_python(ret);
+}
+
+static PyObject *callable_arg_to_python(struct scripting_arg *arg)
+{
+	static PyMethodDef meth = {"_arg_callable", (PyCFunction)scripting_python_call_callable, METH_VARARGS | METH_KEYWORDS, "Cross-language function"};
+	PyObject *ctx = PyCapsule_New(arg, NULL, NULL);
+	return PyCFunction_New(&meth, ctx);
 }
