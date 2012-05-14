@@ -27,6 +27,8 @@ static struct dict *args_from_js(JSObject *jsargs);
 static struct scripting_arg *arg_from_js(jsval *value);
 static jsval args_to_js(struct dict *args);
 static jsval arg_to_js(struct scripting_arg *arg);
+static JSBool scripting_js_call_callable(JSContext *cx, uintN argc, jsval *vp);
+static jsval callable_arg_to_js(struct scripting_arg *arg);
 
 static struct module *this;
 static struct ptrlist *script_roots;
@@ -405,11 +407,49 @@ static jsval arg_to_js(struct scripting_arg *arg)
 				return OBJECT_TO_JSVAL(arg->callable);
 			}
 			else {
-				// XXX: support cross-language callbacks
-				debug("JavaScript cannot call a callback from %s (yet).", arg->callable_module->name);
-				return JSVAL_VOID;
+				return callable_arg_to_js(arg);
 			}
 	}
 
 	assert_return(0 && "shouldn't happen at all", JSVAL_VOID);
+}
+
+static JSBool scripting_js_call_callable(JSContext *cx, uintN argc, jsval *vp)
+{
+	JSObject *args = NULL;
+
+	JS_EnterLocalRootScope(cx);
+
+	if(!JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "/o", &args)){
+		return JS_FALSE;
+	}
+
+	struct dict *funcargs = args ? args_from_js(args) : NULL;
+	if(args && !funcargs) {
+		JS_ReportError(cx, "Unsupported argument type");
+		return JS_FALSE;
+	}
+
+	jsval jsarg;
+	JSObject *func = JSVAL_TO_OBJECT(JS_CALLEE(cx, vp));
+	JS_GetReservedSlot(cx, func, 0, &jsarg);
+	struct scripting_arg *arg = JSVAL_TO_PRIVATE(jsarg);
+	struct dict *ret = arg->callable_caller(arg->callable, funcargs);
+
+	if(scripting_get_error()) {
+		assert_return(!ret, JS_FALSE);
+		JS_ReportError(cx, "%s", scripting_get_error());
+		return JS_FALSE;
+	}
+
+	JS_SET_RVAL(cx, vp, ret ? args_to_js(ret) : JSVAL_VOID);
+	JS_LeaveLocalRootScope(cx);
+	return JS_TRUE;
+}
+
+static jsval callable_arg_to_js(struct scripting_arg *arg)
+{
+	JSObject *func = JS_GetFunctionObject(JS_NewFunction(cx, scripting_js_call_callable, 0, JSPROP_READONLY | JSPROP_PERMANENT, NULL, NULL));
+	JS_SetReservedSlot(cx, func, 0, PRIVATE_TO_JSVAL(arg));
+	return OBJECT_TO_JSVAL(func);
 }
