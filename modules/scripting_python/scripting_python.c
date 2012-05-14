@@ -72,7 +72,7 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 		return PyErr_Format(PyExc_NotImplementedError, "Function %s is not registered", funcname);
 	}
 
-	struct dict *funcargs = args_from_python(kwargs);
+	struct dict *funcargs = kwargs ? args_from_python(kwargs) : scripting_args_create_dict();
 	if(!funcargs) {
 		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
 	}
