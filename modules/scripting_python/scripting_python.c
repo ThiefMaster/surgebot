@@ -84,7 +84,7 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 	if(!ret) {
 		Py_RETURN_NONE;
 	}
-	return args_to_python(ret);
+	return arg_to_python(dict_find(ret, "result"));
 }
 
 static PyObject* scripting_python_register(PyObject *self, PyObject *args)
@@ -307,7 +307,7 @@ static PyObject *scripting_python_call_callable(PyObject *self, PyObject *args, 
 	if(!ret) {
 		Py_RETURN_NONE;
 	}
-	return args_to_python(ret);
+	return arg_to_python(dict_find(ret, "result"));
 }
 
 static PyObject *callable_arg_to_python(struct scripting_arg *arg)

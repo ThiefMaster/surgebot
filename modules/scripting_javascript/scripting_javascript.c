@@ -170,7 +170,7 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp)
 	}
 
 	JS_free(cx, funcname);
-	JS_SET_RVAL(cx, vp, ret ? args_to_js(ret) : JSVAL_VOID);
+	JS_SET_RVAL(cx, vp, ret ? arg_to_js(dict_find(ret, "result")) : JSVAL_VOID);
 	JS_LeaveLocalRootScope(cx);
 	return JS_TRUE;
 }
@@ -442,7 +442,7 @@ static JSBool scripting_js_call_callable(JSContext *cx, uintN argc, jsval *vp)
 		return JS_FALSE;
 	}
 
-	JS_SET_RVAL(cx, vp, ret ? args_to_js(ret) : JSVAL_VOID);
+	JS_SET_RVAL(cx, vp, ret ? arg_to_js(dict_find(ret, "result")) : JSVAL_VOID);
 	JS_LeaveLocalRootScope(cx);
 	return JS_TRUE;
 }
