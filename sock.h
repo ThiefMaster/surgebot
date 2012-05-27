@@ -66,6 +66,7 @@ struct sock
 	unsigned int	config_poll : 1;
 	unsigned int	want_read : 1;
 	unsigned int	want_write : 1;
+	unsigned int	in_read_func : 1;
 
 	pid_t		pid;
 	void		*ctx;

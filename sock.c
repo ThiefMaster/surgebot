@@ -703,7 +703,8 @@ int sock_close(struct sock *sock)
 	if(sock->fd > 0)
 		close(sock->fd);
 
-	sock_flush_readbuf(sock);
+	if(!sock->in_read_func)
+		sock_flush_readbuf(sock);
 
 	sock->flags |= SOCK_ZOMBIE;
 	sock->fd = -1;
@@ -1010,7 +1011,9 @@ int sock_poll()
 						{
 							getlen = retlen + strspn(sock->read_buf + retlen, sock->read_buf_delimiter);
 							sock->read_buf[retlen] = '\0';
+							sock->in_read_func = 1;
 							sock->read_func(sock, sock->read_buf, retlen);
+							sock->in_read_func = 0;
 
 							memmove(sock->read_buf, sock->read_buf + getlen, sock->read_buf_len - getlen);
 							sock->read_buf_used -= getlen;
@@ -1059,7 +1062,9 @@ int sock_poll()
 					else if(rres > 0)
 					{
 						in_buf[rres] = '\0';
+						sock->in_read_func = 1;
 						sock->read_func(sock, in_buf, rres);
+						sock->in_read_func = 0;
 					}
 				}
 			}
@@ -1149,7 +1154,9 @@ static void sock_flush_readbuf(struct sock *sock)
 {
 	if(sock->read_func && sock->read_buf && sock->read_buf_used)
 	{
+		sock->in_read_func = 1;
 		sock->read_func(sock, sock->read_buf, sock->read_buf_used);
+		sock->in_read_func = 0;
 		sock->read_buf_used = 0;
 		sock->read_buf[0] = '\0';
 	}
