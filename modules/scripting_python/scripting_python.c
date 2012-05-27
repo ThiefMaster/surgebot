@@ -237,6 +237,11 @@ static struct scripting_arg *arg_from_python(PyObject *value)
 		arg->callable_taker = (scripting_func_taker*)python_taker;
 		arg->callable_caller = (scripting_func_caller*)python_caller;
 	}
+	else if(PyCapsule_CheckExact(value)) {
+		arg->type = SCRIPTING_ARG_TYPE_RESOURCE;
+		Py_INCREF(value);
+		arg->resource = PyCapsule_GetPointer(value, "resource");
+	}
 	else {
 		scripting_arg_free(arg);
 		return NULL;
@@ -287,6 +292,8 @@ static PyObject *arg_to_python(struct scripting_arg *arg)
 			else {
 				return callable_arg_to_python(arg);
 			}
+		case SCRIPTING_ARG_TYPE_RESOURCE:
+			return PyCapsule_New(arg->resource, "resource", NULL);
 	}
 
 	assert_return(0 && "shouldn't happen at all", NULL);

@@ -40,6 +40,10 @@ static JSClass global_class = { "global", JSCLASS_GLOBAL_FLAGS, JS_PropertyStub,
 	JS_PropertyStub, JS_StrictPropertyStub, JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
 	JS_FinalizeStub, JSCLASS_NO_OPTIONAL_MEMBERS };
 
+static JSClass resource_class = { "Resource", JSCLASS_HAS_PRIVATE, JS_PropertyStub, JS_PropertyStub,
+	JS_PropertyStub, JS_StrictPropertyStub, JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
+	JS_FinalizeStub, JSCLASS_NO_OPTIONAL_MEMBERS };
+
 static JSFunctionSpec js_surgebot_functions[] = {
     JS_FS("call", scripting_js_call, 2, JSPROP_READONLY | JSPROP_PERMANENT),
     JS_FS("register", scripting_js_register, 2, JSPROP_READONLY | JSPROP_PERMANENT),
@@ -114,7 +118,12 @@ static JSBool scripting_js_print(JSContext *cx, uintN argc, jsval *vp)
 
 	argv = JS_ARGV(cx, vp);
 	for(uintN i = 0; i < argc; i++) {
-		str = JSVAL_IS_OBJECT(argv[i]) ? JS_ValueToSource(cx, argv[i]) : JS_ValueToString(cx, argv[i]);
+		if(JSVAL_IS_OBJECT(argv[i]) && !JS_InstanceOf(cx, JSVAL_TO_OBJECT(argv[i]), &resource_class, NULL)) {
+			str = JS_ValueToSource(cx, argv[i]);
+		}
+		else {
+			str = JS_ValueToString(cx, argv[i]);
+		}
 	        if(!str) {
 			return JS_FALSE;
 		}
@@ -356,6 +365,10 @@ static struct scripting_arg *arg_from_js(jsval *valuep)
 		arg->callable_freeer = (scripting_func_freeer*)js_freeer;
 		arg->callable_taker = (scripting_func_taker*)js_taker;
 	}
+	else if(JSVAL_IS_OBJECT(value) && JS_InstanceOf(cx, JSVAL_TO_OBJECT(value), &resource_class, NULL) == JS_TRUE) {
+		arg->type = SCRIPTING_ARG_TYPE_RESOURCE;
+		arg->resource = JS_GetPrivate(cx, JSVAL_TO_OBJECT(value));
+	}
 	else if(JSVAL_IS_OBJECT(value)) {
 		arg->type = SCRIPTING_ARG_TYPE_DICT;
 		arg->data.dict = args_from_js(JSVAL_TO_OBJECT(value));
@@ -380,7 +393,7 @@ static jsval args_to_js(struct dict *args)
 
 static jsval arg_to_js(struct scripting_arg *arg)
 {
-	JSObject *list;
+	JSObject *list, *res;
 
 	switch(arg->type) {
 		case SCRIPTING_ARG_TYPE_NULL:
@@ -409,6 +422,10 @@ static jsval arg_to_js(struct scripting_arg *arg)
 			else {
 				return callable_arg_to_js(arg);
 			}
+		case SCRIPTING_ARG_TYPE_RESOURCE:
+			res = JS_NewObject(cx, &resource_class, NULL, NULL);
+			JS_SetPrivate(cx, res, arg->resource);
+			return OBJECT_TO_JSVAL(res);
 	}
 
 	assert_return(0 && "shouldn't happen at all", JSVAL_VOID);

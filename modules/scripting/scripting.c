@@ -144,6 +144,9 @@ struct scripting_arg *scripting_arg_create(enum scripting_arg_type type, ...)
 			break;
 		case SCRIPTING_ARG_TYPE_CALLABLE:
 			break;
+		case SCRIPTING_ARG_TYPE_RESOURCE:
+			arg->resource = va_arg(args, void *);
+			break;
 	}
 
 	va_end(args);
@@ -186,6 +189,8 @@ void scripting_arg_free(struct scripting_arg *arg)
 			break;
 		case SCRIPTING_ARG_TYPE_CALLABLE:
 			arg->callable_freeer(arg->callable, &arg->callable);
+			break;
+		case SCRIPTING_ARG_TYPE_RESOURCE:
 			break;
 	}
 
@@ -269,6 +274,8 @@ void *scripting_arg_get(struct dict *args, const char *arg_path, enum scripting_
 			return arg->data.dict;
 		case SCRIPTING_ARG_TYPE_CALLABLE:
 			return scripting_arg_callable_copy(arg);
+		case SCRIPTING_ARG_TYPE_RESOURCE:
+			return arg->resource;
 	}
 
 	return NULL;

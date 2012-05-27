@@ -32,7 +32,8 @@ enum scripting_arg_type {
 	SCRIPTING_ARG_TYPE_STRING,
 	SCRIPTING_ARG_TYPE_LIST,
 	SCRIPTING_ARG_TYPE_DICT,
-	SCRIPTING_ARG_TYPE_CALLABLE
+	SCRIPTING_ARG_TYPE_CALLABLE,
+	SCRIPTING_ARG_TYPE_RESOURCE
 };
 
 struct scripting_arg {
@@ -45,11 +46,14 @@ struct scripting_arg {
 		struct dict *dict;
 		struct ptrlist *list;
 	} data;
+	// callables
 	void *callable;
 	struct module *callable_module;
 	scripting_func_freeer *callable_freeer;
 	scripting_func_taker *callable_taker;
 	scripting_func_caller *callable_caller;
+	// resources
+	void *resource;
 };
 
 struct scripting_arg *scripting_arg_create(enum scripting_arg_type type, ...);
