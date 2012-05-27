@@ -113,7 +113,7 @@ static void _irc_handler(int argc, char **argv, struct irc_source *src, struct s
 	dict_insert(args, strdup("args"), arg);
 	// src: dict containing the message source
 	dict_insert(args, strdup("src"), _irc_source_to_arg(src));
-	func->callable_caller(func->callable, args);
+	SCRIPTING_CALL(func, args);
 	dict_free(args);
 }
 

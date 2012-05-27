@@ -72,4 +72,9 @@ void scripting_arg_callable_free(struct scripting_arg *arg);
 						return __scripting_ret; \
 					} while(0)
 
+#define SCRIPTING_CALL(FUNC, ARGS)	do { \
+						struct scripting_arg *__scripting_func = (FUNC); \
+						__scripting_func->callable_caller(__scripting_func->callable, (ARGS)); \
+					} while(0)
+
 #endif
