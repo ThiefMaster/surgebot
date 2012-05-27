@@ -645,7 +645,7 @@ struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_
 	return NULL;
 }
 
-int sock_write(struct sock *sock, char *buf, size_t len)
+int sock_write(struct sock *sock, const char *buf, size_t len)
 {
 	if(sock->send_queue == NULL)
 	{

@@ -83,7 +83,7 @@ void sock_set_fd(struct sock *sock, int fd);
 int sock_close(struct sock *sock);
 void sock_close_timed(struct sock *sock, unsigned int delay);
 struct sock *sock_accept(struct sock *sock, sock_event_f *event_func, sock_read_f *read_func);
-int sock_write(struct sock *sock, char *buf, size_t len);
+int sock_write(struct sock *sock, const char *buf, size_t len);
 int sock_write_fmt(struct sock *sock, const char *format, ...) PRINTF_LIKE(2, 3);
 int sock_poll();
 void sock_set_readbuf(struct sock *sock, size_t len, const char *buf_delimiter);
