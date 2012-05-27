@@ -62,4 +62,10 @@ void scripting_arg_callable_free(struct scripting_arg *arg);
 #define SCRIPTING_FUNC(NAME)		static struct dict * __scripting_func_ ## NAME(void *_func, struct dict *args)
 #define REG_SCRIPTING_FUNC(NAME)	scripting_register_function(this, #NAME)->caller = __scripting_func_ ## NAME
 
+#define SCRIPTING_RETURN(ARG)		do { \
+						struct dict *__scripting_ret = scripting_args_create_dict(); \
+						dict_insert(__scripting_ret, strdup("result"), (ARG)); \
+						return __scripting_ret; \
+					} while(0)
+
 #endif
