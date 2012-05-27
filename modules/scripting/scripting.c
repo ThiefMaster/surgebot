@@ -166,6 +166,9 @@ struct ptrlist *scripting_args_create_list()
 
 void scripting_arg_free(struct scripting_arg *arg)
 {
+	if(!arg) {
+		return;
+	}
 	switch(arg->type) {
 		case SCRIPTING_ARG_TYPE_NULL:
 			break;
