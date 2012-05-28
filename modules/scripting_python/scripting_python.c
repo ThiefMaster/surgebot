@@ -11,7 +11,7 @@ PyMODINIT_FUNC create_module();
 static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject* scripting_python_register(PyObject *self, PyObject *args);
 static PyObject* scripting_python_unregister(PyObject *self, PyObject *args);
-static struct dict *python_caller(PyObject *pyfunc, struct dict *args);
+static struct dict *python_caller(PyObject *pyfunc, struct dict *args, struct module *module);
 static void python_freeer(PyObject *pyfunc, PyObject **funcp);
 static PyObject *python_taker(PyObject *pyfunc, PyObject **funcp);
 static struct dict *args_from_python(PyObject *pyargs);
@@ -76,7 +76,7 @@ static PyObject* scripting_python_call(PyObject *self, PyObject *args, PyObject 
 	if(!funcargs) {
 		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
 	}
-	struct dict *ret = scripting_call_function(func, funcargs);
+	struct dict *ret = scripting_call_function(func, funcargs, this);
 	if(scripting_get_error()) {
 		assert_return(!ret, NULL);
 		return PyErr_Format(PyExc_RuntimeError, "%s", scripting_get_error());
@@ -125,7 +125,7 @@ static PyObject* scripting_python_unregister(PyObject *self, PyObject *args)
 	Py_RETURN_NONE;
 }
 
-static struct dict *python_caller(PyObject *pyfunc, struct dict *args)
+static struct dict *python_caller(PyObject *pyfunc, struct dict *args, struct module *module)
 {
 	PyObject *ret = NULL;
 	if(!args) {
@@ -306,7 +306,7 @@ static PyObject *scripting_python_call_callable(PyObject *self, PyObject *args, 
 		return PyErr_Format(PyExc_ValueError, "Unsupported argument type");
 	}
 	struct scripting_arg *arg = PyCapsule_GetPointer(self, NULL);
-	struct dict *ret = arg->callable_caller(arg->callable, funcargs);
+	struct dict *ret = arg->callable_caller(arg->callable, funcargs, this);
 	if(scripting_get_error()) {
 		assert_return(!ret, NULL);
 		return PyErr_Format(PyExc_RuntimeError, "%s", scripting_get_error());

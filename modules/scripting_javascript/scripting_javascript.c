@@ -20,7 +20,7 @@ static JSBool scripting_js_print(JSContext *cx, uintN argc, jsval *vp);
 static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp);
 static JSBool scripting_js_register(JSContext *cx, uintN argc, jsval *vp);
 static JSBool scripting_js_unregister(JSContext *cx, uintN argc, jsval *vp);
-static struct dict *js_caller(JSObject *jsfunc, struct dict *args);
+static struct dict *js_caller(JSObject *jsfunc, struct dict *args, struct module *module);
 static void js_freeer(JSObject *jsfunc, JSObject **funcp);
 static JSObject *js_taker(JSObject *jsfunc, JSObject **funcp);
 static struct dict *args_from_js(JSObject *jsargs);
@@ -169,7 +169,7 @@ static JSBool scripting_js_call(JSContext *cx, uintN argc, jsval *vp)
 		return JS_FALSE;
 	}
 
-	struct dict *ret = scripting_call_function(func, funcargs);
+	struct dict *ret = scripting_call_function(func, funcargs, this);
 
 	if(scripting_get_error()) {
 		assert_return(!ret, JS_FALSE);
@@ -238,7 +238,7 @@ static JSBool scripting_js_unregister(JSContext *cx, uintN argc, jsval *vp)
 	return JS_TRUE;
 }
 
-static struct dict *js_caller(JSObject *jsfunc, struct dict *args)
+static struct dict *js_caller(JSObject *jsfunc, struct dict *args, struct module *module)
 {
 	jsval rval;
 	JSBool success;
@@ -451,7 +451,7 @@ static JSBool scripting_js_call_callable(JSContext *cx, uintN argc, jsval *vp)
 	JSObject *func = JSVAL_TO_OBJECT(JS_CALLEE(cx, vp));
 	JS_GetReservedSlot(cx, func, 0, &jsarg);
 	struct scripting_arg *arg = JSVAL_TO_PRIVATE(jsarg);
-	struct dict *ret = arg->callable_caller(arg->callable, funcargs);
+	struct dict *ret = arg->callable_caller(arg->callable, funcargs, this);
 
 	if(scripting_get_error()) {
 		assert_return(!ret, JS_FALSE);

@@ -62,10 +62,10 @@ struct scripting_func *scripting_find_function(const char *name)
 	return dict_find(scripting_funcs, name);
 }
 
-struct dict *scripting_call_function(struct scripting_func *func, struct dict *args)
+struct dict *scripting_call_function(struct scripting_func *func, struct dict *args, struct module *module)
 {
 	scripting_error = NULL;
-	return func->caller(func->extra, args);
+	return func->caller(func->extra, args, module);
 }
 
 void *scripting_raise_error(const char *msg)

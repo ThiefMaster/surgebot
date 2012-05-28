@@ -4,7 +4,7 @@
 struct scripting_func;
 struct ptrlist;
 
-typedef struct dict *(scripting_func_caller)(void *func, struct dict *args);
+typedef struct dict *(scripting_func_caller)(void *func, struct dict *args, struct module *module);
 typedef void (scripting_func_freeer)(void *func, void *funcp);
 typedef void *(scripting_func_taker)(void *func, void *funcp);
 
@@ -19,7 +19,7 @@ struct scripting_func {
 struct scripting_func *scripting_register_function(struct module *module, const char *name);
 uint8_t scripting_unregister_function(struct module *module, const char *name);
 struct scripting_func *scripting_find_function(const char *name);
-struct dict *scripting_call_function(struct scripting_func *func, struct dict *args);
+struct dict *scripting_call_function(struct scripting_func *func, struct dict *args, struct module *module);
 void *scripting_raise_error(const char *msg);
 const char *scripting_get_error();
 
@@ -63,7 +63,7 @@ void scripting_arg_free(struct scripting_arg *arg);
 void *scripting_arg_get(struct dict *args, const char *arg_path, enum scripting_arg_type type);
 void scripting_arg_callable_free(struct scripting_arg *arg);
 
-#define SCRIPTING_FUNC(NAME)		static struct dict * __scripting_func_ ## NAME(void *_func, struct dict *args)
+#define SCRIPTING_FUNC(NAME)		static struct dict * __scripting_func_ ## NAME(void *_func, struct dict *args, struct module *module)
 #define REG_SCRIPTING_FUNC(NAME)	scripting_register_function(this, #NAME)->caller = __scripting_func_ ## NAME
 
 #define SCRIPTING_RETURN(ARG)		do { \
@@ -74,7 +74,7 @@ void scripting_arg_callable_free(struct scripting_arg *arg);
 
 #define SCRIPTING_CALL(FUNC, ARGS)	do { \
 						struct scripting_arg *__scripting_func = (FUNC); \
-						__scripting_func->callable_caller(__scripting_func->callable, (ARGS)); \
+						__scripting_func->callable_caller(__scripting_func->callable, (ARGS), this); \
 					} while(0)
 
 #endif
