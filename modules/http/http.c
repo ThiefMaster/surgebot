@@ -145,7 +145,7 @@ void HTTPRequest_connect(struct HTTPRequest *http)
 		sockflags |= SOCK_SSL;
 
 	http->sock = sock_create(sockflags, http_sock_event, http_sock_read);
-	debug("Connecting HTTP Request %s", http->id);
+	debug("Connecting HTTP Request %s [0x%x] => %s:%u", http->id, sockflags, http->host->host, http->host->port);
 	sock_connect(http->sock, http->host->host, http->host->port);
 }
 
