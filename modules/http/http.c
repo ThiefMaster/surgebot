@@ -332,6 +332,11 @@ static struct HTTPHost *parse_host(const char *host)
 		host += 7;
 		hhost->port = 80;
 	}
+	else
+	{
+		// assume no protocol
+		hhost->port = 80;
+	}
 
 	// Is there a slash introducing a possible path?
 	if((tmp = strstr(host, "/")))
