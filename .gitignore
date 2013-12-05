@@ -14,3 +14,8 @@ core
 vgcore.*
 module-config.h
 modules.build
+*.csr
+*.pem
+logs/
+*.log
+*.log.*
