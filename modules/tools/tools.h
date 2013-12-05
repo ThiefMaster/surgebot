@@ -1,7 +1,7 @@
 #ifndef TOOLS_MODULE_H
 #define TOOLS_MODULE_H
 
-#include <json/json.h>
+#include <json-c/json.h>
 
 char *html_decode(char *str);
 int remdir(const char *path, unsigned char exists);

@@ -1,1 +1,1 @@
-LIBS_mod += -ljson
+LIBS_mod += -ljson-c

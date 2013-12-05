@@ -2,7 +2,7 @@
 #include "modules/httpd/http.h"
 #include "chanuser.h"
 #include "usercount.h"
-#include <json/json.h>
+#include <json-c/json.h>
 
 HTTP_HANDLER(usercount_handler);
 

@@ -10,7 +10,7 @@
 #include "stringbuffer.h"
 
 #include <libgen.h>
-#include <json/json.h>
+#include <json-c/json.h>
 
 MODULE_DEPENDS("chanreg", "httpd", "bitly", "help", "tools", NULL);
 

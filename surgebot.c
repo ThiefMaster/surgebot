@@ -15,6 +15,7 @@
 #include "surgebot.h"
 
 #include <libgen.h> // basename()
+#include <sys/resource.h> // rlimit
 
 #define LOGFILE "surgebot.log"
 

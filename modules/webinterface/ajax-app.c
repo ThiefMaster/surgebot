@@ -20,7 +20,7 @@
 #include "chanuser.h"
 #include "irc.h"
 #include "ajax-app.h"
-#include <json/json.h>
+#include <json-c/json.h>
 
 #define REQUIRE_SESSION 	struct session *session; \
 				if(!(session = session_find(client, uri, argc, argv))) { \
